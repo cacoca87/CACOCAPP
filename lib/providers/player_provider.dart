@@ -17,6 +17,13 @@ import 'refresh_retry_guard.dart';
 class PlayerProvider extends ChangeNotifier {
   final MyAudioHandler audioHandler;
 
+  /// Se llama cada vez que arranca a sonar una canción nueva (al
+  /// principio de `setQueue`). `main.dart` lo usa para pausar el video
+  /// flotante de YouTube (`OnlineVideoProvider`) si estaba sonando --
+  /// así no quedan dos cosas sonando a la vez sin que el usuario lo
+  /// haya pedido.
+  final VoidCallback? onEmpiezaOtraReproduccion;
+
   List<Song> _queue = [];
   int _currentIndex = 0;
   bool _isPlaying = false;
@@ -92,7 +99,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> get whenDownloadsLoaded => _descargasListas ?? Future.value();
   bool isDownloading(String songId) => _descargando.contains(songId);
 
-  PlayerProvider(this.audioHandler) {
+  PlayerProvider(this.audioHandler, {this.onEmpiezaOtraReproduccion}) {
     audioHandler.playbackState.listen((state) {
       _isPlaying = state.playing;
       if (_isPlaying) {
@@ -424,6 +431,10 @@ class PlayerProvider extends ChangeNotifier {
     // en vuelo para la canción anterior -- si no, cuando ese refresco
     // viejo termine, puede pisar la canción que se está por poner acá.
     _playbackRequestId++;
+    // Si había un video de YouTube sonando en la burbuja flotante, se
+    // pausa -- solo cuando esto realmente va a sonar (no en la
+    // restauración silenciosa de sesión al abrir la app).
+    if (autoplay) onEmpiezaOtraReproduccion?.call();
     // Un pedido explícito de reproducir algo (el usuario tocó play de
     // nuevo, por ejemplo) siempre arranca con presupuesto de reintentos
     // fresco, aunque esa misma canción ya haya agotado el suyo antes.

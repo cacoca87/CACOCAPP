@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'services/my_audio_handler.dart';
+import 'providers/online_video_provider.dart';
 import 'providers/player_provider.dart';
 import 'providers/playlist_provider.dart';
 import 'screens/pantalla_principal.dart';
@@ -143,6 +144,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
   // dentro de build), así que context.read no funcionaría aquí.
   late final PlayerProvider _playerProvider;
   late final PlaylistProvider _playlistProvider;
+  final OnlineVideoProvider _onlineVideoProvider = OnlineVideoProvider();
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<String>? _mensajesSub;
@@ -150,7 +152,10 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _playerProvider = PlayerProvider(widget.audioHandler);
+    _playerProvider = PlayerProvider(
+      widget.audioHandler,
+      onEmpiezaOtraReproduccion: _onlineVideoProvider.pausarPorOtraReproduccion,
+    );
     _playlistProvider = PlaylistProvider();
     WidgetsBinding.instance.addObserver(this);
     _pedirPermisosDeFondo();
@@ -213,6 +218,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
       providers: [
         ChangeNotifierProvider.value(value: _playerProvider),
         ChangeNotifierProvider.value(value: _playlistProvider),
+        ChangeNotifierProvider.value(value: _onlineVideoProvider),
       ],
       child: MaterialApp(
         title: 'Cacocapp',

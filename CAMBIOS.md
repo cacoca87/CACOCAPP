@@ -653,3 +653,23 @@ Arreglado: ahora la barra escucha `audioHandler.player.positionStream` directame
 
 `flutter analyze` y `flutter test` siguen limpios.
 
+## 44. Video de YouTube persistente: burbuja flotante en vez de perderse al tocar "atrás"
+
+**Archivos nuevos:** `lib/providers/online_video_provider.dart`, `lib/widgets/online_video_overlay.dart`
+**Archivos modificados:** `lib/main.dart`, `lib/providers/player_provider.dart`, `lib/screens/pantalla_principal.dart`, `lib/screens/dual_search_screen.dart`
+**Archivo eliminado:** `lib/screens/online_video_player_screen.dart`
+
+Pediste que el video de Búsqueda Online no se pierda al tocar "atrás" o cambiar de canción de tu biblioteca/Jamendo, y sugeriste algo tipo "pop-up". Es justo lo que se armó: el video ya no vive en una pantalla que `Navigator` puede destruir -- pasó a vivir en `OnlineVideoProvider`, un estado a nivel de toda la app (igual que `PlayerProvider` para el audio), así que sobrevive cualquier navegación.
+
+Cómo funciona:
+- Al tocar play en un resultado de Búsqueda Online, el video arranca en pantalla completa como antes.
+- Tocar la flecha de arriba (o el botón "atrás" del celular) ya **no cierra el video** -- lo **minimiza** a una burbuja flotante (arriba del MiniPlayer, en la esquina) que sigue sonando mientras navegás cualquier otra sección de la app.
+- Tocar la burbuja la vuelve a expandir a pantalla completa. El botón ✕ (en la burbuja o en pantalla completa) lo cierra de verdad.
+- Elegiste explícitamente esta opción: si mientras el video suena tocás cualquier canción de tu biblioteca/Jamendo, el video **se pausa solo** (no quedan dos cosas sonando a la vez sin que lo pidas). Esto se conectó en el único punto por el que pasa TODA la reproducción de audio de la app (`PlayerProvider.setQueue`), así que cubre cualquier fuente (Drive, Jamendo, descargas, playlists, favoritos).
+
+**Simplificación consciente:** la burbuja tiene posición fija (no se puede arrastrar por la pantalla) -- un "pop-up" arrastrable de verdad es más trabajo y no era lo esencial de lo que pediste (que no se pierda la reproducción). Si después querés que se pueda mover, se puede agregar aparte.
+
+**Alcance:** esto se armó para la versión de celular (que es la que usás). La versión de escritorio/tablet (panel lateral fijo) no tiene el overlay todavía -- no se tocó para no arriesgar sin necesidad, igual que con el fix del botón atrás.
+
+`flutter analyze` y `flutter test` siguen limpios (34 tests, sin cambios en la cantidad -- esta lógica es de UI/estado en vivo, no se presta a tests unitarios de la misma forma que `RefreshRetryGuard`).
+

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/online_video_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
-import '../utils/transiciones.dart';
-import 'online_video_player_screen.dart';
 
 class DualSearchScreen extends StatefulWidget {
   final VoidCallback? onVolver;
@@ -219,19 +219,16 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                           // WebView -- ofrecerlo era prometer algo que
                           // fallaba seguido.
                           trailing: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.amber, size: 28),
-                          // Se abre el reproductor oficial de YouTube embebido
-                          // (WebView) en vez de intentar extraer el audio --
-                          // por eso ya no hace falta esperar ninguna resolución
-                          // de red antes de reproducir, y no puede quedar
-                          // "trabado cargando" como pasaba antes.
-                          onTap: () => Navigator.push(
-                            context,
-                            rutaDesdeAbajo(OnlineVideoPlayerScreen(
-                              videoId: video.videoId,
-                              title: video.title,
-                              author: video.author,
-                            )),
-                          ),
+                          // El video se pone a sonar en el overlay persistente
+                          // (OnlineVideoProvider) -- NO se navega a una pantalla
+                          // nueva, así el video sobrevive si después tocás
+                          // "atrás" o cambiás de sección (se minimiza en vez de
+                          // destruirse).
+                          onTap: () => context.read<OnlineVideoProvider>().reproducir(
+                                videoId: video.videoId,
+                                titulo: video.title,
+                                autor: video.author,
+                              ),
                         ),
                       );
                     },

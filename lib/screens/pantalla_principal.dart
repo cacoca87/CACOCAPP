@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
 import '../models/song.dart';
+import '../providers/online_video_provider.dart';
 import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../services/drive_service.dart';
@@ -12,6 +13,7 @@ import '../widgets/barra_lateral.dart';
 import '../widgets/inicio_tab.dart';
 import '../widgets/indicador_sonando.dart';
 import '../widgets/mini_player.dart';
+import '../widgets/online_video_overlay.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/vista_spotify_grid.dart';
 import 'statistics_screen.dart';
@@ -573,6 +575,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
     final playlistProvider = context.watch<PlaylistProvider>();
+    final onlineVideo = context.watch<OnlineVideoProvider>();
     final anchoPantalla = MediaQuery.of(context).size.width;
     final esPantallaPequena = anchoPantalla < 800;
 
@@ -1110,55 +1113,69 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // si no estamos ya en el home real, "atrás" navega un nivel para
     // adentro en vez de salir de la app.
     final enHome = seccionActiva == "Tu Biblioteca" && subFiltroSeleccionado == null;
+    // Si el video de YouTube está en pantalla completa, "atrás" lo
+    // minimiza en vez de navegar -- así nunca se pierde por accidente
+    // al tocar atrás, tal como pasaba antes de este overlay.
+    final videoExpandido = onlineVideo.hayVideo && !onlineVideo.minimizado;
 
     return PopScope(
-      canPop: enHome,
+      canPop: !videoExpandido && enHome,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (subFiltroSeleccionado != null) {
+        if (videoExpandido) {
+          onlineVideo.minimizar();
+        } else if (subFiltroSeleccionado != null) {
           setState(() => subFiltroSeleccionado = null);
         } else {
           _volverAInicio();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppTheme.background,
-          elevation: 0,
-          title: Text("CACOCAPP", style: AppTheme.wordmark.copyWith(fontSize: 18)),
-          iconTheme: const IconThemeData(color: AppTheme.paper),
-        ),
-        drawer: Drawer(
-          backgroundColor: AppTheme.ink,
-          child: BarraLateral(
-            seccionActiva: seccionActiva,
-            bibliotecaSeleccionada: bibliotecaSeleccionada,
-            bibliotecas: nombresBibliotecas,
-            controladorNuevaBib: _nuevaBibController,
-            onCambiarSeccion: (seccion) {
-              setState(() {
-                seccionActiva = seccion;
-                subFiltroSeleccionado = null;
-                if (seccion == "Tu Biblioteca") bibliotecaSeleccionada = "Principal (Drive)";
-              });
-              Navigator.pop(context);
-            },
-            onSeleccionarBiblioteca: (bib) {
-              setState(() {
-                bibliotecaSeleccionada = bib;
-                seccionActiva = "Tu Biblioteca";
-                subFiltroSeleccionado = null;
-              });
-              Navigator.pop(context);
-            },
-            onCrearBiblioteca: _crearBiblioteca,
-            onEliminarBiblioteca: _mostrarMenuBiblioteca,
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              backgroundColor: AppTheme.background,
+              elevation: 0,
+              title: Text("CACOCAPP", style: AppTheme.wordmark.copyWith(fontSize: 18)),
+              iconTheme: const IconThemeData(color: AppTheme.paper),
+            ),
+            drawer: Drawer(
+              backgroundColor: AppTheme.ink,
+              child: BarraLateral(
+                seccionActiva: seccionActiva,
+                bibliotecaSeleccionada: bibliotecaSeleccionada,
+                bibliotecas: nombresBibliotecas,
+                controladorNuevaBib: _nuevaBibController,
+                onCambiarSeccion: (seccion) {
+                  setState(() {
+                    seccionActiva = seccion;
+                    subFiltroSeleccionado = null;
+                    if (seccion == "Tu Biblioteca") bibliotecaSeleccionada = "Principal (Drive)";
+                  });
+                  Navigator.pop(context);
+                },
+                onSeleccionarBiblioteca: (bib) {
+                  setState(() {
+                    bibliotecaSeleccionada = bib;
+                    seccionActiva = "Tu Biblioteca";
+                    subFiltroSeleccionado = null;
+                  });
+                  Navigator.pop(context);
+                },
+                onCrearBiblioteca: _crearBiblioteca,
+                onEliminarBiblioteca: _mostrarMenuBiblioteca,
+              ),
+            ),
+            body: contenidoPrincipal,
+            bottomNavigationBar: const SafeArea(
+              child: MiniPlayer(),
+            ),
           ),
-        ),
-        body: contenidoPrincipal,
-        bottomNavigationBar: const SafeArea(
-          child: MiniPlayer(),
-        ),
+          // Por encima de toda la pantalla (incluida la Drawer/AppBar)
+          // para que el video se vea sin importar qué sección esté
+          // activa por debajo.
+          const OnlineVideoOverlay(),
+        ],
       ),
     );
   }
