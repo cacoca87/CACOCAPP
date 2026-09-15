@@ -23,8 +23,12 @@ class OnlineVideoProvider extends ChangeNotifier {
   void reproducir({required String videoId, required String titulo, required String autor}) {
     if (_videoId == videoId && _controller != null) {
       // Ya es el mismo video que estaba sonando (ej. lo tenías
-      // minimizado y volviste a tocarlo en los resultados) -- solo se
-      // expande, no hace falta recrear nada.
+      // minimizado y volviste a tocarlo en los resultados) -- no hace
+      // falta recrear nada, solo expandir. Si estaba pausado (por
+      // ejemplo, por la auto-pausa al poner a sonar otra canción), se
+      // reanuda también -- tocar "play" en un resultado siempre debería
+      // dejarlo sonando, no expandido y pausado sin explicación.
+      _controller!.playVideo();
       _minimizado = false;
       notifyListeners();
       return;

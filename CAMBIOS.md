@@ -673,3 +673,17 @@ Cómo funciona:
 
 `flutter analyze` y `flutter test` siguen limpios (34 tests, sin cambios en la cantidad -- esta lógica es de UI/estado en vivo, no se presta a tests unitarios de la misma forma que `RefreshRetryGuard`).
 
+## 45. Auditoría de bugs pedida explícitamente -- se encontraron y arreglaron 2 reales
+
+Pediste revisar todo a fondo en busca de bugs. Repasé con cuidado los archivos tocados esta sesión (`dual_search_screen.dart`, `online_video_provider.dart`, `online_video_overlay.dart`, `pantalla_principal.dart`, `my_audio_handler.dart`, `mini_player.dart`, `queue_screen.dart`, `id3_cover_service.dart`) y encontré 2 reales:
+
+**Archivo modificado:** `lib/screens/dual_search_screen.dart`
+
+1. **`PopScope` duplicado y en conflicto.** `DualSearchScreen` conservaba su propio `PopScope` (de la sexta vuelta, antes de que existiera el fix general del botón atrás) con `canPop: false` fijo, que SIEMPRE volvía a Inicio al tocar "atrás". Al agregar el `PopScope` de `PantallaPrincipal` (vuelta 36) y después el overlay de video (vuelta 44), quedaron **dos** `PopScope` activos a la vez sobre la misma pantalla -- el de `DualSearchScreen` te sacaba de la sección igual, sin darle la oportunidad al de más arriba de minimizar el video primero. Se sacó el duplicado; el de `PantallaPrincipal` ya cubre este caso (y todos los demás).
+
+**Archivo modificado:** `lib/providers/online_video_provider.dart`
+
+2. **Re-tocar un video pausado lo dejaba expandido pero mudo.** Si volvías a tocar un video que ya estaba "cargado" pero se había pausado (por ejemplo, por la auto-pausa al poner a sonar una canción de tu biblioteca), `reproducir()` solo lo expandía a pantalla completa sin reanudarlo -- quedaba ahí, pausado, sin ninguna explicación visible de por qué no sonaba. Ahora se reanuda automáticamente al volver a tocarlo.
+
+`flutter analyze` y `flutter test` (34 tests) siguen limpios después de ambos arreglos.
+
