@@ -636,5 +636,20 @@ Los tests nuevos cubren exactamente el escenario real que viste en el log (dos c
 - Firebase Crashlytics (reportes de error en producción) -- necesita que crees el proyecto de Firebase primero, avisame cuando tengas 5 minutos.
 - Seguir reduciendo el tamaño de `pantalla_principal.dart`.
 - Sacar claves/URLs hardcodeadas a configuración por entorno.
-- Tests para `getRecommendations`/`masEscuchadasIds` (lógica pura, se puede extraer igual que se hizo acá).
+
+## 42. Se completó la extracción de `getRecommendations`/`masEscuchadasIds` (quedó pendiente de la vuelta anterior)
+
+**Archivo nuevo:** `lib/providers/recommendation_engine.dart`, `test/providers/recommendation_engine_test.dart`
+
+Mismo criterio que `RefreshRetryGuard`: lógica pura (sin streams ni audio real) sacada a su propio archivo para poder testearla en aislamiento. `calcularRecomendaciones` cubre el caso de "ya escuchaste todo, no te quedes sin recomendaciones" y el límite de cantidad; `ordenarPorMasEscuchadas` el orden descendente. `flutter test` pasa con **34 tests** (subió de 25).
+
+## 43. Bug real encontrado (con captura real): la barra de progreso del reproductor no avanzaba
+
+**Archivo modificado:** `lib/screens/player_screen.dart`
+
+Reportaste que la barra de progreso quedaba prácticamente congelada aunque la canción siguiera sonando. Causa: leía `playbackState.updatePosition`, un valor de `audio_service` que solo se actualiza en eventos discretos (play, pausa, buffering, seek) -- **no** hay ningún evento nuevo solo porque pasó un segundo de reproducción normal, así que ese valor se quedaba pegado en el último punto donde hubo un evento.
+
+Arreglado: ahora la barra escucha `audioHandler.player.positionStream` directamente (el stream de posición de `just_audio`, que sí emite de forma continua mientras suena). De paso se agregó protección para que arrastrar el slider con el dedo no "pelee" contra las actualizaciones del stream a mitad de camino (se ignora el valor en vivo mientras estás arrastrando, y recién ahí se hace el `seek`).
+
+`flutter analyze` y `flutter test` siguen limpios.
 

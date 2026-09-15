@@ -11,6 +11,7 @@ import '../models/song.dart';
 import '../services/my_audio_handler.dart';
 import '../services/youtube_service.dart'; // Importante para refrescar los enlaces expirados
 import '../utils/extension_guesser.dart';
+import 'recommendation_engine.dart';
 import 'refresh_retry_guard.dart';
 
 class PlayerProvider extends ChangeNotifier {
@@ -62,11 +63,7 @@ class PlayerProvider extends ChangeNotifier {
   bool get sleepTimerActivo => _sleepTimer != null;
   List<String> get historialIds => List.unmodifiable(_historial);
   
-  List<String> get masEscuchadasIds {
-    final entradas = _conteoReproducciones.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return entradas.map((e) => e.key).toList();
-  }
+  List<String> get masEscuchadasIds => ordenarPorMasEscuchadas(_conteoReproducciones);
 
   int? get sleepTimerMinutosRestantes {
     if (_sleepTimerEndsAt == null) return null;
@@ -212,19 +209,8 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   // ========== RECOMENDACIONES ==========
-  List<Song> getRecommendations(List<Song> allSongs) {
-    if (allSongs.isEmpty) return [];
-    
-    final noEscuchadas = allSongs.where((song) => !_historial.contains(song.id)).toList();
-    if (noEscuchadas.isNotEmpty) {
-      noEscuchadas.shuffle();
-      return noEscuchadas.take(10).toList();
-    }
-    
-    final copia = List<Song>.from(allSongs);
-    copia.shuffle();
-    return copia.take(10).toList();
-  }
+  List<Song> getRecommendations(List<Song> allSongs) =>
+      calcularRecomendaciones(allSongs, _historial);
 
   // ========== HISTORIAL ==========
   static const String _historialKey = 'player_history_v1';

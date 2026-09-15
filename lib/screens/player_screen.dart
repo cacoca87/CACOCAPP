@@ -24,6 +24,11 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> {
   Color? _colorDominante;
   String? _songIdColorCargado;
+  // Mientras el usuario arrastra el slider, se muestra ESTE valor en
+  // vez del que viene del stream -- si no, cada tick de
+  // `positionStream` (cada ~200ms) pisaría el arrastre a mitad de
+  // camino y el slider "pelearía" contra el dedo.
+  double? _valorMientrasArrastra;
 
   Future<ImageProvider?> _resolverImagenPortada(Song song) async {
     if (song.url.isNotEmpty) {
@@ -274,15 +279,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
-                      StreamBuilder<PlaybackState>(
-                        stream: audioHandler.playbackState,
-                        builder: (context, stateSnapshot) {
-                          final playbackState = stateSnapshot.data;
-                          final position = playbackState?.updatePosition ?? Duration.zero;
+                      // Antes se leía `playbackState.updatePosition`, que solo
+                      // se actualiza en eventos discretos (play/pausa/seek) --
+                      // por eso la barra quedaba "congelada" mientras la
+                      // canción sonaba normalmente. `positionStream` de
+                      // just_audio sí emite continuamente durante la
+                      // reproducción, así la barra avanza en vivo de verdad.
+                      StreamBuilder<Duration>(
+                        stream: audioHandler.player.positionStream,
+                        initialData: audioHandler.player.position,
+                        builder: (context, positionSnapshot) {
                           final totalDuration = mediaItem.duration ?? const Duration(minutes: 3);
                           double maxVal = totalDuration.inMilliseconds.toDouble();
                           if (maxVal <= 0) maxVal = 1.0;
-                          double currentVal = position.inMilliseconds.toDouble().clamp(0.0, maxVal);
+
+                          final position = positionSnapshot.data ?? Duration.zero;
+                          final valorReal = position.inMilliseconds.toDouble().clamp(0.0, maxVal);
+                          // Mientras se arrastra el slider, se ignora el valor
+                          // del stream para que no "pelee" contra el dedo.
+                          final currentVal = _valorMientrasArrastra ?? valorReal;
 
                           return Column(
                             children: [
@@ -300,8 +315,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   value: currentVal,
                                   min: 0.0,
                                   max: maxVal,
-                                  onChanged: (value) {
+                                  onChangeStart: (value) => setState(() => _valorMientrasArrastra = value),
+                                  onChanged: (value) => setState(() => _valorMientrasArrastra = value),
+                                  onChangeEnd: (value) {
                                     audioHandler.seek(Duration(milliseconds: value.toInt()));
+                                    setState(() => _valorMientrasArrastra = null);
                                   },
                                 ),
                               ),
@@ -310,7 +328,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(_formatDuration(position), style: AppTheme.small),
+                                    Text(
+                                      _formatDuration(Duration(milliseconds: currentVal.toInt())),
+                                      style: AppTheme.small,
+                                    ),
                                     Text(_formatDuration(totalDuration), style: AppTheme.small),
                                   ],
                                 ),
