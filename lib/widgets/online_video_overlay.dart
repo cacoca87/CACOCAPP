@@ -5,26 +5,40 @@ import '../providers/online_video_provider.dart';
 import '../styles/app_theme.dart';
 
 /// Muestra el video de YouTube que esté sonando (si hay uno), en
-/// pantalla completa o como burbuja flotante -- según
+/// pantalla completa o como burbuja flotante arrastrable -- según
 /// `OnlineVideoProvider.minimizado`. Se coloca directo en el `Stack`
 /// de `PantallaPrincipal`, NO como una ruta de `Navigator`: así el
 /// video sigue sonando sin importar qué sección esté mirando el
-/// usuario, en vez de destruirse apenas se toca "atrás" (que era el
-/// problema reportado).
-class OnlineVideoOverlay extends StatelessWidget {
+/// usuario, en vez de destruirse apenas se toca "atrás".
+///
+/// IMPORTANTE (bug real arreglado acá): la primera versión de esto
+/// usaba DOS widgets `YoutubePlayer` distintos -- uno para pantalla
+/// completa, otro para la burbuja -- y mostraba uno u otro según el
+/// estado. Para Flutter eso son dos elementos totalmente distintos del
+/// árbol: al minimizar, destruía el WebView de pantalla completa y
+/// creaba uno nuevo para la burbuja (y viceversa al expandir),
+/// perdiendo la reproducción en el camino -- exactamente el bug
+/// reportado ("se achica pero no suena", "al volver se corta"). Ahora
+/// hay un SOLO `YoutubePlayer`, siempre montado, y lo que cambia es
+/// solo su posición/tamaño (`AnimatedPositioned`) -- el WebView nunca
+/// se destruye, así que la reproducción nunca se corta.
+class OnlineVideoOverlay extends StatefulWidget {
   const OnlineVideoOverlay({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<OnlineVideoProvider>();
-    if (!provider.hayVideo) return const SizedBox.shrink();
-
-    return provider.minimizado ? const _BurbujaFlotante() : const _VideoPantallaCompleta();
-  }
+  State<OnlineVideoOverlay> createState() => _OnlineVideoOverlayState();
 }
 
-class _VideoPantallaCompleta extends StatelessWidget {
-  const _VideoPantallaCompleta();
+class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
+  static const double _anchoBurbuja = 160;
+  static const double _altoBurbuja = 96;
+  static const double _margenBurbuja = 12;
+  static const double _margenSobreMiniPlayer = 96;
+
+  // Posición de la burbuja cuando está minimizada -- null hasta que el
+  // usuario la arrastra por primera vez, ahí se usa la esquina
+  // inferior derecha por defecto.
+  Offset? _posicionBurbuja;
 
   @override
   Widget build(BuildContext context) {
@@ -32,147 +46,219 @@ class _VideoPantallaCompleta extends StatelessWidget {
     final controller = provider.controller;
     if (controller == null) return const SizedBox.shrink();
 
-    return Positioned.fill(
-      child: Material(
-        color: AppTheme.ink,
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.paper, size: 28),
-                      tooltip: "Minimizar",
-                      onPressed: () => context.read<OnlineVideoProvider>().minimizar(),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            provider.titulo,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTheme.body.copyWith(
-                              color: AppTheme.paper,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
+    final minimizado = provider.minimizado;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final anchoPantalla = constraints.maxWidth;
+        final altoPantalla = constraints.maxHeight;
+
+        final rectBurbuja = _calcularRectBurbuja(anchoPantalla, altoPantalla);
+        // Pantalla completa: 16:9 a todo el ancho, dejando lugar arriba
+        // para el título/botones (más el inset de la barra de estado,
+        // que el header respeta con su propio SafeArea).
+        final altoHeader = 64.0 + MediaQuery.of(context).padding.top;
+        final altoVideoCompleto = anchoPantalla * 9 / 16;
+        final rectCompleto =
+            Rect.fromLTWH(0, altoHeader, anchoPantalla, altoVideoCompleto);
+
+        final rectActual = minimizado ? rectBurbuja : rectCompleto;
+
+        return Stack(
+          children: [
+            // Fondo oscuro de pantalla completa -- SOLO cuando no está
+            // minimizado, para no bloquear toques al resto de la app
+            // mientras está en la burbuja.
+            if (!minimizado)
+              Positioned.fill(
+                child: Material(color: AppTheme.ink),
+              ),
+            if (!minimizado) _Header(provider: provider),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOut,
+              left: rectActual.left,
+              top: rectActual.top,
+              width: rectActual.width,
+              height: rectActual.height,
+              child: GestureDetector(
+                onTap: minimizado ? () => provider.expandir() : null,
+                onPanUpdate: minimizado
+                    ? (details) => setState(() {
+                          final base = _posicionBurbuja ??
+                              Offset(rectBurbuja.left, rectBurbuja.top);
+                          final nueva = base + details.delta;
+                          _posicionBurbuja = Offset(
+                            nueva.dx.clamp(
+                                0.0,
+                                (anchoPantalla - _anchoBurbuja)
+                                    .clamp(0.0, double.infinity)),
+                            nueva.dy.clamp(
+                                0.0,
+                                (altoPantalla - _altoBurbuja)
+                                    .clamp(0.0, double.infinity)),
+                          );
+                        })
+                    : null,
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: minimizado
+                      ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppTheme.amber.withValues(alpha: 0.5)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        )
+                      : const BoxDecoration(),
+                  child: Stack(
+                    children: [
+                      // Mientras está minimizado, los controles nativos
+                      // de YouTube quedan demasiado chicos para tocarlos
+                      // bien -- se ignoran los toques acá y se usa el
+                      // GestureDetector de afuera (tap = expandir,
+                      // arrastre = mover). En pantalla completa SÍ
+                      // reciben los toques normalmente.
+                      IgnorePointer(
+                        ignoring: minimizado,
+                        child: StreamBuilder<YoutubePlayerValue>(
+                          stream: controller.stream,
+                          builder: (context, snapshot) {
+                            final valor = snapshot.data;
+                            if (!minimizado &&
+                                valor != null &&
+                                valor.hasError) {
+                              return Container(
+                                color: AppTheme.ink,
+                                padding: const EdgeInsets.all(24),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'YouTube no dejó reproducir este video acá '
+                                  '(código ${valor.error}). Probá con otro resultado.',
+                                  textAlign: TextAlign.center,
+                                  style: AppTheme.body
+                                      .copyWith(color: AppTheme.mutedInk),
+                                ),
+                              );
+                            }
+                            return YoutubePlayer(controller: controller);
+                          },
+                        ),
+                      ),
+                      if (minimizado)
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: GestureDetector(
+                            onTap: () => provider.cerrar(),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.close_rounded,
+                                  color: Colors.white, size: 16),
                             ),
                           ),
-                          Text(
-                            provider.autor,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTheme.small.copyWith(color: AppTheme.mutedInk),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: AppTheme.mutedInk, size: 22),
-                      tooltip: "Cerrar",
-                      onPressed: () => context.read<OnlineVideoProvider>().cerrar(),
-                    ),
-                  ],
-                ),
-              ),
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: StreamBuilder<YoutubePlayerValue>(
-                  stream: controller.stream,
-                  builder: (context, snapshot) {
-                    final valor = snapshot.data;
-                    if (valor != null && valor.hasError) {
-                      return Container(
-                        color: AppTheme.ink,
-                        padding: const EdgeInsets.all(24),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'YouTube no dejó reproducir este video acá '
-                          '(código ${valor.error}). Probá con otro resultado.',
-                          textAlign: TextAlign.center,
-                          style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
                         ),
-                      );
-                    }
-                    return YoutubePlayer(controller: controller);
-                  },
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Tocá la flecha para minimizar y seguir escuchando mientras '
-                  'usás el resto de la app -- se pausa solo si ponés a sonar '
-                  'otra canción.',
-                  textAlign: TextAlign.center,
-                  style: AppTheme.small.copyWith(color: AppTheme.faintInk),
+            ),
+            if (!minimizado)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: rectCompleto.bottom + 16,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Tocá la flecha para minimizar y seguir escuchando mientras '
+                    'usás el resto de la app -- se pausa solo si ponés a sonar '
+                    'otra canción. La burbuja se puede arrastrar.',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.small.copyWith(color: AppTheme.faintInk),
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+          ],
+        );
+      },
+    );
+  }
+
+  Rect _calcularRectBurbuja(double anchoPantalla, double altoPantalla) {
+    final maxX = (anchoPantalla - _anchoBurbuja).clamp(0.0, double.infinity);
+    final maxY = (altoPantalla - _altoBurbuja).clamp(0.0, double.infinity);
+    final base = _posicionBurbuja ??
+        Offset(anchoPantalla - _anchoBurbuja - _margenBurbuja,
+            altoPantalla - _altoBurbuja - _margenSobreMiniPlayer);
+    return Rect.fromLTWH(
+      base.dx.clamp(0.0, maxX),
+      base.dy.clamp(0.0, maxY),
+      _anchoBurbuja,
+      _altoBurbuja,
     );
   }
 }
 
-class _BurbujaFlotante extends StatelessWidget {
-  const _BurbujaFlotante();
-
-  static const double _ancho = 160;
-  static const double _alto = 96;
+class _Header extends StatelessWidget {
+  final OnlineVideoProvider provider;
+  const _Header({required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<OnlineVideoProvider>();
-    final controller = provider.controller;
-    if (controller == null) return const SizedBox.shrink();
-
     return Positioned(
-      right: 12,
-      bottom: 96, // por encima del MiniPlayer, para no taparlo
-      child: GestureDetector(
-        onTap: () => context.read<OnlineVideoProvider>().expandir(),
-        child: Container(
-          width: _ancho,
-          height: _alto,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.amber.withValues(alpha: 0.5)),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Stack(
+      left: 0,
+      right: 0,
+      top: 0,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Row(
             children: [
-              SizedBox(
-                width: _ancho,
-                height: _alto,
-                child: IgnorePointer(
-                  // Los controles nativos de YouTube quedan demasiado
-                  // chicos para tocarlos bien en este tamaño -- se
-                  // ignoran los toques acá y se usa el tap de afuera
-                  // para expandir (y el botón de cerrar aparte).
-                  child: YoutubePlayer(controller: controller),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.paper, size: 28),
+                tooltip: "Minimizar",
+                onPressed: () => provider.minimizar(),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      provider.titulo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.body.copyWith(
+                        color: AppTheme.paper,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      provider.autor,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.small.copyWith(color: AppTheme.mutedInk),
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                top: 2,
-                right: 2,
-                child: GestureDetector(
-                  onTap: () => context.read<OnlineVideoProvider>().cerrar(),
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
-                  ),
-                ),
+              IconButton(
+                icon: const Icon(Icons.close_rounded,
+                    color: AppTheme.mutedInk, size: 22),
+                tooltip: "Cerrar",
+                onPressed: () => provider.cerrar(),
               ),
             ],
           ),

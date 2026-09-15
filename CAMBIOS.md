@@ -749,3 +749,19 @@ Se agregó un test de regresión en `test/models/song_test.dart` (que `artist` s
 
 `flutter analyze` y `flutter test` pasan con **50 tests**. Instalá el APK y fijate si "Runnin' Down A Dream" y canciones similares ya muestran "Tom Petty" (o el artista real que traiga el archivo) en vez de "Artista Desconocido".
 
+## 50. Bug real encontrado y arreglado: la burbuja flotante de YouTube perdía la reproducción al minimizar/expandir, y no se podía mover
+
+**Archivo reescrito:** `lib/widgets/online_video_overlay.dart`
+
+Probaste el video flotante y reportaste tres cosas: al minimizar (achicarse a burbuja) el video dejaba de sonar; al volver a expandirlo desde ahí, se cortaba del todo; y la burbuja no se podía arrastrar por la pantalla.
+
+**Causa real, encontrada revisando el código a fondo:** la implementación anterior tenía **dos widgets `YoutubePlayer` distintos** -- uno para la vista de pantalla completa (`_VideoPantallaCompleta`) y otro para la burbuja (`_BurbujaFlotante`) -- y mostraba uno u otro según el estado (`provider.minimizado ? burbuja : completa`). El problema: para Flutter, eso son dos elementos completamente distintos del árbol de widgets. Al minimizar, Flutter **destruía** el WebView de pantalla completa (con todo el video/audio en curso) y creaba uno **nuevo** para la burbuja -- perdiendo la reproducción en el camino. Al expandir de nuevo pasaba lo mismo al revés. Esto explica exactamente lo que viste: "se achica pero no suena" y "al volver se corta".
+
+**Arreglo:** se reescribió el widget para que haya **un solo `YoutubePlayer`, siempre montado en el árbol**, y lo único que cambia entre pantalla completa y burbuja es su posición/tamaño (`AnimatedPositioned`, con una animación suave de 260ms). Como el widget nunca se destruye, el WebView (y con él, la reproducción) sobrevive todo el tiempo sin importar cuántas veces minimices o expandas.
+
+De paso, ahora la burbuja **sí se puede arrastrar** (como pediste) -- se agregó `onPanUpdate` para moverla libremente por la pantalla, con los bordes acotados para que no se pueda arrastrar fuera de la vista. Tocarla (sin arrastrar) la expande; el botón ✕ la cierra, igual que antes.
+
+**Sobre el error "YoutubeError.invalidParam" que viste en "Aerosmith - Hole In My Soul":** ese es un error distinto y no relacionado con el bug de arriba -- ocurrió al cargar un video nuevo (no al minimizar/expandir uno existente), y es del mismo tipo que "YouTube no dejó reproducir este video acá" que ya vimos antes con otros videos puntuales: algunos videos específicos no se pueden reproducir embebidos, es una restricción del lado de YouTube para ese contenido en particular, no un bug de la app -- por eso ya se maneja con un mensaje claro en vez de romper, y probar con otro resultado de la lista debería andar bien.
+
+`flutter analyze` y `flutter test` (50 tests) siguen limpios. Instalá el APK y confirmame que ahora sí sigue sonando al minimizar/expandir, y que la burbuja se deja arrastrar.
+
