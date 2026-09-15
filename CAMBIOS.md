@@ -726,3 +726,14 @@ Preguntaste si se podía mejorar el audio sin importar de dónde viene la canci�
 
 `flutter analyze`, `flutter test` (34 tests) y el build de Android completo salieron limpios.
 
+## 48. Tests para `LyricsService` (quedó pendiente desde la tercera vuelta)
+
+**Archivos nuevos:** `lib/utils/lyrics_parsing.dart`, `test/utils/lyrics_parsing_test.dart`, `test/services/lyrics_service_test.dart`
+**Archivo modificado:** `lib/services/lyrics_service.dart`
+
+Mientras revisabas el panel de Audio, seguí con otro pendiente ya anotado. Mismo criterio que con `RefreshRetryGuard`/`recommendation_engine.dart`: se extrajo la lógica pura (limpieza de título, parseo del formato LRC) a `lyrics_parsing.dart` para testearla sin red de por medio, y se le agregó a `LyricsService` el mismo patrón `.testable(client)` que ya tenía `JamendoService`, con tests usando `MockClient`.
+
+El test más importante no es el más obvio: hay uno que verifica específicamente el arreglo de la tercera vuelta (sección 13) -- cuando el "artista" que llega es en realidad el canal de YouTube (ej. "Dj Montro Live"), confirma que el servicio reintenta con el artista real extraído del patrón "Artista - Canción" del título, y que sin ese reintento la letra no se encuentra. Es una regresión real que ya se había arreglado una vez; ahora hay un test que evita que se vuelva a romper en silencio.
+
+`flutter analyze` y `flutter test` pasan con **49 tests** (subió de 34).
+
