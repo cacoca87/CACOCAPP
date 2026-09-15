@@ -15,12 +15,16 @@ class OnlineVideoProvider extends ChangeNotifier {
   bool _minimizado = false;
 
   YoutubePlayerController? get controller => _controller;
+  String? get videoId => _videoId;
   String get titulo => _titulo;
   String get autor => _autor;
   bool get minimizado => _minimizado;
   bool get hayVideo => _controller != null;
 
-  void reproducir({required String videoId, required String titulo, required String autor}) {
+  void reproducir(
+      {required String videoId,
+      required String titulo,
+      required String autor}) {
     if (_videoId == videoId && _controller != null) {
       // Ya es el mismo video que estaba sonando (ej. lo tenías
       // minimizado y volviste a tocarlo en los resultados) -- no hace
@@ -40,7 +44,14 @@ class OnlineVideoProvider extends ChangeNotifier {
       autoPlay: true,
       params: const YoutubePlayerParams(
         showControls: true,
-        showFullscreenButton: true,
+        // Apagado a propósito: este botón dispara el sistema de
+        // pantalla completa INTERNO del paquete (maneja su propio
+        // overlay por separado, vía OverlayPortal) -- que compite con
+        // nuestro propio sistema de expandir/minimizar (burbuja
+        // arrastrable) y terminaba superponiéndose con él, descentrado.
+        // Como ya tenemos nuestra propia forma de "agrandar" el video
+        // (tocando la burbuja), no hace falta el botón nativo también.
+        showFullscreenButton: false,
         playsInline: true,
         strictRelatedVideos: true,
       ),

@@ -9,6 +9,7 @@ import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../services/artwork_service.dart';
 import '../services/id3_cover_service.dart';
+import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/audio_effects_sheet.dart';
 import '../widgets/song_cover.dart';
@@ -248,6 +249,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               style: AppTheme.body.copyWith(
                                   color: AppTheme.paper, fontSize: 13)),
                         ),
+                    ],
+                  );
+                }),
+                Builder(builder: (context) {
+                  final cancion = context
+                      .select<PlayerProvider, Song?>((p) => p.currentSong);
+                  return PopupMenuButton<String>(
+                    tooltip: "Más opciones",
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: AppTheme.paper),
+                    color: AppTheme.surfaceRaised,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    onSelected: (accion) {
+                      if (accion == "compartir" && cancion != null) {
+                        HapticFeedback.selectionClick();
+                        ShareService.instance.compartirCancion(
+                          titulo: cancion.title,
+                          artista: cancion.artist,
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: "compartir",
+                        enabled: cancion != null,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.share_rounded,
+                                color: AppTheme.paper, size: 18),
+                            const SizedBox(width: 10),
+                            Text("Compartir",
+                                style: AppTheme.body.copyWith(
+                                    color: AppTheme.paper, fontSize: 13)),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 }),

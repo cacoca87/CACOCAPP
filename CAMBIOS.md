@@ -765,3 +765,28 @@ De paso, ahora la burbuja **sí se puede arrastrar** (como pediste) -- se agreg�
 
 `flutter analyze` y `flutter test` (50 tests) siguen limpios. Instalá el APK y confirmame que ahora sí sigue sonando al minimizar/expandir, y que la burbuja se deja arrastrar.
 
+## 51. El arreglo anterior no alcanzaba del todo: el botón nativo de pantalla completa de YouTube competía con el nuestro
+
+**Archivo modificado:** `lib/providers/online_video_provider.dart`
+
+Volviste a probar y seguía viéndose mal -- la ventana chica superpuesta a la grande, descentrado. Causa real: el reproductor embebido trae su PROPIO botón de pantalla completa (el ícono ⤢ en los controles nativos de YouTube, visible en tu captura), que dispara un sistema de pantalla completa **interno del paquete** `youtube_player_iframe` (maneja su propio overlay aparte, documentado como "OverlayPortal" en su changelog). Ese sistema no sabe nada del nuestro (la burbuja arrastrable que armamos), así que cuando se disparaba, los dos quedaban compitiendo por el mismo espacio -- de ahí la superposición y el descentrado.
+
+**Arreglo:** se apagó ese botón nativo (`showFullscreenButton: false`) -- ya no hace falta, porque nuestro propio sistema de expandir/minimizar ya cumple esa función.
+
+**Sobre el recuadro amarillo feo en el título/instrucciones:** por lo que describís y se ve en la captura (subrayado amarillo sólido sobre bloques de texto específicos, no un estilo que yo haya puesto -- ningún `Text` de la app usa `TextDecoration` ni color amarillo ahí), esto tiene toda la pinta de ser una función del propio celular (MIUI y otros Android con personalización tienen un "escáner de texto en pantalla" que subraya texto reconocido) y no algo que la app esté generando. Si te vuelve a aparecer y confirmás que es siempre en esta pantalla puntual, avisame con más detalle y lo investigamos más a fondo -- pero no encontré nada en el código que lo explique.
+
+## 52. Nuevo: botón de Compartir (como pediste, "con los 3 puntos" igual que Spotify/YouTube)
+
+**Archivo nuevo:** `lib/services/share_service.dart` (había quedado como código muerto en la auditoría de una vuelta anterior -- ahora sí está conectado)
+**Archivos modificados:** `pubspec.yaml` (se agregó `share_plus`, confirmé la API actual contra pub.dev antes de usarla -- cambió de `Share.share()` estático a `SharePlus.instance.share(ShareParams(...))` en versiones recientes), `lib/providers/online_video_provider.dart`, `lib/widgets/online_video_overlay.dart`, `lib/screens/player_screen.dart`
+
+Se agregó "Compartir" en dos lugares:
+- **Reproductor completo** (canciones de tu biblioteca/Jamendo/descargas): lo puse en un menú de "más opciones" (ícono ⋮, los 3 puntos que pediste) en vez de un ícono suelto más -- ya había 5 íconos en esa barra, uno más se hubiera apretado en pantallas chicas.
+- **Video de YouTube**: ícono de compartir directo en el encabezado, junto a minimizar/cerrar.
+
+Abre el selector nativo de "Compartir" de Android (el mismo que usan Spotify/YouTube) -- desde ahí el usuario elige a qué app mandarlo (WhatsApp, X, Instagram, Telegram, lo que tenga instalado). Un detalle a propósito: para canciones de tu biblioteca/R2, **no se comparte la URL del archivo** -- esa URL permite descargar el MP3 completo, y compartirla sin querer regalaría copias del archivo. Solo se comparte texto promocional ("Estoy escuchando X de Y en Cacocapp"). Para videos de YouTube sí se incluye el link real (es público, cualquiera puede buscarlo igual).
+
+**Nota:** compartir a Instagram/WhatsApp como "estado" con una tarjeta visual (como hace Spotify con su "Now Playing" con fondo de color) es una función bastante más grande -- necesita generar una imagen, y cada red social tiene su propia forma de recibirla. Lo que se armó acá es el selector estándar de Android con texto (y link, para YouTube), que cubre "compartir a WhatsApp/X/etc." tal como lo pediste; si además querés la tarjeta visual tipo Spotify, es un pedido aparte, más grande.
+
+`flutter analyze`, `flutter test` (50 tests) y un build completo de Android (`flutter build apk --debug`, ya que `share_plus` trae su propio código nativo) salieron limpios.
+

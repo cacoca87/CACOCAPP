@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../providers/online_video_provider.dart';
+import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 
 /// Muestra el video de YouTube que esté sonando (si hay uno), en
@@ -253,6 +254,17 @@ class _Header extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.share_rounded,
+                    color: AppTheme.paper, size: 20),
+                tooltip: "Compartir",
+                onPressed: provider.videoId == null
+                    ? null
+                    : () => ShareService.instance.compartirVideoDeYoutube(
+                          titulo: provider.titulo,
+                          videoId: provider.videoId!,
+                        ),
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded,

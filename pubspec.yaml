@@ -34,6 +34,12 @@ dependencies:
   # de forma nativa; en Windows no hay implementación oficial todavía
   # (ver nota en online_video_player_screen.dart).
   youtube_player_iframe: ^6.0.2
+  # Botón de "Compartir" (canción actual / video de YouTube) al menú
+  # nativo para mandar a WhatsApp, X, Instagram, etc. -- igual que hace
+  # Spotify/YouTube. API confirmada contra pub.dev antes de usarla
+  # (SharePlus.instance.share(ShareParams(...)), la forma actual desde
+  # que se deprecó el Share.share() estático viejo).
+  share_plus: ^13.0.0
   # OJO: se quitaron "video_player" y "wakelock_plus" — confirmado con
   # grep en todo lib/ que ninguna de las dos se importaba desde ningún
   # lado. Igual que "dio"/"sqflite"/"audio_effects" antes, quedaron del
