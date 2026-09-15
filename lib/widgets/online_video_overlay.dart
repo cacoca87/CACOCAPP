@@ -21,8 +21,8 @@ import '../styles/app_theme.dart';
 /// perdiendo la reproducción en el camino -- exactamente el bug
 /// reportado ("se achica pero no suena", "al volver se corta"). Ahora
 /// hay un SOLO `YoutubePlayer`, siempre montado, y lo que cambia es
-/// solo su posición/tamaño (`AnimatedPositioned`) -- el WebView nunca
-/// se destruye, así que la reproducción nunca se corta.
+/// solo su posición/tamaño -- el WebView nunca se destruye, así que la
+/// reproducción nunca se corta.
 class OnlineVideoOverlay extends StatefulWidget {
   const OnlineVideoOverlay({super.key});
 
@@ -41,6 +41,14 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
   // inferior derecha por defecto.
   Offset? _posicionBurbuja;
 
+  // Mientras se está arrastrando activamente, la posición se aplica
+  // SIN animación (Positioned común) -- si se usa `AnimatedPositioned`
+  // también durante el arrastre, cada micro-movimiento del dedo
+  // dispara una animación de 260ms detrás de la anterior, y la burbuja
+  // se siente "pegajosa"/con retraso en vez de seguir al dedo. Solo se
+  // anima la transición deliberada entre burbuja y pantalla completa.
+  bool _arrastrando = false;
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<OnlineVideoProvider>();
@@ -55,140 +63,181 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
         final altoPantalla = constraints.maxHeight;
 
         final rectBurbuja = _calcularRectBurbuja(anchoPantalla, altoPantalla);
-        // Pantalla completa: 16:9 a todo el ancho, dejando lugar arriba
-        // para el título/botones (más el inset de la barra de estado,
-        // que el header respeta con su propio SafeArea).
+        // Pantalla completa: usa buena parte de la altura disponible
+        // (no solo el ancho a 16:9, que en un celular alto dejaba un
+        // hueco negro grande abajo y daban ganas de rotar el celular
+        // para verlo más grande -- rotar rompía todo, ver más abajo).
         final altoHeader = 64.0 + MediaQuery.of(context).padding.top;
-        final altoVideoCompleto = anchoPantalla * 9 / 16;
-        final rectCompleto =
-            Rect.fromLTWH(0, altoHeader, anchoPantalla, altoVideoCompleto);
+        final altoDisponible =
+            altoPantalla - altoHeader - 90; // deja lugar para el texto de abajo
+        var altoVideoCompleto = altoDisponible.clamp(0.0, altoPantalla * 0.55);
+        var anchoVideoCompleto = altoVideoCompleto * 16 / 9;
+        if (anchoVideoCompleto > anchoPantalla) {
+          anchoVideoCompleto = anchoPantalla;
+          altoVideoCompleto = anchoVideoCompleto * 9 / 16;
+        }
+        final rectCompleto = Rect.fromLTWH(
+          (anchoPantalla - anchoVideoCompleto) / 2,
+          altoHeader,
+          anchoVideoCompleto,
+          altoVideoCompleto,
+        );
 
         final rectActual = minimizado ? rectBurbuja : rectCompleto;
 
-        return Stack(
-          children: [
-            // Fondo oscuro de pantalla completa -- SOLO cuando no está
-            // minimizado, para no bloquear toques al resto de la app
-            // mientras está en la burbuja.
-            if (!minimizado)
-              Positioned.fill(
-                child: Material(color: AppTheme.ink),
-              ),
-            if (!minimizado) _Header(provider: provider),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOut,
-              left: rectActual.left,
-              top: rectActual.top,
-              width: rectActual.width,
-              height: rectActual.height,
-              child: GestureDetector(
-                onTap: minimizado ? () => provider.expandir() : null,
-                onPanUpdate: minimizado
-                    ? (details) => setState(() {
-                          final base = _posicionBurbuja ??
-                              Offset(rectBurbuja.left, rectBurbuja.top);
-                          final nueva = base + details.delta;
-                          _posicionBurbuja = Offset(
-                            nueva.dx.clamp(
-                                0.0,
-                                (anchoPantalla - _anchoBurbuja)
-                                    .clamp(0.0, double.infinity)),
-                            nueva.dy.clamp(
-                                0.0,
-                                (altoPantalla - _altoBurbuja)
-                                    .clamp(0.0, double.infinity)),
-                          );
-                        })
-                    : null,
-                child: Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: minimizado
-                      ? BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppTheme.amber.withValues(alpha: 0.5)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        )
-                      : const BoxDecoration(),
-                  child: Stack(
-                    children: [
-                      // Mientras está minimizado, los controles nativos
-                      // de YouTube quedan demasiado chicos para tocarlos
-                      // bien -- se ignoran los toques acá y se usa el
-                      // GestureDetector de afuera (tap = expandir,
-                      // arrastre = mover). En pantalla completa SÍ
-                      // reciben los toques normalmente.
-                      IgnorePointer(
-                        ignoring: minimizado,
-                        child: StreamBuilder<YoutubePlayerValue>(
-                          stream: controller.stream,
-                          builder: (context, snapshot) {
-                            final valor = snapshot.data;
-                            if (!minimizado &&
-                                valor != null &&
-                                valor.hasError) {
-                              return Container(
-                                color: AppTheme.ink,
-                                padding: const EdgeInsets.all(24),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'YouTube no dejó reproducir este video acá '
-                                  '(código ${valor.error}). Probá con otro resultado.',
-                                  textAlign: TextAlign.center,
-                                  style: AppTheme.body
-                                      .copyWith(color: AppTheme.mutedInk),
-                                ),
-                              );
-                            }
-                            return YoutubePlayer(controller: controller);
-                          },
+        final reproductor = Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: minimizado
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: AppTheme.amber.withValues(alpha: 0.5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                )
+              : const BoxDecoration(),
+          child: Stack(
+            children: [
+              // Mientras está minimizado, los controles nativos de
+              // YouTube quedan demasiado chicos para tocarlos bien --
+              // se ignoran los toques acá y se usa el GestureDetector
+              // de afuera (tap = expandir, arrastre = mover). En
+              // pantalla completa SÍ reciben los toques normalmente.
+              IgnorePointer(
+                ignoring: minimizado,
+                child: StreamBuilder<YoutubePlayerValue>(
+                  stream: controller.stream,
+                  builder: (context, snapshot) {
+                    final valor = snapshot.data;
+                    if (!minimizado && valor != null && valor.hasError) {
+                      return Container(
+                        color: AppTheme.ink,
+                        padding: const EdgeInsets.all(24),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'YouTube no dejó reproducir este video acá '
+                          '(código ${valor.error}). Probá con otro resultado.',
+                          textAlign: TextAlign.center,
+                          style:
+                              AppTheme.body.copyWith(color: AppTheme.mutedInk),
                         ),
-                      ),
-                      if (minimizado)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: GestureDetector(
-                            onTap: () => provider.cerrar(),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.close_rounded,
-                                  color: Colors.white, size: 16),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                      );
+                    }
+                    return YoutubePlayer(controller: controller);
+                  },
                 ),
               ),
-            ),
-            if (!minimizado)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: rectCompleto.bottom + 16,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Tocá la flecha para minimizar y seguir escuchando mientras '
-                    'usás el resto de la app -- se pausa solo si ponés a sonar '
-                    'otra canción. La burbuja se puede arrastrar.',
-                    textAlign: TextAlign.center,
-                    style: AppTheme.small.copyWith(color: AppTheme.faintInk),
+              if (minimizado)
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: GestureDetector(
+                    onTap: () => provider.cerrar(),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                          color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 16),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
+        );
+
+        final gestos = GestureDetector(
+          onTap: minimizado ? () => provider.expandir() : null,
+          // Se separa el "empieza a arrastrar"/"termina de arrastrar"
+          // para saber cuándo animar la posición y cuándo no (ver
+          // `_arrastrando` más arriba).
+          onPanStart:
+              minimizado ? (_) => setState(() => _arrastrando = true) : null,
+          onPanEnd:
+              minimizado ? (_) => setState(() => _arrastrando = false) : null,
+          onPanUpdate: minimizado
+              ? (details) => setState(() {
+                    final base = _posicionBurbuja ??
+                        Offset(rectBurbuja.left, rectBurbuja.top);
+                    final nueva = base + details.delta;
+                    _posicionBurbuja = Offset(
+                      nueva.dx.clamp(
+                          0.0,
+                          (anchoPantalla - _anchoBurbuja)
+                              .clamp(0.0, double.infinity)),
+                      nueva.dy.clamp(
+                          0.0,
+                          (altoPantalla - _altoBurbuja)
+                              .clamp(0.0, double.infinity)),
+                    );
+                  })
+              : null,
+          child: reproductor,
+        );
+
+        // Mientras se arrastra: posición instantánea (sin animar), para
+        // que la burbuja siga al dedo 1 a 1. El resto del tiempo
+        // (incluida la transición burbuja <-> pantalla completa): con
+        // animación suave.
+        final posicionado = _arrastrando
+            ? Positioned(
+                left: rectActual.left,
+                top: rectActual.top,
+                width: rectActual.width,
+                height: rectActual.height,
+                child: gestos,
+              )
+            : AnimatedPositioned(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOut,
+                left: rectActual.left,
+                top: rectActual.top,
+                width: rectActual.width,
+                height: rectActual.height,
+                child: gestos,
+              );
+
+        // Envuelto en Material (transparente, sin pintar nada por su
+        // cuenta) para que el título/subtítulo/instrucciones tengan un
+        // estilo de texto real del que heredar -- sin esto, Flutter les
+        // aplica su estilo de emergencia (amarillo subrayado, bien
+        // visible a propósito) porque quedan sin ningún ancestro
+        // `Material`/`DefaultTextStyle` real. Eso era justo el
+        // recuadro amarillo feo reportado.
+        return Material(
+          type: MaterialType.transparency,
+          child: Stack(
+            children: [
+              // Fondo oscuro de pantalla completa -- SOLO cuando no
+              // está minimizado, para no bloquear toques al resto de
+              // la app mientras está en la burbuja.
+              if (!minimizado)
+                Positioned.fill(child: Container(color: AppTheme.ink)),
+              if (!minimizado) _Header(provider: provider),
+              posicionado,
+              if (!minimizado)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: rectCompleto.bottom + 16,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Tocá la flecha para minimizar y seguir escuchando mientras '
+                      'usás el resto de la app -- se pausa solo si ponés a sonar '
+                      'otra canción. La burbuja se puede arrastrar.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.small.copyWith(color: AppTheme.faintInk),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

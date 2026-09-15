@@ -790,3 +790,35 @@ Abre el selector nativo de "Compartir" de Android (el mismo que usan Spotify/You
 
 `flutter analyze`, `flutter test` (50 tests) y un build completo de Android (`flutter build apk --debug`, ya que `share_plus` trae su propio código nativo) salieron limpios.
 
+
+## 53. Los tres problemas que seguían: el amarillo (me equivoqué antes), rotar el celular rompía todo, y la burbuja se sentía trabada
+
+Me preguntaste: *"¿se puede mejorar o volvemos a lo que sí funcionaba?"*. Elegí arreglar para adelante en vez de volver atrás, porque tenía la causa concreta de cada uno de los tres problemas -- ninguno era "el enfoque nuevo está mal", los tres eran errores puntuales míos. Volver atrás hubiera devuelto también el bug de que la música se cortaba al minimizar, que ya estaba resuelto.
+
+**Archivos modificados:** `lib/widgets/online_video_overlay.dart`, `lib/main.dart`
+
+### a) El recuadro amarillo feo: en la sección 51 te dije que era del celular. Estaba equivocado.
+
+Te dije que parecía una función de tu Android (un "escáner de texto en pantalla"). No era eso. Vos insististe con que salía siempre y solo en esta pantalla, y tenías razón -- eso es justo lo que descartaba mi teoría, porque una función del sistema no aparecería únicamente ahí.
+
+**Causa real:** ese amarillo subrayado es un estilo de emergencia que Flutter aplica a propósito, bien feo para que se note, cuando un texto queda sin ningún ancestro `Material`/`DefaultTextStyle` del cual heredar un estilo. En la reescritura de la sección 50 (un solo reproductor siempre montado), el `Material` quedó como **hermano** de los textos en vez de como **padre** -- o sea, dejó de cubrirlos. Los textos del título, el autor y las instrucciones quedaron "huérfanos" y Flutter les puso su estilo de alarma.
+
+**Arreglo:** se envuelve todo el overlay en un `Material(type: MaterialType.transparency)` -- transparente, no pinta nada, solo existe para que los textos tengan de dónde heredar. El fondo oscuro pasó a ser un `Container` común (ya no necesita ser `Material`).
+
+### b) Rotabas el celular para ver el video más grande y la app se iba a la pantalla principal / se crasheaba
+
+**Causa real:** la app decide qué diseño mostrar según el ancho de pantalla (menos de 800 = celular, más = escritorio con barra lateral fija). Al rotar un celular a horizontal, el ancho cruza ese umbral y la app **cambia sola al diseño de escritorio** -- que nunca fue pensado para mostrar el video flotante. Resultado: el reproductor desaparecía del árbol (cortando la reproducción), y de ahí venía el crash. Es exactamente la pantalla rara que mostraste, con la barra lateral encima de todo.
+
+**Arreglo:** se bloqueó la app en vertical (`SystemChrome.setPreferredOrientations`, en `main.dart`, antes de dibujar la primera pantalla). Ninguna pantalla de la app está pensada para horizontal, así que rotar nunca iba a verse bien -- ahora simplemente no pasa nada al rotar, que es lo que hacen Spotify y la mayoría de las apps de música. **Esto es a propósito: de ahora en más rotar el celular no va a hacer nada.**
+
+### c) "El popup no se mueve"
+
+**Causa real:** la burbuja se posicionaba con `AnimatedPositioned` (animación de 260ms) *todo el tiempo*, incluido mientras la arrastrabas. Cada micro-movimiento del dedo lanzaba una animación nueva encima de la anterior, así que la burbuja siempre iba corriendo atrás del dedo -- se sentía trabada o directamente como que no respondía.
+
+**Arreglo:** mientras se arrastra activamente, la posición se aplica **sin animación** (sigue al dedo 1 a 1). La animación suave se reserva para la transición deliberada entre burbuja y pantalla completa, que es donde sí suma.
+
+### d) De yapa: el video en pantalla completa ahora es más grande
+
+Como rotar ya no es una opción, el video no podía quedarse chico. Antes ocupaba el ancho completo a 16:9, lo que en un celular alto dejaba un hueco negro enorme abajo -- justo lo que te daban ganas de arreglar rotando. Ahora usa hasta el 55% del alto de la pantalla, centrado, con el texto debajo.
+
+`flutter analyze`, `flutter test` (50 tests) y `flutter build apk --debug` salieron limpios.

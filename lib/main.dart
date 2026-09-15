@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -20,6 +21,18 @@ late MyAudioHandler audioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // La app nunca se pensó ni probó para landscape -- ninguna pantalla
+  // es "rotation aware", y encima el layout completo cambia solo (de
+  // celular a escritorio, con barra lateral fija) cuando el ancho de
+  // pantalla cruza cierto umbral -- algo que pasa fácil al rotar un
+  // celular. Eso hacía desaparecer el reproductor de video de YouTube
+  // (que solo existe en el layout de celular), cortando la
+  // reproducción y terminando en un crash. Se bloquea la rotación acá,
+  // antes de que se dibuje la primera pantalla.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   // IMPORTANTE: ya no inicializamos permission_handler ni audio_service
   // aquí. Ambos necesitan el Activity de Android completamente adjunto
   // al motor de Flutter, y eso solo pasa DESPUÉS de que runApp() corre
