@@ -1,0 +1,41 @@
+name: CACOCAPP
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  audio_service: ^0.18.15
+  audio_session: ^0.1.21
+  just_audio: ^0.9.38
+  just_audio_windows: ^0.2.3
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  http: ^1.2.0
+  wakelock_plus: ^1.2.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+# OJO: esta sección va SEPARADA de "flutter:", no anidada dentro.
+# flutter_launcher_icons la lee como una clave de nivel raíz.
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icono.png"
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - web/**
+    - windows/**

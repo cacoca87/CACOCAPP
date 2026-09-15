@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Azul marino tomado del ícono de la app (los dos gatos con la
+         nota musical), usado como fondo del ícono adaptativo en
+         Android 8+. -->
+    <color name="ic_launcher_background">#2E4265</color>
+</resources>

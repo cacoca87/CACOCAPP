@@ -1,0 +1,75 @@
+name: CACOCAPP
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  audio_service: ^0.18.15
+  audio_session: ^0.1.21
+  just_audio: ^0.9.38
+  just_audio_windows: ^0.2.3
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  http: ^1.2.0
+  permission_handler: ^11.3.1
+  id3: ^1.0.1
+  path_provider: ^2.1.2
+  youtube_explode_dart: ^2.3.9
+  fl_chart: ^0.68.0
+  palette_generator: ^0.3.3+3
+  google_fonts: ^6.2.1
+  # Reproductor de video embebido de YouTube (Búsqueda Online): usa el
+  # WebView oficial de Google en vez de extraer el audio -- por eso NO
+  # sufre los bloqueos por PO Token que rompían la reproducción directa.
+  # Se usa este paquete (en vez de armar el WebView a mano con
+  # "webview_flutter" directo, que se intentó antes y dio error 153/152
+  # por una configuración de origin/User-Agent mal armada) porque está
+  # mantenido específicamente para embeber el reproductor de YouTube y
+  # ya resuelve esos detalles correctamente. Soporta Android/iOS/macOS
+  # de forma nativa; en Windows no hay implementación oficial todavía
+  # (ver nota en online_video_player_screen.dart).
+  youtube_player_iframe: ^6.0.2
+  # OJO: se quitaron "video_player" y "wakelock_plus" — confirmado con
+  # grep en todo lib/ que ninguna de las dos se importaba desde ningún
+  # lado. Igual que "dio"/"sqflite"/"audio_effects" antes, quedaron del
+  # pubspec sin uso real.
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+
+# OJO: esta sección va SEPARADA de "flutter:", no anidada dentro.
+# flutter_launcher_icons la lee como una clave de nivel raíz.
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icono.png"
+  # Ícono adaptativo de Android: separa fondo y frente para que cada
+  # fabricante lo recorte con su propia forma (círculo, squircle, etc.)
+  # sin que el glifo quede pegado al borde ni deformado.
+  adaptive_icon_background: "#2E4265"
+  adaptive_icon_foreground: "assets/icon/icono_foreground.png"
+
+# Splash nativo (se muestra ANTES de que Flutter termine de cargar,
+# mientras Android arranca la Activity). Sin esto, se ve un flash
+# blanco/gris del sistema antes de que aparezca la pantalla de carga
+# ámbar/negra de la app — rompe la sensación "premium" justo en el
+# primer instante. Después de editar esto hay que correr:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#14100E"
+  image: assets/icon/splash.png
+  android_12:
+    color: "#14100E"
+    image: assets/icon/splash.png

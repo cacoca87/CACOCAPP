@@ -1,0 +1,38 @@
+name: Flutter CI
+
+# Corre en cada push y cada Pull Request contra cualquier rama.
+# Objetivo: que un error de compilación, un import roto o un test que
+# falla se detecten ANTES de mergear, no después de instalar el APK
+# en el celular.
+on:
+  push:
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Analizar código (lints y errores estáticos)
+        run: flutter analyze
+
+      - name: Verificar formato (dart format)
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Correr tests
+        run: flutter test
+
+      # Descomentar cuando quieras que CI también genere el APK de
+      # release en cada push a main (útil para probar en el celular
+      # sin compilar localmente):
+      # - name: Compilar APK release
+      #   run: flutter build apk --release

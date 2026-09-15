@@ -1,0 +1,297 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../models/song.dart';
+import '../providers/player_provider.dart';
+import '../providers/playlist_provider.dart';
+import '../services/jamendo_service.dart';
+import '../styles/app_theme.dart';
+import '../widgets/song_cover.dart';
+
+/// Buscar y reproducir música de Jamendo (catálogo Creative Commons,
+/// audio completo) — sin salir nunca de la app: el resultado se
+/// reproduce con el mismo reproductor que usás para tu biblioteca del
+/// Drive, y se puede favoritear/agregar a playlist/descargar offline
+/// igual que cualquier otra canción, porque para el resto de la app
+/// es un Song más.
+class DescubrirScreen extends StatefulWidget {
+  final VoidCallback? onVolver;
+
+  const DescubrirScreen({super.key, this.onVolver});
+
+  @override
+  State<DescubrirScreen> createState() => _DescubrirScreenState();
+}
+
+class _DescubrirScreenState extends State<DescubrirScreen> {
+  final TextEditingController _controlador = TextEditingController();
+  Timer? _debounce;
+
+  List<Song> _resultados = [];
+  bool _buscando = false;
+  String? _error;
+  bool _yaHizoAlgunaBusqueda = false;
+  String? _generoActivo; // para resaltar el chip elegido, si vino de ahí
+
+  void _volver() {
+    if (widget.onVolver != null) {
+      widget.onVolver!();
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
+
+  /// Se llama en cada tecla. Espera 450ms de silencio antes de buscar
+  /// de verdad — así no disparamos una búsqueda de red por cada letra
+  /// que se escribe, solo cuando la persona hace una pausa.
+  void _onTextoCambio(String texto) {
+    _debounce?.cancel();
+    if (texto.trim().isEmpty) {
+      setState(() {
+        _resultados = [];
+        _yaHizoAlgunaBusqueda = false;
+        _generoActivo = null;
+        _error = null;
+      });
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 450), () {
+      _ejecutarBusqueda(() => JamendoService.instance.buscar(texto));
+    });
+  }
+
+  void _buscarGenero(String etiqueta, String tag) {
+    _debounce?.cancel();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _controlador.clear();
+      _generoActivo = etiqueta;
+    });
+    _ejecutarBusqueda(() => JamendoService.instance.buscarPorGenero(tag));
+  }
+
+  Future<void> _ejecutarBusqueda(Future<List<Song>> Function() consulta) async {
+    setState(() {
+      _buscando = true;
+      _error = null;
+      _yaHizoAlgunaBusqueda = true;
+    });
+    try {
+      final resultados = await consulta();
+      if (!mounted) return;
+      setState(() {
+        _resultados = resultados;
+        _buscando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = JamendoService.instance.configurado
+            ? 'No se pudo buscar. Revisa tu conexión.'
+            : 'Falta configurar el client_id de Jamendo en jamendo_service.dart '
+                '(es gratis: https://devportal.jamendo.com)';
+        _buscando = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controlador.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final player = context.watch<PlayerProvider>();
+    final playlistProvider = context.watch<PlaylistProvider>();
+
+    return Scaffold(
+      backgroundColor: AppTheme.ink,
+      appBar: AppBar(
+        backgroundColor: AppTheme.ink,
+        title: Text('Descubrir', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
+          tooltip: "Volver",
+          onPressed: _volver,
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: TextField(
+                controller: _controlador,
+                style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 14),
+                textInputAction: TextInputAction.search,
+                onChanged: _onTextoCambio,
+                decoration: InputDecoration(
+                  hintText: "Buscar en Jamendo (título, artista)...",
+                  hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
+                  prefixIcon: const Icon(Icons.search, color: AppTheme.faintInk),
+                  suffixIcon: _controlador.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close, color: AppTheme.faintInk, size: 18),
+                          onPressed: () {
+                            _debounce?.cancel();
+                            setState(() {
+                              _controlador.clear();
+                              _resultados = [];
+                              _yaHizoAlgunaBusqueda = false;
+                              _generoActivo = null;
+                            });
+                          },
+                        ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                ),
+              ),
+            ),
+          ),
+
+          // Chips de género: buscan por tags reales de Jamendo (no por
+          // texto), así que encuentran música de ese género aunque la
+          // palabra en sí no aparezca en ningún título.
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: JamendoService.generos.entries.map((entry) {
+                final activo = _generoActivo == entry.key;
+                final color = JamendoService.generosColores[entry.key] ?? AppTheme.amber;
+                final icono = JamendoService.generosIconos[entry.key] ?? Icons.music_note_rounded;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    avatar: Icon(
+                      icono,
+                      size: 16,
+                      color: activo ? AppTheme.paper : color,
+                    ),
+                    label: Text(entry.key),
+                    selected: activo,
+                    onSelected: (_) => _buscarGenero(entry.key, entry.value),
+                    backgroundColor: AppTheme.surface,
+                    selectedColor: color,
+                    labelStyle: AppTheme.body.copyWith(
+                      fontSize: 13,
+                      color: activo ? AppTheme.paper : AppTheme.paper.withValues(alpha: 0.85),
+                      fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: activo ? color : color.withValues(alpha: 0.35)),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          if (_buscando)
+            const Padding(
+              padding: EdgeInsets.only(top: 30),
+              child: CircularProgressIndicator(color: AppTheme.amber),
+            )
+          else if (_error != null)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(_error!, style: AppTheme.body, textAlign: TextAlign.center),
+                ),
+              ),
+            )
+          else if (!_yaHizoAlgunaBusqueda)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.travel_explore_rounded, size: 48, color: AppTheme.mutedInk),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Escribí algo o tocá un género — Jamendo tiene un catálogo "
+                        "de artistas independientes con licencia libre, y suena acá "
+                        "mismo, sin salir de la app.",
+                        style: AppTheme.body,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (_resultados.isEmpty)
+            Expanded(
+              child: Center(child: Text('Sin resultados para eso', style: AppTheme.body)),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: _resultados.length,
+                itemBuilder: (context, index) {
+                  final cancion = _resultados[index];
+                  final esFavorita = playlistProvider.isFavorite(cancion.id);
+                  final sonandoAhora = player.currentSong?.id == cancion.id;
+                  return ListTile(
+                    leading: SongCover(
+                      title: cancion.title,
+                      artist: cancion.artist,
+                      url: cancion.url,
+                      coverUrlDirecto: cancion.coverUrl,
+                      size: 44,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    title: Text(
+                      cancion.title,
+                      style: AppTheme.body.copyWith(
+                        color: sonandoAhora ? AppTheme.amber : AppTheme.paper,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      "${cancion.artist} · ${cancion.album}",
+                      style: AppTheme.small,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(
+                        esFavorita ? Icons.favorite : Icons.favorite_border,
+                        color: esFavorita ? AppTheme.amber : AppTheme.mutedInk,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        HapticFeedback.mediumImpact();
+                        context.read<PlaylistProvider>().toggleFavorite(cancion.id);
+                      },
+                    ),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      player.playSong(cancion, _resultados, index);
+                    },
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

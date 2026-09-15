@@ -1,0 +1,60 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Rutas locales del SDK (específicas de cada máquina) y claves de firma
+# -- nunca deben ir al repo, cada dev/CI las genera o provee las suyas.
+android/local.properties
+android/key.properties
+**/*.keystore
+**/*.jks
+
+# Zip de respaldo suelto en la raíz -- no es código fuente, no tiene
+# sentido versionarlo (y son >1.5MB de binario en cada clone).
+musicapp_mejorado.zip
+
+# Configuración local de Claude Code (permisos de este equipo/sesión) --
+# no es algo que deba compartirse en el repo.
+.claude/settings.local.json
