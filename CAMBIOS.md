@@ -822,3 +822,26 @@ Te dije que parecía una función de tu Android (un "escáner de texto en pantal
 Como rotar ya no es una opción, el video no podía quedarse chico. Antes ocupaba el ancho completo a 16:9, lo que en un celular alto dejaba un hueco negro enorme abajo -- justo lo que te daban ganas de arreglar rotando. Ahora usa hasta el 55% del alto de la pantalla, centrado, con el texto debajo.
 
 `flutter analyze`, `flutter test` (50 tests) y `flutter build apk --debug` salieron limpios.
+
+## 54. La causa REAL de que el video se congele al minimizar (el arreglo de la sección 50 estaba incompleto)
+
+**Archivo modificado:** `lib/widgets/online_video_overlay.dart`
+
+Reportaste: *"se congela el video cuando doy para atrás y deja de sonar"*. Las capturas confirman que el amarillo de la sección 53 ya no está (ese arreglo sí funcionó), pero la burbuja quedaba con un cuadro congelado y sin audio.
+
+**Por qué el arreglo de la sección 50 no alcanzaba.** Ahí cambié las dos implementaciones separadas por un solo `YoutubePlayer` siempre montado, y di el bug por cerrado. Pero escribir el widget una sola vez en el código NO garantiza que Flutter lo trate como el mismo widget: Flutter empareja los hijos de un `Stack` **por su posición en la lista** cuando no tienen `Key`. Y ese `Stack` cambia de tamaño según el estado:
+
+- **Pantalla completa:** 4 hijos → `[fondo negro, encabezado, REPRODUCTOR, instrucciones]` (el reproductor va en el índice 2)
+- **Minimizado:** 1 hijo → `[REPRODUCTOR]` (pasa al índice 0)
+
+Al minimizar, Flutter compara el índice 0 viejo (el fondo negro) con el índice 0 nuevo (el reproductor), ve dos tipos distintos, y **destruye y recrea el reproductor** -- exactamente el mismo desenlace que el bug original, por un camino distinto. Al recrearse, el WebView de Android se desprende de su superficie de dibujo: queda el último cuadro pintado (congelado) y el audio se corta.
+
+**Segundo caso del mismo problema, que había introducido en la sección 53c:** para que el arrastre no fuera con retraso, alterné entre `Positioned` (arrastrando) y `AnimatedPositioned` (resto). Son **tipos distintos**, así que empezar a arrastrar destruía el reproductor igual. O sea, el arreglo del arrastre traía consigo el bug de que se cortara al moverla.
+
+**Arreglo (dos partes, las dos necesarias):**
+1. El reproductor ahora lleva una `Key` fija. Con una clave, Flutter lo identifica y lo **reutiliza** aunque cambie de índice dentro del `Stack`.
+2. Siempre es un `AnimatedPositioned`; lo que cambia durante el arrastre es solo la **duración** (a cero), no el tipo de widget. Se consigue el mismo arrastre instantáneo sin destruir nada.
+
+Se dejaron las dos reglas escritas como comentario al principio del archivo, porque son justo el tipo de detalle que alguien (yo incluido) "limpia" sin saber que sostiene la reproducción.
+
+`flutter analyze`, `flutter test` (50 tests) y `flutter build apk --release` salieron limpios.

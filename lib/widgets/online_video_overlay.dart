@@ -23,6 +23,17 @@ import '../styles/app_theme.dart';
 /// hay un SOLO `YoutubePlayer`, siempre montado, y lo que cambia es
 /// solo su posición/tamaño -- el WebView nunca se destruye, así que la
 /// reproducción nunca se corta.
+///
+/// Tener un solo widget NO alcanza por sí solo: Flutter también tiene
+/// que poder reconocerlo como "el mismo" entre un estado y el otro. Si
+/// cambia de tipo o de índice dentro del `Stack`, lo destruye igual
+/// aunque el código lo escriba una sola vez. Por eso, al tocar este
+/// archivo hay dos reglas que no se pueden romper:
+///   1. El reproductor siempre lleva `_claveReproductor`.
+///   2. El reproductor siempre es un `AnimatedPositioned` (nunca se
+///      alterna con `Positioned`).
+/// Romper cualquiera de las dos hace volver el bug de "se congela y
+/// deja de sonar al minimizar".
 class OnlineVideoOverlay extends StatefulWidget {
   const OnlineVideoOverlay({super.key});
 
@@ -41,13 +52,23 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
   // inferior derecha por defecto.
   Offset? _posicionBurbuja;
 
-  // Mientras se está arrastrando activamente, la posición se aplica
-  // SIN animación (Positioned común) -- si se usa `AnimatedPositioned`
-  // también durante el arrastre, cada micro-movimiento del dedo
-  // dispara una animación de 260ms detrás de la anterior, y la burbuja
-  // se siente "pegajosa"/con retraso en vez de seguir al dedo. Solo se
-  // anima la transición deliberada entre burbuja y pantalla completa.
+  // Mientras se está arrastrando activamente, la posición se aplica sin
+  // animación -- si se anima también durante el arrastre, cada
+  // micro-movimiento del dedo dispara una animación de 260ms detrás de
+  // la anterior y la burbuja se siente "pegajosa"/con retraso en vez de
+  // seguir al dedo. Solo se anima la transición deliberada entre
+  // burbuja y pantalla completa.
   bool _arrastrando = false;
+
+  // Identifica al reproductor dentro del `Stack` de abajo. Es
+  // OBLIGATORIA, no un detalle: ese Stack tiene 4 hijos en pantalla
+  // completa (fondo, encabezado, reproductor, instrucciones) y 1 solo
+  // al minimizar, así que el reproductor cambia de índice. Sin una
+  // clave, Flutter empareja los hijos por posición en la lista, ve un
+  // tipo distinto en el índice 0 y destruye/recrea el reproductor --
+  // lo que mata el WebView de Android y deja el video congelado y sin
+  // sonido. Con la clave lo reconoce y lo reutiliza aunque se mueva.
+  static const _claveReproductor = ValueKey('reproductor-youtube');
 
   @override
   Widget build(BuildContext context) {
@@ -180,27 +201,28 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
           child: reproductor,
         );
 
-        // Mientras se arrastra: posición instantánea (sin animar), para
-        // que la burbuja siga al dedo 1 a 1. El resto del tiempo
-        // (incluida la transición burbuja <-> pantalla completa): con
-        // animación suave.
-        final posicionado = _arrastrando
-            ? Positioned(
-                left: rectActual.left,
-                top: rectActual.top,
-                width: rectActual.width,
-                height: rectActual.height,
-                child: gestos,
-              )
-            : AnimatedPositioned(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOut,
-                left: rectActual.left,
-                top: rectActual.top,
-                width: rectActual.width,
-                height: rectActual.height,
-                child: gestos,
-              );
+        // Mientras se arrastra, la duración baja a cero: la posición se
+        // aplica al instante y la burbuja sigue al dedo 1 a 1. El resto
+        // del tiempo (incluida la transición burbuja <-> pantalla
+        // completa) se anima suave.
+        //
+        // OJO: tiene que seguir siendo SIEMPRE un `AnimatedPositioned`.
+        // Antes se alternaba entre `Positioned` (arrastrando) y
+        // `AnimatedPositioned` (resto) -- como son tipos distintos,
+        // Flutter destruía y recreaba todo lo de adentro al empezar a
+        // arrastrar, matando el WebView y cortando el video. Cambiar
+        // solo la duración logra lo mismo sin tocar el tipo.
+        final posicionado = AnimatedPositioned(
+          key: _claveReproductor,
+          duration:
+              _arrastrando ? Duration.zero : const Duration(milliseconds: 260),
+          curve: Curves.easeOut,
+          left: rectActual.left,
+          top: rectActual.top,
+          width: rectActual.width,
+          height: rectActual.height,
+          child: gestos,
+        );
 
         // Envuelto en Material (transparente, sin pintar nada por su
         // cuenta) para que el título/subtítulo/instrucciones tengan un
