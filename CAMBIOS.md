@@ -698,3 +698,31 @@ Retomé el pendiente de seguir achicando el archivo más grande de la app. Se sa
 
 No se cambió ningún comportamiento -- es el mismo código, movido a otro archivo. `flutter analyze` y `flutter test` (34 tests) siguen limpios.
 
+---
+
+# Duodécima vuelta: panel de Audio (ecualizador + realce de graves/volumen) para toda la música
+
+Preguntaste si se podía mejorar el audio sin importar de dónde viene la canción (Jamendo, R2, YouTube). Antes que nada te expliqué el límite real: ningún software puede "inventar" calidad que el archivo original no tiene -- eso depende de la fuente. Lo que sí es real: un ecualizador y un realzador de volumen/graves, que sí mejoran cómo se **percibe** el audio sin importar la fuente. Dejaste la decisión a mi criterio, y como las dos ideas usan la misma base técnica, se armaron juntas en un solo panel.
+
+## 47. Nuevo: panel de "Audio" en el reproductor completo
+
+**Archivo nuevo (nativo Android, Kotlin):** `android/app/src/main/kotlin/com/example/musicapp/MainActivity.kt` (reescrito)
+**Archivos nuevos (Dart):** `lib/services/audio_effects_service.dart`, `lib/providers/audio_effects_provider.dart`, `lib/widgets/audio_effects_sheet.dart`
+**Archivos modificados:** `lib/main.dart`, `lib/screens/player_screen.dart`
+
+**Por qué hizo falta tocar código nativo por primera vez en toda esta conversación:** `just_audio` (el motor de audio de la app) no trae ecualizador ni realce de volumen de fábrica. Pero sí expone el ID de sesión de audio (`androidAudioSessionIdStream`) -- que es justo lo que Android necesita para engancharle sus propios efectos nativos (`android.media.audiofx.Equalizer`, `BassBoost`, `LoudnessEnhancer`) desde afuera. Esos efectos viven en el sistema operativo, no en ningún paquete de Flutter, así que conectarlos requiere un puente de Kotlin (`MethodChannel`) -- lo armé en `MainActivity.kt`.
+
+**Cómo funciona:**
+- Nuevo ícono (🎚️) en el reproductor completo, al lado de "Letra" y "Cola" -- abre una hoja con:
+  - **Ecualizador** de varias bandas (la cantidad exacta la define tu celular, no la app -- distintos fabricantes traen distinto hardware).
+  - **Realzar graves** (bass boost).
+  - **Realzar volumen bajo** (para canciones grabadas muy flojas).
+- Se aplica a **toda tu música** que suena por el motor principal -- Drive/R2, Jamendo, y descargas -- porque el efecto se engancha a la sesión de audio completa, no a un archivo puntual. **No aplica al video de YouTube** (ese suena por el WebView, un motor de audio completamente distinto que Android no deja tocar desde afuera de la misma forma).
+- Tu configuración se guarda (`SharedPreferences`) y se reaplica sola cada vez que cambia la canción -- Android arma una sesión de audio nueva en cada cambio y los efectos vuelven a su estado por defecto si no se los volvemos a pedir explícitamente.
+
+**Sobre la fiabilidad de esto, para que lo sepas de entrada:**
+- Algunos fabricantes (sobre todo en gama baja, o ROMs muy modificadas) restringen o no implementan bien estos efectos. Si tu celular no los soporta, el panel te avisa "Tu dispositivo no soporta ecualizador" en vez de romperse -- cada llamada nativa está protegida con try/catch.
+- **Esto es lo único de toda la conversación que no pude probar yo mismo de ninguna forma** -- ni siquiera parcialmente. Todo lo anterior lo pude analizar/testear en el entorno; esto depende 100% del hardware de audio real de tu celular. Sí corrí `flutter build apk --debug` y compiló limpio (confirma que el Kotlin está bien escrito contra el SDK real), pero compilar no es lo mismo que funcionar -- instalá el APK y probá si las bandas del ecualizador realmente cambian el sonido.
+
+`flutter analyze`, `flutter test` (34 tests) y el build de Android completo salieron limpios.
+

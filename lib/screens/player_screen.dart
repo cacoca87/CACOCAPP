@@ -10,6 +10,7 @@ import '../providers/playlist_provider.dart';
 import '../services/artwork_service.dart';
 import '../services/id3_cover_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/audio_effects_sheet.dart';
 import '../widgets/song_cover.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
@@ -32,10 +33,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<ImageProvider?> _resolverImagenPortada(Song song) async {
     if (song.url.isNotEmpty) {
-      final embebida = await Id3CoverService.instance.getEmbeddedCover(song.url);
+      final embebida =
+          await Id3CoverService.instance.getEmbeddedCover(song.url);
       if (embebida != null) return MemoryImage(embebida);
     }
-    final url = await ArtworkService.instance.getCoverUrl(song.title, song.artist);
+    final url =
+        await ArtworkService.instance.getCoverUrl(song.title, song.artist);
     if (url != null) return NetworkImage(url);
     return null;
   }
@@ -47,8 +50,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final imagen = await _resolverImagenPortada(song);
       if (imagen == null) return;
 
-      final paleta = await PaletteGenerator.fromImageProvider(imagen, maximumColorCount: 16);
-      final color = paleta.dominantColor?.color ?? paleta.vibrantColor?.color ?? paleta.mutedColor?.color;
+      final paleta = await PaletteGenerator.fromImageProvider(imagen,
+          maximumColorCount: 16);
+      final color = paleta.dominantColor?.color ??
+          paleta.vibrantColor?.color ??
+          paleta.mutedColor?.color;
       if (color == null) return;
 
       if (!mounted || _songIdColorCargado != song.id) return;
@@ -97,14 +103,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
               backgroundColor: AppTheme.ink,
               appBar: AppBar(backgroundColor: Colors.transparent),
               body: Center(
-                child: Text("No hay canción reproduciéndose", style: AppTheme.body),
+                child: Text("No hay canción reproduciéndose",
+                    style: AppTheme.body),
               ),
             ),
           );
         }
 
         // Obtenemos la canción actual del provider de forma segura escuchando sin mutar el build state de golpe
-        final cancionActual = context.select<PlayerProvider, Song?>((p) => p.currentSong);
+        final cancionActual =
+            context.select<PlayerProvider, Song?>((p) => p.currentSong);
         if (cancionActual != null) {
           // Usamos addPostFrameCallback para evitar conflictos de setState durante la fase de construcción
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,16 +134,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.keyboard_arrow_down, color: AppTheme.paper),
+                icon: const Icon(Icons.keyboard_arrow_down,
+                    color: AppTheme.paper),
                 tooltip: "Minimizar",
                 onPressed: () => Navigator.pop(context),
               ),
-              title: Text("REPRODUCIENDO", style: AppTheme.caption.copyWith(letterSpacing: 2.5, color: AppTheme.paper)),
+              title: Text("REPRODUCIENDO",
+                  style: AppTheme.caption
+                      .copyWith(letterSpacing: 2.5, color: AppTheme.paper)),
               centerTitle: true,
               actions: [
                 IconButton(
+                  tooltip: "Audio (ecualizador)",
+                  icon: const Icon(Icons.graphic_eq_rounded,
+                      color: AppTheme.paper),
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    mostrarPanelDeAudio(context);
+                  },
+                ),
+                IconButton(
                   tooltip: "Letra",
-                  icon: const Icon(Icons.lyrics_outlined, color: AppTheme.paper),
+                  icon:
+                      const Icon(Icons.lyrics_outlined, color: AppTheme.paper),
                   onPressed: () {
                     HapticFeedback.selectionClick();
                     Navigator.push(
@@ -146,7 +167,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
                 IconButton(
                   tooltip: "Cola de reproducción",
-                  icon: const Icon(Icons.queue_music_rounded, color: AppTheme.paper),
+                  icon: const Icon(Icons.queue_music_rounded,
+                      color: AppTheme.paper),
                   onPressed: () {
                     HapticFeedback.selectionClick();
                     Navigator.push(
@@ -156,20 +178,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   },
                 ),
                 Builder(builder: (context) {
-                  final songId = context.select<PlayerProvider, String?>((p) => p.currentSong?.id);
+                  final songId = context.select<PlayerProvider, String?>(
+                      (p) => p.currentSong?.id);
                   final playlistProvider = context.watch<PlaylistProvider>();
-                  final esFavorita = songId != null && playlistProvider.isFavorite(songId);
+                  final esFavorita =
+                      songId != null && playlistProvider.isFavorite(songId);
                   return IconButton(
                     icon: Icon(
                       esFavorita ? Icons.favorite : Icons.favorite_border,
                       color: esFavorita ? AppTheme.amber : AppTheme.paper,
                     ),
-                    tooltip: esFavorita ? "Quitar de favoritos" : "Agregar a favoritos",
+                    tooltip: esFavorita
+                        ? "Quitar de favoritos"
+                        : "Agregar a favoritos",
                     onPressed: songId == null
                         ? null
                         : () {
                             HapticFeedback.mediumImpact();
-                            context.read<PlaylistProvider>().toggleFavorite(songId);
+                            context
+                                .read<PlaylistProvider>()
+                                .toggleFavorite(songId);
                           },
                   );
                 }),
@@ -183,16 +211,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       color: activo ? AppTheme.amber : AppTheme.paper,
                     ),
                     color: AppTheme.surfaceRaised,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     onSelected: (minutos) {
                       final provider = context.read<PlayerProvider>();
                       if (minutos == -1) {
                         provider.cancelarTemporizadorDeSueno();
                       } else {
-                        provider.activarTemporizadorDeSueno(Duration(minutes: minutos));
+                        provider.activarTemporizadorDeSueno(
+                            Duration(minutes: minutos));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text("La música se pausará en $minutos min"),
+                            content:
+                                Text("La música se pausará en $minutos min"),
                             backgroundColor: AppTheme.amber,
                             duration: const Duration(seconds: 2),
                           ),
@@ -205,14 +236,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           value: -1,
                           child: Text(
                             "Cancelar (quedan ${playerProvider.sleepTimerMinutosRestantes} min)",
-                            style: AppTheme.body.copyWith(color: AppTheme.danger, fontSize: 13),
+                            style: AppTheme.body
+                                .copyWith(color: AppTheme.danger, fontSize: 13),
                           ),
                         ),
                       if (activo) const PopupMenuDivider(),
                       for (final min in [10, 15, 30, 45, 60])
                         PopupMenuItem(
                           value: min,
-                          child: Text("$min minutos", style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13)),
+                          child: Text("$min minutos",
+                              style: AppTheme.body.copyWith(
+                                  color: AppTheme.paper, fontSize: 13)),
                         ),
                     ],
                   );
@@ -235,18 +269,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
               child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 12.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       GestureDetector(
                         onDoubleTap: () {
-                          audioHandler.seek(audioHandler.player.position + const Duration(seconds: 10));
+                          audioHandler.seek(audioHandler.player.position +
+                              const Duration(seconds: 10));
                         },
                         onDoubleTapDown: (details) {
                           final size = MediaQuery.of(context).size;
                           if (details.globalPosition.dx < size.width / 2) {
-                            audioHandler.seek(audioHandler.player.position - const Duration(seconds: 10));
+                            audioHandler.seek(audioHandler.player.position -
+                                const Duration(seconds: 10));
                           }
                         },
                         child: Builder(builder: (context) {
@@ -289,15 +326,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         stream: audioHandler.player.positionStream,
                         initialData: audioHandler.player.position,
                         builder: (context, positionSnapshot) {
-                          final totalDuration = mediaItem.duration ?? const Duration(minutes: 3);
-                          double maxVal = totalDuration.inMilliseconds.toDouble();
+                          final totalDuration =
+                              mediaItem.duration ?? const Duration(minutes: 3);
+                          double maxVal =
+                              totalDuration.inMilliseconds.toDouble();
                           if (maxVal <= 0) maxVal = 1.0;
 
-                          final position = positionSnapshot.data ?? Duration.zero;
-                          final valorReal = position.inMilliseconds.toDouble().clamp(0.0, maxVal);
+                          final position =
+                              positionSnapshot.data ?? Duration.zero;
+                          final valorReal = position.inMilliseconds
+                              .toDouble()
+                              .clamp(0.0, maxVal);
                           // Mientras se arrastra el slider, se ignora el valor
                           // del stream para que no "pelee" contra el dedo.
-                          final currentVal = _valorMientrasArrastra ?? valorReal;
+                          final currentVal =
+                              _valorMientrasArrastra ?? valorReal;
 
                           return Column(
                             children: [
@@ -307,32 +350,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                   activeTrackColor: AppTheme.amber,
                                   inactiveTrackColor: const Color(0x33F2EDE6),
                                   thumbColor: AppTheme.paper,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-                                  overlayColor: AppTheme.amber.withValues(alpha: 0.2),
+                                  thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 8),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                      overlayRadius: 16),
+                                  overlayColor:
+                                      AppTheme.amber.withValues(alpha: 0.2),
                                 ),
                                 child: Slider(
                                   value: currentVal,
                                   min: 0.0,
                                   max: maxVal,
-                                  onChangeStart: (value) => setState(() => _valorMientrasArrastra = value),
-                                  onChanged: (value) => setState(() => _valorMientrasArrastra = value),
+                                  onChangeStart: (value) => setState(
+                                      () => _valorMientrasArrastra = value),
+                                  onChanged: (value) => setState(
+                                      () => _valorMientrasArrastra = value),
                                   onChangeEnd: (value) {
-                                    audioHandler.seek(Duration(milliseconds: value.toInt()));
-                                    setState(() => _valorMientrasArrastra = null);
+                                    audioHandler.seek(
+                                        Duration(milliseconds: value.toInt()));
+                                    setState(
+                                        () => _valorMientrasArrastra = null);
                                   },
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4.0),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      _formatDuration(Duration(milliseconds: currentVal.toInt())),
+                                      _formatDuration(Duration(
+                                          milliseconds: currentVal.toInt())),
                                       style: AppTheme.small,
                                     ),
-                                    Text(_formatDuration(totalDuration), style: AppTheme.small),
+                                    Text(_formatDuration(totalDuration),
+                                        style: AppTheme.small),
                                   ],
                                 ),
                               ),
@@ -343,12 +397,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       const SizedBox(height: 24),
                       Consumer<PlayerProvider>(
                         builder: (context, playerProvider, _) {
-                          final repeatIcon = switch (playerProvider.repeatMode) {
+                          final repeatIcon =
+                              switch (playerProvider.repeatMode) {
                             2 => Icons.repeat_one_rounded,
                             _ => Icons.repeat_rounded,
                           };
                           final repeatActivo = playerProvider.repeatMode != 0;
-                          final repeatTooltip = switch (playerProvider.repeatMode) {
+                          final repeatTooltip =
+                              switch (playerProvider.repeatMode) {
                             1 => "Repetir todo (activado)",
                             2 => "Repetir una canción (activado)",
                             _ => "Repetir (desactivado)",
@@ -360,7 +416,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               _buildControlButton(
                                 icon: Icons.shuffle_rounded,
                                 size: 26,
-                                color: playerProvider.isShuffleEnabled ? AppTheme.amber : AppTheme.mutedInk,
+                                color: playerProvider.isShuffleEnabled
+                                    ? AppTheme.amber
+                                    : AppTheme.mutedInk,
                                 onPressed: () {
                                   HapticFeedback.selectionClick();
                                   playerProvider.toggleShuffle();
@@ -392,18 +450,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 child: StreamBuilder<PlaybackState>(
                                   stream: audioHandler.playbackState,
                                   builder: (context, snapshot) {
-                                    final playing = snapshot.data?.playing ?? false;
+                                    final playing =
+                                        snapshot.data?.playing ?? false;
                                     return IconButton(
                                       icon: Icon(
-                                        playing ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                                        playing
+                                            ? Icons.pause_circle_filled
+                                            : Icons.play_circle_filled,
                                         size: 72,
                                         color: AppTheme.amber,
                                       ),
-                                      tooltip: playing ? "Pausar" : "Reproducir",
+                                      tooltip:
+                                          playing ? "Pausar" : "Reproducir",
                                       onPressed: () {
                                         HapticFeedback.mediumImpact();
-                                        if (playing) audioHandler.pause();
-                                        else audioHandler.play();
+                                        if (playing)
+                                          audioHandler.pause();
+                                        else
+                                          audioHandler.play();
                                       },
                                       constraints: const BoxConstraints(),
                                     );
@@ -422,7 +486,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               _buildControlButton(
                                 icon: repeatIcon,
                                 size: 26,
-                                color: repeatActivo ? AppTheme.amber : AppTheme.mutedInk,
+                                color: repeatActivo
+                                    ? AppTheme.amber
+                                    : AppTheme.mutedInk,
                                 onPressed: () {
                                   HapticFeedback.selectionClick();
                                   playerProvider.toggleRepeat();

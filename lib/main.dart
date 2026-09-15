@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'services/my_audio_handler.dart';
+import 'providers/audio_effects_provider.dart';
 import 'providers/online_video_provider.dart';
 import 'providers/player_provider.dart';
 import 'providers/playlist_provider.dart';
@@ -145,6 +146,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
   late final PlayerProvider _playerProvider;
   late final PlaylistProvider _playlistProvider;
   final OnlineVideoProvider _onlineVideoProvider = OnlineVideoProvider();
+  late final AudioEffectsProvider _audioEffectsProvider;
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<String>? _mensajesSub;
@@ -157,6 +159,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
       onEmpiezaOtraReproduccion: _onlineVideoProvider.pausarPorOtraReproduccion,
     );
     _playlistProvider = PlaylistProvider();
+    _audioEffectsProvider = AudioEffectsProvider(widget.audioHandler);
     WidgetsBinding.instance.addObserver(this);
     _pedirPermisosDeFondo();
 
@@ -219,6 +222,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: _playerProvider),
         ChangeNotifierProvider.value(value: _playlistProvider),
         ChangeNotifierProvider.value(value: _onlineVideoProvider),
+        ChangeNotifierProvider.value(value: _audioEffectsProvider),
       ],
       child: MaterialApp(
         title: 'Cacocapp',
