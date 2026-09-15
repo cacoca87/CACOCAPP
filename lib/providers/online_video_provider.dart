@@ -25,20 +25,40 @@ class OnlineVideoProvider extends ChangeNotifier {
       {required String videoId,
       required String titulo,
       required String autor}) {
-    if (_videoId == videoId && _controller != null) {
-      // Ya es el mismo video que estaba sonando (ej. lo tenías
-      // minimizado y volviste a tocarlo en los resultados) -- no hace
-      // falta recrear nada, solo expandir. Si estaba pausado (por
-      // ejemplo, por la auto-pausa al poner a sonar otra canción), se
-      // reanuda también -- tocar "play" en un resultado siempre debería
-      // dejarlo sonando, no expandido y pausado sin explicación.
-      _controller!.playVideo();
+    if (_controller != null) {
+      if (_videoId == videoId) {
+        // Es el mismo video que ya estaba cargado (ej. lo tenías
+        // minimizado y volviste a tocarlo en los resultados). Si estaba
+        // pausado -- por ejemplo, por la auto-pausa al poner a sonar
+        // otra canción -- se reanuda: tocar "play" en un resultado
+        // siempre debería dejarlo sonando, no expandido y pausado sin
+        // explicación.
+        _controller!.playVideo();
+      } else {
+        // Video DISTINTO: se le pide al reproductor que ya existe que
+        // cargue el nuevo, en vez de crear otro controlador.
+        //
+        // Crear uno nuevo NO funcionaba: `YoutubePlayer` solo mira el
+        // color de fondo en su `didUpdateWidget` e ignora por completo
+        // que le cambien el controlador (verificado en el código del
+        // paquete). Como el widget se reutiliza a propósito -- lleva
+        // una `Key` fija para que la reproducción no se corte al
+        // minimizar, ver `online_video_overlay.dart` -- se quedaba
+        // mostrando el video anterior para siempre: tocabas un
+        // resultado nuevo y volvía el que ya estaba sonando.
+        //
+        // Reusar el controlador además evita destruir y rearmar el
+        // WebView en cada cambio de video.
+        _controller!.loadVideoById(videoId: videoId);
+      }
+      _videoId = videoId;
+      _titulo = titulo;
+      _autor = autor;
       _minimizado = false;
       notifyListeners();
       return;
     }
 
-    _controller?.close();
     _controller = YoutubePlayerController.fromVideoId(
       videoId: videoId,
       autoPlay: true,

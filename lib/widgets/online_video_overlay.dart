@@ -173,6 +173,17 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
         );
 
         final gestos = GestureDetector(
+          // `opaque` mientras está en burbuja: sin esto el detector usa
+          // `deferToChild`, o sea que solo recibe toques si algo de
+          // ADENTRO los recibe -- y adentro está el `IgnorePointer` que
+          // justamente desactiva el WebView. La burbuja no capturaba
+          // nada y los toques pasaban de largo a la lista de resultados
+          // que está debajo: arrastrarla hacía scroll de la lista en vez
+          // de moverla. Expandido NO va opaco, porque ahí los toques
+          // tienen que llegar a los controles del reproductor.
+          behavior: minimizado
+              ? HitTestBehavior.opaque
+              : HitTestBehavior.deferToChild,
           onTap: minimizado ? () => provider.expandir() : null,
           // Se separa el "empieza a arrastrar"/"termina de arrastrar"
           // para saber cuándo animar la posición y cuándo no (ver

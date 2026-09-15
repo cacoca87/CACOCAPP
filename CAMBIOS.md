@@ -890,3 +890,27 @@ Los tests bajaron de 50 a 45 porque 5 probaban justamente el tope de reintentos 
 Para que quede constancia: no hay archivos huérfanos, ninguna dependencia de `pubspec.yaml` sobra, no hay accesos a listas sin proteger (`.first` en listas posiblemente vacías), los `int.parse`/`jsonDecode` están todos dentro de un `try`, y salvo el caso del diálogo, todas las pantallas liberan bien sus controladores y temporizadores.
 
 `flutter analyze` (ahora con los lints de verdad), `flutter test` (45) y `flutter build apk --release` salieron limpios. También se corrió `dart format` sobre todo el proyecto, que no estaba formateado de forma pareja -- por eso el commit toca muchos archivos que no cambiaron de comportamiento.
+
+## 56. Los dos que seguían fallando: la burbuja no se arrastraba, y tocar un resultado nuevo traía el video anterior
+
+Probaste la lista de la vuelta anterior: 1, 3 y 5 al 100%, pero quedaban dos. Resultaron ser cosas distintas, y una de ellas la causé yo con el arreglo de la sección 54.
+
+**Archivos modificados:** `lib/widgets/online_video_overlay.dart`, `lib/providers/online_video_provider.dart`
+
+### a) La burbuja no se arrastraba (y el "tocar para expandir" era un espejismo)
+
+**Causa:** el detector de gestos de la burbuja usaba el comportamiento por defecto de Flutter, `deferToChild`, que significa "recibo toques solo si algo de adentro los recibe". Pero adentro está el `IgnorePointer` que desactiva a propósito los controles de YouTube mientras la burbuja es chica (son demasiado pequeños para acertarles). Entre los dos, **la burbuja no capturaba absolutamente ningún toque**, y todo pasaba de largo a la lista de resultados que está debajo. Arrastrar la burbuja hacía scroll de la lista.
+
+Eso explica también algo que parecía funcionar: cuando tocabas la burbuja y se agrandaba, no era la burbuja respondiendo -- era tu dedo llegando al resultado que estaba detrás. Se veía igual, pero era otra cosa.
+
+**Arreglo:** mientras está minimizada, la burbuja captura los toques de toda su superficie (`HitTestBehavior.opaque`). Expandida se deja como estaba, porque ahí los toques SÍ tienen que llegar a los controles del reproductor.
+
+### b) Tocabas un resultado nuevo y volvía el video anterior
+
+**Causa, y es culpa del arreglo de la sección 54:** ahí le puse una `Key` fija al reproductor para que Flutter lo reconozca y lo reutilice al minimizar (sin eso el video se congelaba). El efecto secundario: cuando elegías otro video, el provider creaba un controlador nuevo... pero Flutter reutilizaba el mismo widget, y **`YoutubePlayer` ignora por completo que le cambien el controlador**. Lo verifiqué en el código del paquete instalado: su `didUpdateWidget` solo reacciona al color de fondo. Así que se quedaba mostrando el video viejo para siempre.
+
+**Arreglo:** en vez de crear un controlador nuevo por cada video, se reutiliza el que ya existe y se le pide cargar el otro (`loadVideoById`, que el paquete expone justamente para esto). Ahora hay un solo reproductor durante toda la sesión: cambiar de video no destruye ni rearma el WebView, así que además es más rápido y sin parpadeo.
+
+Las dos reglas del encabezado de `online_video_overlay.dart` (clave fija + siempre `AnimatedPositioned`) siguen vigentes; esta vuelta agrega que el controlador **tampoco** se reemplaza, por el mismo motivo.
+
+`flutter analyze`, `flutter test` (45) y `flutter build apk --release` salieron limpios.
