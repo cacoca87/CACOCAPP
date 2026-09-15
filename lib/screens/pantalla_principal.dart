@@ -70,7 +70,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     await context
         .read<PlaylistProvider>()
         .loadFromPrefs([...list, ...player.downloadedSongs]);
-    _resolverAlbumesReales(list);
+    _resolverMetadataReal(list);
   }
 
   Future<void> _actualizarCanciones() async {
@@ -88,7 +88,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       await context
           .read<PlaylistProvider>()
           .loadFromPrefs([...list, ...player.downloadedSongs]);
-      _resolverAlbumesReales(list);
+      _resolverMetadataReal(list);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -110,7 +110,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-  Future<void> _resolverAlbumesReales(List<Song> lista) async {
+  /// Reemplaza el álbum/artista "adivinados" a partir del nombre del
+  /// archivo (`DriveService`) por los reales del tag ID3, cuando el
+  /// propio MP3 los trae. El artista importa especialmente: cuando el
+  /// nombre del archivo no sigue el patrón "Artista - Canción.mp3"
+  /// (ej. "Runnin' Down A Dream.mp3"), `DriveService` no tiene forma
+  /// de adivinarlo y queda como "Artista Desconocido" para siempre --
+  /// aunque el MP3 sí traiga el artista real en su tag (TPE1).
+  Future<void> _resolverMetadataReal(List<Song> lista) async {
     const concurrencia = 6;
     var huboCambios = false;
 
@@ -122,6 +129,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             await Id3CoverService.instance.getEmbeddedAlbum(cancion.url);
         if (album != null && album.isNotEmpty && album != cancion.album) {
           cancion.album = album;
+          huboCambios = true;
+        }
+
+        final artista =
+            await Id3CoverService.instance.getEmbeddedArtist(cancion.url);
+        if (artista != null &&
+            artista.isNotEmpty &&
+            artista != cancion.artist) {
+          cancion.artist = artista;
           huboCambios = true;
         }
       }));

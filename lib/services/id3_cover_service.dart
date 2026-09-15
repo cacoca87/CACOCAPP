@@ -29,6 +29,7 @@ class Id3CoverService {
 
   final Map<String, Uint8List?> _cacheCaratula = {};
   final Map<String, String?> _cacheAlbum = {};
+  final Map<String, String?> _cacheArtista = {};
   Directory? _dirCache;
 
   Future<Directory> _coverDir() async {
@@ -45,8 +46,9 @@ class Id3CoverService {
   /// archivo mp3).
   String _claveArchivo(String url) {
     final uri = Uri.tryParse(url);
-    final ultimo =
-        (uri != null && uri.pathSegments.isNotEmpty) ? uri.pathSegments.last : url;
+    final ultimo = (uri != null && uri.pathSegments.isNotEmpty)
+        ? uri.pathSegments.last
+        : url;
     return ultimo.replaceAll(RegExp(r'[^\w.\-]'), '_');
   }
 
@@ -55,7 +57,8 @@ class Id3CoverService {
   /// paso costoso que carátula y álbum comparten.
   Future<Uint8List?> _obtenerBytesMp3(String url) async {
     try {
-      final esArchivoLocal = !url.startsWith('http://') && !url.startsWith('https://');
+      final esArchivoLocal =
+          !url.startsWith('http://') && !url.startsWith('https://');
 
       if (esArchivoLocal) {
         final archivoLocal = File(url);
@@ -63,9 +66,9 @@ class Id3CoverService {
         return await archivoLocal.readAsBytes();
       }
 
-      final response = await http
-          .get(Uri.parse(url), headers: {'Range': 'bytes=0-524287'})
-          .timeout(const Duration(seconds: 8));
+      final response = await http.get(Uri.parse(url), headers: {
+        'Range': 'bytes=0-524287'
+      }).timeout(const Duration(seconds: 8));
 
       // 200 = el servidor ignoró el Range y mandó todo igual (también
       // sirve). 206 = sí respetó el rango (lo esperado).
@@ -114,10 +117,12 @@ class Id3CoverService {
       if (mp3.parseTagsSync()) {
         final tags = mp3.getMetaTags();
 
-        // De paso, ya que parseamos los tags, guardamos el álbum en
-        // caché de memoria también — así getEmbeddedAlbum() para esta
-        // misma canción no necesita una segunda petición de red.
+        // De paso, ya que parseamos los tags, guardamos álbum Y artista
+        // en caché de memoria también — así getEmbeddedAlbum()/
+        // getEmbeddedArtist() para esta misma canción no necesitan una
+        // segunda petición de red.
         _cacheAlbum[url] = _extraerAlbum(tags);
+        _cacheArtista[url] = _extraerArtista(tags);
 
         final apic = tags?['APIC'];
         final base64Str = apic is Map ? apic['base64'] as String? : null;
@@ -178,7 +183,7 @@ class Id3CoverService {
   String? _extraerAlbum(Map<String, dynamic>? tags) {
     if (tags == null || !tags.containsKey('Album')) return null;
     final valor = tags['Album'];
-    
+
     // Validación segura de tipos para prevenir errores inesperados (TypeError)
     String? album;
     if (valor is String) {
@@ -263,6 +268,104 @@ class Id3CoverService {
       final dir = await _coverDir();
       final clave = _claveArchivo(url);
       await File('${dir.path}/$clave.noalbum').writeAsBytes(const []);
+    } catch (_) {}
+  }
+
+  // ========== ARTISTA REAL (TPE1) ==========
+  //
+  // Mismo patrón que "ÁLBUM REAL" de arriba. Se agregó porque
+  // `DriveService` solo puede adivinar el artista a partir del nombre
+  // del archivo (ej. "Artista - Canción.mp3") -- cuando el archivo no
+  // sigue ese patrón, queda como "Artista Desconocido" para siempre,
+  // aunque el propio MP3 sí traiga el artista real en su tag ID3
+  // (TPE1). Confirmado el caso real: "Runnin' Down A Dream.mp3" (sin
+  // " - " en el nombre) se mostraba como "Artista Desconocido" en vez
+  // de "Tom Petty".
+
+  String? _extraerArtista(Map<String, dynamic>? tags) {
+    if (tags == null || !tags.containsKey('Artist')) return null;
+    final valor = tags['Artist'];
+
+    String? artista;
+    if (valor is String) {
+      artista = valor;
+    } else if (valor is Map && valor.containsKey('text')) {
+      artista = valor['text']?.toString();
+    } else {
+      artista = valor?.toString();
+    }
+
+    if (artista == null) return null;
+    final limpio = artista.trim();
+    return limpio.isEmpty ? null : limpio;
+  }
+
+  /// Devuelve el artista REAL que trae el propio MP3 (tag ID3
+  /// "Artist"/TPE1), o `null` si no tiene ese tag.
+  Future<String?> getEmbeddedArtist(String url) async {
+    if (_cacheArtista.containsKey(url)) return _cacheArtista[url];
+
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      final archivoArtista = File('${dir.path}/$clave.artist');
+      final archivoSinArtista = File('${dir.path}/$clave.noartist');
+
+      if (await archivoSinArtista.exists()) {
+        _cacheArtista[url] = null;
+        return null;
+      }
+      if (await archivoArtista.exists()) {
+        final texto = await archivoArtista.readAsString();
+        _cacheArtista[url] = texto;
+        return texto;
+      }
+    } catch (_) {
+      // Si falla la lectura de disco, seguimos igual por red.
+    }
+
+    try {
+      final bytes = await _obtenerBytesMp3(url);
+      if (bytes == null) {
+        _cacheArtista[url] = null;
+        _marcarSinArtista(url);
+        return null;
+      }
+
+      final mp3 = MP3Instance(bytes);
+      if (mp3.parseTagsSync()) {
+        final tags = mp3.getMetaTags();
+        final artista = _extraerArtista(tags);
+        _cacheArtista[url] = artista;
+        if (artista != null) {
+          _guardarArtistaEnDisco(
+              url, artista); // no esperamos, no bloquea la UI
+          return artista;
+        }
+      }
+    } catch (_) {
+      // El archivo no trae el tag, no hay red/archivo, o el servidor
+      // no soporta Range -- seguimos con el fallback en quien llame.
+    }
+
+    _cacheArtista[url] = null;
+    _marcarSinArtista(url);
+    return null;
+  }
+
+  Future<void> _guardarArtistaEnDisco(String url, String artista) async {
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      await File('${dir.path}/$clave.artist').writeAsString(artista);
+    } catch (_) {}
+  }
+
+  Future<void> _marcarSinArtista(String url) async {
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      await File('${dir.path}/$clave.noartist').writeAsBytes(const []);
     } catch (_) {}
   }
 }

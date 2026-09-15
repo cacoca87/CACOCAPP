@@ -737,3 +737,15 @@ El test más importante no es el más obvio: hay uno que verifica específicamen
 
 `flutter analyze` y `flutter test` pasan con **49 tests** (subió de 34).
 
+## 49. Bug real encontrado (y ya lo habías mostrado en captura): el artista quedaba "Desconocido" cuando el MP3 no tenía guion en el nombre del archivo
+
+Pediste una revisión de bugs. Encontré uno concreto -- y en realidad ya lo habías mostrado sin saberlo: la captura de "Runnin' Down A Dream" / "Artista Desconocido" de hace un par de vueltas era justo este bug.
+
+**Causa:** `DriveService` arma el artista adivinando a partir del nombre del archivo (patrón "Artista - Canción.mp3"). Cuando el archivo NO sigue ese patrón -- ej. `"Runnin' Down A Dream.mp3"`, sin ningún " - " -- queda como "Artista Desconocido" para siempre. La app ya tenía toda la infraestructura para leer el tag ID3 real del álbum (`Id3CoverService.getEmbeddedAlbum`, usando el tag TALB), pero **nunca leía el tag del artista** (TPE1) a pesar de que el MP3 casi seguro lo trae -- confirmé la clave exacta (`'Artist'`) contra el código fuente real del paquete `id3` que ya usa el proyecto, no de memoria.
+
+**Archivos modificados:** `lib/models/song.dart` (el campo `artist` era `final` -- se hizo mutable, igual que `album`), `lib/services/id3_cover_service.dart` (nuevo `getEmbeddedArtist()`, mismo patrón que `getEmbeddedAlbum()`: caché en memoria + disco), `lib/screens/pantalla_principal.dart` (`_resolverAlbumesReales` ahora también resuelve el artista real; se renombró a `_resolverMetadataReal` porque ya no es solo álbum).
+
+Se agregó un test de regresión en `test/models/song_test.dart` (que `artist` sea mutable) para que esto no se rompa en silencio si alguien vuelve a hacerlo `final` sin darse cuenta.
+
+`flutter analyze` y `flutter test` pasan con **50 tests**. Instalá el APK y fijate si "Runnin' Down A Dream" y canciones similares ya muestran "Tom Petty" (o el artista real que traiga el archivo) en vez de "Artista Desconocido".
+
