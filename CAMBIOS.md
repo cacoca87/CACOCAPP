@@ -687,3 +687,14 @@ Pediste revisar todo a fondo en busca de bugs. Repasé con cuidado los archivos 
 
 `flutter analyze` y `flutter test` (34 tests) siguen limpios después de ambos arreglos.
 
+## 46. `pantalla_principal.dart` bajó de 1183 a 931 líneas (-21%)
+
+**Archivos nuevos:** `lib/widgets/song_options_menu.dart`, `lib/screens/pantalla_principal_desktop.dart`
+
+Retomé el pendiente de seguir achicando el archivo más grande de la app. Se sacaron dos bloques autocontenidos, mismo criterio que en vueltas anteriores (widgets propios en vez de métodos privados gigantes):
+
+1. **`SongOptionsMenu`**: el menú (⋮) de "más opciones" de cada canción (favoritos, descargar, agregar/quitar de playlists) -- antes era `_construirMenuAcciones` + `_mostrarDialogoNuevaPlaylist` + `_confirmarYDescargar`, ~190 líneas. Ahora es un widget que solo necesita la canción y el nombre de la biblioteca actual; lee los providers que necesita por su cuenta.
+2. **`PantallaPrincipalDesktop`**: todo el layout de escritorio/tablet (panel lateral fijo + panel de "ahora suena" a la derecha), ~110 líneas. Es una rama que ni siquiera usás (tu celular entra por la rama de `Drawer`), así que sacarla de en medio del archivo principal también hace más fácil encontrar el código que sí importa para tu caso.
+
+No se cambió ningún comportamiento -- es el mismo código, movido a otro archivo. `flutter analyze` y `flutter test` (34 tests) siguen limpios.
+

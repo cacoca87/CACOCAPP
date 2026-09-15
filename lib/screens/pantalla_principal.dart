@@ -15,12 +15,14 @@ import '../widgets/indicador_sonando.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/online_video_overlay.dart';
 import '../widgets/song_cover.dart';
+import '../widgets/song_options_menu.dart';
 import '../widgets/vista_spotify_grid.dart';
 import 'statistics_screen.dart';
 import 'recommendations_screen.dart';
 import 'descubrir_screen.dart';
 import 'downloaded_songs_view.dart';
 import 'dual_search_screen.dart'; // <--- IMPORTACIÓN DE TU BUSCADOR ONLINE
+import 'pantalla_principal_desktop.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -116,7 +118,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       if (!mounted) return;
       final lote = lista.skip(i).take(concurrencia);
       await Future.wait(lote.map((cancion) async {
-        final album = await Id3CoverService.instance.getEmbeddedAlbum(cancion.url);
+        final album =
+            await Id3CoverService.instance.getEmbeddedAlbum(cancion.url);
         if (album != null && album.isNotEmpty && album != cancion.album) {
           cancion.album = album;
           huboCambios = true;
@@ -180,12 +183,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined, color: AppTheme.paper),
-              title: Text("Renombrar", style: AppTheme.body.copyWith(color: AppTheme.paper)),
+              title: Text("Renombrar",
+                  style: AppTheme.body.copyWith(color: AppTheme.paper)),
               onTap: () => Navigator.pop(context, "renombrar"),
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: AppTheme.danger),
-              title: Text("Eliminar", style: AppTheme.body.copyWith(color: AppTheme.danger)),
+              title: Text("Eliminar",
+                  style: AppTheme.body.copyWith(color: AppTheme.danger)),
               onTap: () => Navigator.pop(context, "eliminar"),
             ),
           ],
@@ -219,7 +224,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Renombrar playlist", style: AppTheme.subheading.copyWith(fontSize: 17)),
+        title: Text("Renombrar playlist",
+            style: AppTheme.subheading.copyWith(fontSize: 17)),
         content: TextField(
           controller: controlador,
           autofocus: true,
@@ -237,7 +243,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancelar", style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
+            child: Text("Cancelar",
+                style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controlador.text.trim()),
@@ -248,13 +255,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       ),
     );
 
-    if (nuevoNombre == null || nuevoNombre.isEmpty || nuevoNombre == nombreActual) return;
+    if (nuevoNombre == null ||
+        nuevoNombre.isEmpty ||
+        nuevoNombre == nombreActual) return;
     if (!mounted) return;
 
     playlistProvider.renamePlaylist(playlistARenombrar.id, nuevoNombre);
     setState(() {
-      if (bibliotecaSeleccionada == nombreActual) bibliotecaSeleccionada = nuevoNombre;
-      if (subFiltroSeleccionado == nombreActual) subFiltroSeleccionado = nuevoNombre;
+      if (bibliotecaSeleccionada == nombreActual)
+        bibliotecaSeleccionada = nuevoNombre;
+      if (subFiltroSeleccionado == nombreActual)
+        subFiltroSeleccionado = nuevoNombre;
     });
   }
 
@@ -275,7 +286,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("¿Eliminar playlist?", style: AppTheme.subheading.copyWith(fontSize: 17)),
+        title: Text("¿Eliminar playlist?",
+            style: AppTheme.subheading.copyWith(fontSize: 17)),
         content: Text(
           'Se eliminará "$nombre" con sus ${playlistAEliminar.songs.length} canciones. Las canciones en sí no se borran, solo esta playlist.',
           style: AppTheme.body,
@@ -283,14 +295,16 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text("Cancelar", style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
+            child: Text("Cancelar",
+                style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.danger,
               foregroundColor: AppTheme.paper,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text("Eliminar"),
           ),
@@ -312,56 +326,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     });
   }
 
-  Future<void> _confirmarYDescargar(Song cancion) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surfaceLight,
-        title: Text('Descargar canción', style: AppTheme.subheading.copyWith(fontSize: 17)),
-        content: Text(
-          'Se descargará "${cancion.title}" para escucharla sin conexión. '
-          'Esto puede consumir datos móviles si no estás en Wi-Fi.',
-          style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar', style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Descargar', style: TextStyle(color: AppTheme.primary)),
-          ),
-        ],
-      ),
-    );
-    if (confirmar != true || !mounted) return;
-
-    final provider = context.read<PlayerProvider>();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Descargando "${cancion.title}"...'),
-        backgroundColor: AppTheme.primary,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    final exito = await provider.downloadSong(cancion);
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          exito
-              ? '"${cancion.title}" descargada ✓'
-              : 'No se pudo descargar "${cancion.title}". Revisa tu conexión.',
-        ),
-        backgroundColor: exito ? AppTheme.amber : AppTheme.danger,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
   void _volverAInicio() {
     setState(() {
       seccionActiva = "Tu Biblioteca";
@@ -378,198 +342,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     setState(() {
       seccionActiva = seccion;
       subFiltroSeleccionado = null;
-      if (seccion == "Tu Biblioteca") bibliotecaSeleccionada = "Principal (Drive)";
+      if (seccion == "Tu Biblioteca")
+        bibliotecaSeleccionada = "Principal (Drive)";
     });
   }
 
-  Widget _construirMenuAcciones(Song cancion) {
-    final playlistProvider = context.watch<PlaylistProvider>();
-    final esFavorita = playlistProvider.isFavorite(cancion.id);
-    final playerProviderDescargas = context.watch<PlayerProvider>();
-    final estaDescargada = playerProviderDescargas.isDownloaded(cancion.id);
-
-    Playlist? playlistActual;
-    if (bibliotecaSeleccionada != "Principal (Drive)" &&
-        bibliotecaSeleccionada != "Favoritos" &&
-        bibliotecaSeleccionada != "Recientes") {
-      for (final p in playlistProvider.playlists) {
-        if (p.name == bibliotecaSeleccionada) {
-          playlistActual = p;
-          break;
-        }
-      }
-    }
-    final yaEnPlaylistActual = playlistActual != null &&
-        playlistActual.songs.any((s) => s.id == cancion.id);
-
-    return PopupMenuButton<String>(
-      tooltip: "Más opciones",
-      icon: const Icon(Icons.more_vert, color: AppTheme.mutedInk),
-      color: AppTheme.surfaceLight,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (accion) {
-        final provider = context.read<PlaylistProvider>();
-        if (accion == "favoritos") {
-          HapticFeedback.mediumImpact();
-          provider.toggleFavorite(cancion.id);
-        } else if (accion == "quitar_actual" && playlistActual != null) {
-          provider.removeSongFromPlaylist(playlistActual.id, cancion.id);
-        } else if (accion == "nueva_playlist") {
-          _mostrarDialogoNuevaPlaylist(cancion);
-        } else if (accion.startsWith("add_")) {
-          provider.addSongToPlaylist(accion.substring(4), cancion);
-        } else if (accion == "descargar") {
-          _confirmarYDescargar(cancion);
-        } else if (accion == "eliminar_descarga") {
-          context.read<PlayerProvider>().deleteDownload(cancion.id);
-        }
-      },
-      itemBuilder: (context) {
-        List<PopupMenuEntry<String>> items = [
-          PopupMenuItem(
-            value: "favoritos",
-            child: Row(
-              children: [
-                Icon(
-                  esFavorita ? Icons.favorite : Icons.favorite_border,
-                  color: AppTheme.danger,
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  esFavorita ? "Quitar de Favoritos" : "Añadir a Favoritos",
-                  style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          if (estaDescargada)
-            PopupMenuItem(
-              value: "eliminar_descarga",
-              child: Row(
-                children: [
-                  const Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
-                  const SizedBox(width: 10),
-                  Text("Eliminar descarga", style: AppTheme.body.copyWith(color: AppTheme.danger, fontSize: 13)),
-                ],
-              ),
-            )
-          else
-            PopupMenuItem(
-              value: "descargar",
-              child: Row(
-                children: [
-                  const Icon(Icons.download, color: AppTheme.primary, size: 18),
-                  const SizedBox(width: 10),
-                  Text("Descargar offline", style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13)),
-                ],
-              ),
-            ),
-        ];
-        if (yaEnPlaylistActual) {
-          items.add(
-            PopupMenuItem(
-              value: "quitar_actual",
-              child: Row(
-                children: [
-                  const Icon(Icons.remove_circle_outline, color: AppTheme.danger, size: 18),
-                  const SizedBox(width: 10),
-                  Text("Quitar de esta carpeta", style: AppTheme.body.copyWith(color: AppTheme.danger, fontSize: 13)),
-                ],
-              ),
-            ),
-          );
-        }
-        items.add(const PopupMenuDivider());
-        for (final p in playlistProvider.playlists) {
-          items.add(
-            PopupMenuItem(
-              value: "add_${p.id}",
-              child: Row(
-                children: [
-                  const Icon(Icons.folder, color: AppTheme.primary, size: 18),
-                  const SizedBox(width: 10),
-                  Text(p.name, style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13)),
-                ],
-              ),
-            ),
-          );
-        }
-        items.add(
-          PopupMenuItem(
-            value: "nueva_playlist",
-            child: Row(
-              children: [
-                const Icon(Icons.add_circle_outline, color: AppTheme.primary, size: 18),
-                const SizedBox(width: 10),
-                Text("Nueva playlist...", style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13)),
-              ],
-            ),
-          ),
-        );
-        return items;
-      },
-    );
-  }
-
-  Future<void> _mostrarDialogoNuevaPlaylist(Song cancion) async {
-    final controlador = TextEditingController();
-    final nombre = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Nueva playlist", style: AppTheme.subheading.copyWith(fontSize: 17)),
-        content: TextField(
-          controller: controlador,
-          autofocus: true,
-          style: AppTheme.body.copyWith(color: AppTheme.paper),
-          decoration: InputDecoration(
-            hintText: "Nombre de la playlist",
-            hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
-            filled: true,
-            fillColor: AppTheme.surfaceLight,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          onSubmitted: (value) => Navigator.pop(context, value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancelar", style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, controlador.text.trim()),
-            style: AppTheme.primaryButton,
-            child: const Text("Crear"),
-          ),
-        ],
-      ),
-    );
-
-    if (nombre == null || nombre.isEmpty) return;
-    if (!mounted) return;
-
-    final provider = context.read<PlaylistProvider>();
-    final yaExiste = provider.playlists.any((p) => p.name == nombre);
-    final playlist = yaExiste
-        ? provider.playlists.firstWhere((p) => p.name == nombre)
-        : provider.createPlaylist(nombre);
-
-    provider.addSongToPlaylist(playlist.id, cancion);
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Agregada a "$nombre"'),
-        backgroundColor: AppTheme.primary,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  // El menú "más opciones" de cada canción (favoritos, descargar,
+  // agregar a playlist) vive en su propio widget autocontenido:
+  // ver `SongOptionsMenu` en lib/widgets/song_options_menu.dart.
 
   @override
   Widget build(BuildContext context) {
@@ -590,15 +370,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     List<Song> cancionesParaNombre(String nombre) {
       if (nombre == "Principal (Drive)") return canciones;
       if (nombre == "Favoritos") {
-        return canciones.where((c) => playlistProvider.isFavorite(c.id)).toList();
+        return canciones
+            .where((c) => playlistProvider.isFavorite(c.id))
+            .toList();
       }
       if (nombre == "Recientes") {
         final porId = {for (final c in canciones) c.id: c};
-        return player.historialIds.map((id) => porId[id]).whereType<Song>().toList();
+        return player.historialIds
+            .map((id) => porId[id])
+            .whereType<Song>()
+            .toList();
       }
       if (nombre == "Más Escuchadas") {
         final porId = {for (final c in canciones) c.id: c};
-        return player.masEscuchadasIds.map((id) => porId[id]).whereType<Song>().toList();
+        return player.masEscuchadasIds
+            .map((id) => porId[id])
+            .whereType<Song>()
+            .toList();
       }
       for (final p in playlistProvider.playlists) {
         if (p.name == nombre) return p.songs;
@@ -606,7 +394,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       return [];
     }
 
-    List<String> listaArtistas = canciones.map((c) => c.artist).toSet().toList();
+    List<String> listaArtistas =
+        canciones.map((c) => c.artist).toSet().toList();
     List<String> listaAlbumes = canciones.map((c) => c.album).toSet().toList();
 
     final Map<String, Song> representativaPorArtista = {};
@@ -620,11 +409,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     if (seccionActiva == "Estadísticas") {
       widgetCentral = StatisticsScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Recomendaciones") {
-      widgetCentral = RecommendationsScreen(allSongs: canciones, onVolver: _volverAInicio);
+      widgetCentral =
+          RecommendationsScreen(allSongs: canciones, onVolver: _volverAInicio);
     } else if (seccionActiva == "Descubrir") {
       widgetCentral = DescubrirScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Buscador Online") {
-      widgetCentral = DualSearchScreen(onVolver: _volverAInicio); // <--- PASANDO LA FUNCIÓN DE RETORNO
+      widgetCentral = DualSearchScreen(
+          onVolver: _volverAInicio); // <--- PASANDO LA FUNCIÓN DE RETORNO
     } else if (seccionActiva == "Música Descargada") {
       widgetCentral = DownloadedSongsView(onVolver: _volverAInicio);
     } else {
@@ -640,16 +431,22 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           cancionesBase = cancionesParaNombre(bibliotecaSeleccionada);
         }
       } else if (seccionActiva == "Artistas" && subFiltroSeleccionado != null) {
-        cancionesBase = canciones.where((c) => c.artist == subFiltroSeleccionado).toList();
+        cancionesBase =
+            canciones.where((c) => c.artist == subFiltroSeleccionado).toList();
       } else if (seccionActiva == "Álbumes" && subFiltroSeleccionado != null) {
-        cancionesBase = canciones.where((c) => c.album == subFiltroSeleccionado).toList();
-      } else if (seccionActiva == "Playlists" && subFiltroSeleccionado != null) {
+        cancionesBase =
+            canciones.where((c) => c.album == subFiltroSeleccionado).toList();
+      } else if (seccionActiva == "Playlists" &&
+          subFiltroSeleccionado != null) {
         cancionesBase = cancionesParaNombre(subFiltroSeleccionado!);
       }
 
-      final nombreVistaActual = (seccionActiva == "Tu Biblioteca" && !mostrarInicio)
-          ? (bibliotecaSeleccionada == "Principal (Drive)" ? subFiltroSeleccionado : bibliotecaSeleccionada)
-          : (seccionActiva == "Playlists" ? subFiltroSeleccionado : null);
+      final nombreVistaActual =
+          (seccionActiva == "Tu Biblioteca" && !mostrarInicio)
+              ? (bibliotecaSeleccionada == "Principal (Drive)"
+                  ? subFiltroSeleccionado
+                  : bibliotecaSeleccionada)
+              : (seccionActiva == "Playlists" ? subFiltroSeleccionado : null);
       final esVistaDeFavoritos = nombreVistaActual == "Favoritos";
       Playlist? playlistDeVistaActual;
       if (nombreVistaActual != null &&
@@ -664,26 +461,33 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           }
         }
       }
-      final sePuedeQuitarConSwipe = esVistaDeFavoritos || playlistDeVistaActual != null;
+      final sePuedeQuitarConSwipe =
+          esVistaDeFavoritos || playlistDeVistaActual != null;
 
       final textoBusqueda = _buscadorController.text.toLowerCase();
       List<Song> cancionesFiltradas = textoBusqueda.isEmpty
           ? cancionesBase
-          : cancionesBase.where((c) => 
-              c.title.toLowerCase().contains(textoBusqueda) || 
-              c.artist.toLowerCase().contains(textoBusqueda) ||
-              c.album.toLowerCase().contains(textoBusqueda)
-            ).toList();
+          : cancionesBase
+              .where((c) =>
+                  c.title.toLowerCase().contains(textoBusqueda) ||
+                  c.artist.toLowerCase().contains(textoBusqueda) ||
+                  c.album.toLowerCase().contains(textoBusqueda))
+              .toList();
 
       final String tituloVista;
       if (mostrarInicio) {
         tituloVista = "Inicio";
       } else if (subFiltroSeleccionado != null) {
-        tituloVista = (seccionActiva == "Tu Biblioteca" && bibliotecaSeleccionada == "Principal (Drive)")
-            ? (subFiltroSeleccionado == "Principal (Drive)" ? "Toda tu música" : subFiltroSeleccionado!)
+        tituloVista = (seccionActiva == "Tu Biblioteca" &&
+                bibliotecaSeleccionada == "Principal (Drive)")
+            ? (subFiltroSeleccionado == "Principal (Drive)"
+                ? "Toda tu música"
+                : subFiltroSeleccionado!)
             : subFiltroSeleccionado!;
       } else {
-        tituloVista = seccionActiva == "Tu Biblioteca" ? "Biblioteca: $bibliotecaSeleccionada" : seccionActiva;
+        tituloVista = seccionActiva == "Tu Biblioteca"
+            ? "Biblioteca: $bibliotecaSeleccionada"
+            : seccionActiva;
       }
 
       widgetCentral = Column(
@@ -693,7 +497,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             children: [
               if (subFiltroSeleccionado != null) ...[
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.paper, size: 18),
+                  icon: const Icon(Icons.arrow_back_ios_new,
+                      color: AppTheme.paper, size: 18),
                   tooltip: "Volver",
                   onPressed: () => setState(() => subFiltroSeleccionado = null),
                 ),
@@ -702,7 +507,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               Expanded(
                 child: Text(
                   tituloVista,
-                  style: AppTheme.heading.copyWith(fontSize: esPantallaPequena ? 20 : 24),
+                  style: AppTheme.heading
+                      .copyWith(fontSize: esPantallaPequena ? 20 : 24),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -717,13 +523,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                           color: AppTheme.primary,
                         ),
                       )
-                    : const Icon(Icons.refresh_rounded, color: AppTheme.mutedInk),
+                    : const Icon(Icons.refresh_rounded,
+                        color: AppTheme.mutedInk),
                 onPressed: actualizando ? null : _actualizarCanciones,
               ),
             ],
           ),
           const SizedBox(height: 16),
-
           if (mostrarInicio)
             Expanded(
               child: InicioTab(
@@ -736,18 +542,22 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 recomendaciones: player.getRecommendations(canciones),
                 playlists: playlistProvider.playlists,
                 onRefrescar: _actualizarCanciones,
-                onVerBibliotecaCompleta: () => setState(() => subFiltroSeleccionado = "Principal (Drive)"),
+                onVerBibliotecaCompleta: () =>
+                    setState(() => subFiltroSeleccionado = "Principal (Drive)"),
                 onAbrirBuscadorOnline: () => setState(() {
                   seccionActiva = "Buscador Online";
                   subFiltroSeleccionado = null;
                 }),
-                onVerTodoRecientes: () => setState(() => subFiltroSeleccionado = "Recientes"),
-                onVerTodoMasEscuchadas: () => setState(() => subFiltroSeleccionado = "Más Escuchadas"),
+                onVerTodoRecientes: () =>
+                    setState(() => subFiltroSeleccionado = "Recientes"),
+                onVerTodoMasEscuchadas: () =>
+                    setState(() => subFiltroSeleccionado = "Más Escuchadas"),
                 onVerTodoPlaylists: () => setState(() {
                   seccionActiva = "Playlists";
                   subFiltroSeleccionado = null;
                 }),
-                onVerTodoFavoritos: () => setState(() => subFiltroSeleccionado = "Favoritos"),
+                onVerTodoFavoritos: () =>
+                    setState(() => subFiltroSeleccionado = "Favoritos"),
                 onVerTodoRecomendaciones: () => setState(() {
                   seccionActiva = "Recomendaciones";
                   subFiltroSeleccionado = null;
@@ -759,14 +569,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 onIrASeccion: _cambiarSeccion,
               ),
             )
-          else if (seccionActiva == "Playlists" && subFiltroSeleccionado == null)
+          else if (seccionActiva == "Playlists" &&
+              subFiltroSeleccionado == null)
             Expanded(
               child: VistaSpotifyGrid(
                 titulo: "Playlists",
-                elementos: nombresBibliotecas.where((b) => b != "Principal (Drive)").toList(),
+                elementos: nombresBibliotecas
+                    .where((b) => b != "Principal (Drive)")
+                    .toList(),
                 icono: Icons.playlist_play_rounded,
                 esPantallaPequena: esPantallaPequena,
-                onSeleccionarElemento: (nombre) => setState(() => subFiltroSeleccionado = nombre),
+                onSeleccionarElemento: (nombre) =>
+                    setState(() => subFiltroSeleccionado = nombre),
               ),
             )
           else if (seccionActiva == "Artistas" && subFiltroSeleccionado == null)
@@ -777,7 +591,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 icono: Icons.person_rounded,
                 esPantallaPequena: esPantallaPequena,
                 representativas: representativaPorArtista,
-                onSeleccionarElemento: (nombre) => setState(() => subFiltroSeleccionado = nombre),
+                onSeleccionarElemento: (nombre) =>
+                    setState(() => subFiltroSeleccionado = nombre),
               ),
             )
           else if (seccionActiva == "Álbumes" && subFiltroSeleccionado == null)
@@ -788,7 +603,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 icono: Icons.album_rounded,
                 esPantallaPequena: esPantallaPequena,
                 representativas: representativaPorAlbum,
-                onSeleccionarElemento: (nombre) => setState(() => subFiltroSeleccionado = nombre),
+                onSeleccionarElemento: (nombre) =>
+                    setState(() => subFiltroSeleccionado = nombre),
               ),
             )
           else ...[
@@ -800,13 +616,16 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 ),
                 child: TextField(
                   controller: _buscadorController,
-                  style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 14),
+                  style: AppTheme.body
+                      .copyWith(color: AppTheme.paper, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: "¿Qué te apetece reproducir?",
                     hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
-                    prefixIcon: const Icon(Icons.search, color: AppTheme.faintInk),
+                    prefixIcon:
+                        const Icon(Icons.search, color: AppTheme.faintInk),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
                   ),
                 ),
               ),
@@ -828,7 +647,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
                       onPressed: () {
-                        final lista = List<Song>.from(cancionesFiltradas)..shuffle();
+                        final lista = List<Song>.from(cancionesFiltradas)
+                          ..shuffle();
                         player.playSong(lista[0], lista, 0);
                       },
                       icon: const Icon(Icons.shuffle_rounded, size: 20),
@@ -874,18 +694,22 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         itemCount: cancionesFiltradas.length,
                         itemBuilder: (context, index) {
                           final cancion = cancionesFiltradas[index];
-                          final estaSonando = player.currentSong?.id == cancion.id;
+                          final estaSonando =
+                              player.currentSong?.id == cancion.id;
                           final descargando = player.isDownloading(cancion.id);
 
                           final fila = Container(
                             margin: const EdgeInsets.only(bottom: 4),
                             decoration: BoxDecoration(
-                              color: estaSonando ? AppTheme.surfaceLight : Colors.transparent,
+                              color: estaSonando
+                                  ? AppTheme.surfaceLight
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: ListTile(
                               dense: esPantallaPequena,
-                              onTap: () => player.playSong(cancion, cancionesFiltradas, index),
+                              onTap: () => player.playSong(
+                                  cancion, cancionesFiltradas, index),
                               leading: Stack(
                                 clipBehavior: Clip.none,
                                 children: [
@@ -902,8 +726,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                                     Positioned.fill(
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.55),
-                                          borderRadius: BorderRadius.circular(6),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.55),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: const Center(
                                           child: SizedBox(
@@ -935,16 +761,24 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               title: Text(
                                 cancion.title,
                                 style: TextStyle(
-                                  color: estaSonando ? AppTheme.amber : AppTheme.paper,
+                                  color: estaSonando
+                                      ? AppTheme.amber
+                                      : AppTheme.paper,
                                   fontSize: esPantallaPequena ? 13 : 15,
-                                  fontWeight: estaSonando ? FontWeight.bold : FontWeight.w500,
+                                  fontWeight: estaSonando
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
                                 ),
                               ),
                               subtitle: Text(
                                 "${cancion.artist} • ${cancion.album}",
-                                style: AppTheme.small.copyWith(fontSize: esPantallaPequena ? 11 : 12),
+                                style: AppTheme.small.copyWith(
+                                    fontSize: esPantallaPequena ? 11 : 12),
                               ),
-                              trailing: _construirMenuAcciones(cancion),
+                              trailing: SongOptionsMenu(
+                                cancion: cancion,
+                                bibliotecaSeleccionada: bibliotecaSeleccionada,
+                              ),
                             ),
                           );
 
@@ -961,7 +795,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                                 color: AppTheme.danger,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.delete_outline, color: AppTheme.paper),
+                              child: const Icon(Icons.delete_outline,
+                                  color: AppTheme.paper),
                             ),
                             onDismissed: (_) {
                               HapticFeedback.mediumImpact();
@@ -969,7 +804,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               if (esVistaDeFavoritos) {
                                 provider.toggleFavorite(cancion.id);
                               } else if (playlistDeVistaActual != null) {
-                                provider.removeSongFromPlaylist(playlistDeVistaActual.id, cancion.id);
+                                provider.removeSongFromPlaylist(
+                                    playlistDeVistaActual.id, cancion.id);
                               }
                             },
                             child: fila,
@@ -997,110 +833,20 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
 
     if (!esPantallaPequena) {
-      return Scaffold(
-        body: Row(
-          children: [
-            BarraLateral(
-              seccionActiva: seccionActiva,
-              bibliotecaSeleccionada: bibliotecaSeleccionada,
-              bibliotecas: nombresBibliotecas,
-              controladorNuevaBib: _nuevaBibController,
-              onCambiarSeccion: (seccion) => setState(() {
-                seccionActiva = seccion;
-                subFiltroSeleccionado = null;
-                if (seccion == "Tu Biblioteca") bibliotecaSeleccionada = "Principal (Drive)";
-              }),
-              onSeleccionarBiblioteca: (bib) => setState(() {
-                bibliotecaSeleccionada = bib;
-                seccionActiva = "Tu Biblioteca";
-                subFiltroSeleccionado = null;
-              }),
-              onCrearBiblioteca: _crearBiblioteca,
-              onEliminarBiblioteca: _mostrarMenuBiblioteca,
-            ),
-            Expanded(
-              flex: 3,
-              child: Column(
-                children: [
-                  Expanded(child: contenidoPrincipal),
-                  const MiniPlayer(),
-                ],
-              ),
-            ),
-            Container(
-              width: 300,
-              color: AppTheme.background,
-              padding: const EdgeInsets.all(16),
-              child: player.currentSong == null
-                  ? Center(
-                      child: Text(
-                        "Selecciona una canción",
-                        style: AppTheme.body.copyWith(fontSize: 13),
-                      ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                player.currentSong!.album,
-                                style: AppTheme.subheading,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const Icon(Icons.more_horiz, color: AppTheme.mutedInk),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SongCover(
-                          title: player.currentSong!.title,
-                          artist: player.currentSong!.artist,
-                          url: player.currentSong!.url,
-                          coverUrlDirecto: player.currentSong!.coverUrl,
-                          size: 260,
-                          borderRadius: BorderRadius.circular(12),
-                          showShadow: true,
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          player.currentSong!.title,
-                          style: AppTheme.heading.copyWith(fontSize: 18),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          player.currentSong!.artist,
-                          style: AppTheme.body,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          "Videos musicales relacionados",
-                          style: TextStyle(
-                            color: AppTheme.paper,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          height: 100,
-                          decoration: AppTheme.cardDecoration,
-                          child: const Center(
-                            child: Icon(Icons.play_circle_filled, size: 40, color: AppTheme.mutedInk),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-          ],
-        ),
+      return PantallaPrincipalDesktop(
+        seccionActiva: seccionActiva,
+        bibliotecaSeleccionada: bibliotecaSeleccionada,
+        bibliotecas: nombresBibliotecas,
+        controladorNuevaBib: _nuevaBibController,
+        contenidoPrincipal: contenidoPrincipal,
+        onCambiarSeccion: _cambiarSeccion,
+        onSeleccionarBiblioteca: (bib) => setState(() {
+          bibliotecaSeleccionada = bib;
+          seccionActiva = "Tu Biblioteca";
+          subFiltroSeleccionado = null;
+        }),
+        onCrearBiblioteca: _crearBiblioteca,
+        onEliminarBiblioteca: _mostrarMenuBiblioteca,
       );
     }
 
@@ -1112,7 +858,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // caía directo sobre esta pantalla (la raíz) y la cerraba. Ahora,
     // si no estamos ya en el home real, "atrás" navega un nivel para
     // adentro en vez de salir de la app.
-    final enHome = seccionActiva == "Tu Biblioteca" && subFiltroSeleccionado == null;
+    final enHome =
+        seccionActiva == "Tu Biblioteca" && subFiltroSeleccionado == null;
     // Si el video de YouTube está en pantalla completa, "atrás" lo
     // minimiza en vez de navegar -- así nunca se pierde por accidente
     // al tocar atrás, tal como pasaba antes de este overlay.
@@ -1136,7 +883,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             appBar: AppBar(
               backgroundColor: AppTheme.background,
               elevation: 0,
-              title: Text("CACOCAPP", style: AppTheme.wordmark.copyWith(fontSize: 18)),
+              title: Text("CACOCAPP",
+                  style: AppTheme.wordmark.copyWith(fontSize: 18)),
               iconTheme: const IconThemeData(color: AppTheme.paper),
             ),
             drawer: Drawer(
@@ -1150,7 +898,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   setState(() {
                     seccionActiva = seccion;
                     subFiltroSeleccionado = null;
-                    if (seccion == "Tu Biblioteca") bibliotecaSeleccionada = "Principal (Drive)";
+                    if (seccion == "Tu Biblioteca")
+                      bibliotecaSeleccionada = "Principal (Drive)";
                   });
                   Navigator.pop(context);
                 },
@@ -1180,4 +929,3 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 }
-
