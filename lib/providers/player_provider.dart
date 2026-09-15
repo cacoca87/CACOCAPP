@@ -10,6 +10,8 @@ import 'package:just_audio/just_audio.dart'; // Asegura acceso a ProcessingState
 import '../models/song.dart';
 import '../services/my_audio_handler.dart';
 import '../services/youtube_service.dart'; // Importante para refrescar los enlaces expirados
+import '../utils/extension_guesser.dart';
+import 'refresh_retry_guard.dart';
 
 class PlayerProvider extends ChangeNotifier {
   final MyAudioHandler audioHandler;
@@ -36,18 +38,19 @@ class PlayerProvider extends ChangeNotifier {
   final Set<String> _descargando = {};
   Future<void>? _descargasListas;
 
-  // Guardas contra el bucle de "refresco de enlace expirado" (ver más
+  // Guarda contra el bucle de "refresco de enlace expirado" (ver más
   // abajo, en el constructor): sin esto, dos canciones de YouTube que
   // fallan a la vez pueden quedar reintentando para siempre entre sí,
-  // cada una reseteando el contador de reintentos de la otra.
-  static const int _maxIntentosRefrescoUrl = 3;
+  // cada una reseteando el contador de reintentos de la otra. La
+  // lógica vive aparte, en `RefreshRetryGuard`, para poder testearla
+  // sin tener que levantar todo el motor de audio -- ver
+  // test/providers/refresh_retry_guard_test.dart.
+  final RefreshRetryGuard _refreshGuard = RefreshRetryGuard();
   // Se incrementa en cada `setQueue`. Sirve para que un refresco de
   // enlace vencido que quedó esperando una respuesta de red se dé
   // cuenta de que, mientras tanto, se pidió reproducir otra cosa, y no
   // la pise al terminar.
   int _playbackRequestId = 0;
-  String? _cancionEnRefresco;
-  int _intentosRefrescoUrl = 0;
 
   // Getters
   List<Song> get queue => _queue;
@@ -115,8 +118,7 @@ class PlayerProvider extends ChangeNotifier {
         // Reproducción normal (o recién arrancando bien): se limpia
         // cualquier racha de reintentos previa para que la próxima vez
         // que ESTA canción falle empiece a contar de cero de nuevo.
-        _intentosRefrescoUrl = 0;
-        _cancionEnRefresco = null;
+        _refreshGuard.reset();
         return;
       }
 
@@ -130,16 +132,11 @@ class PlayerProvider extends ChangeNotifier {
       // (dos canciones de YouTube quedaron alternándose en este bucle
       // sin parar, porque cada refresco "exitoso" reseteaba el propio
       // contador de reintentos de `my_audio_handler.dart`).
-      if (_cancionEnRefresco != song.id) {
-        _cancionEnRefresco = song.id;
-        _intentosRefrescoUrl = 0;
-      }
-      if (_intentosRefrescoUrl >= _maxIntentosRefrescoUrl) return;
-      _intentosRefrescoUrl++;
+      if (!_refreshGuard.deberiaReintentar(song.id)) return;
 
       debugPrint(
         'Enlace expirado o caída detectada. Refrescando URL para: ${song.title} '
-        '(intento $_intentosRefrescoUrl/$_maxIntentosRefrescoUrl)',
+        '(intento ${_refreshGuard.intentosPara(song.id)}/${_refreshGuard.maxIntentos})',
       );
 
       // Token de generación: si mientras esto está en vuelo el usuario
@@ -373,24 +370,6 @@ class PlayerProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Adivina la extensión de archivo a partir del último segmento de
-  /// la RUTA de la URL (no de toda la URL entera -- partir el string
-  /// completo por puntos podía agarrar basura de parámetros de la
-  /// query, ej. un "1.5" dentro de "?rate=1.5"). Se usa solo cuando no
-  /// se pasa `extensionForzada` a [downloadSong] (fuentes como YouTube
-  /// SÍ pasan la extensión real del stream elegido, porque su URL no
-  /// tiene ninguna extensión reconocible).
-  String _adivinarExtension(String url) {
-    try {
-      final segmento = Uri.parse(url).pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
-      if (segmento.contains('.')) {
-        final ext = segmento.split('.').last;
-        if (ext.isNotEmpty && ext.length <= 5) return ext;
-      }
-    } catch (_) {}
-    return 'mp3';
-  }
-
   Future<bool> downloadSong(Song song, {String? extensionForzada}) async {
     if (_rutasDescargadas.containsKey(song.id)) return true;
     if (_descargando.contains(song.id)) return false;
@@ -404,7 +383,7 @@ class PlayerProvider extends ChangeNotifier {
       final carpeta = Directory('${dir.path}/descargas');
       if (!await carpeta.exists()) await carpeta.create(recursive: true);
 
-      final extension = extensionForzada ?? _adivinarExtension(song.url);
+      final extension = extensionForzada ?? adivinarExtensionDeUrl(song.url);
       final archivo = File('${carpeta.path}/${song.id}.$extension');
 
       final respuesta = await http.get(Uri.parse(song.url)).timeout(const Duration(minutes: 5));
@@ -462,8 +441,7 @@ class PlayerProvider extends ChangeNotifier {
     // Un pedido explícito de reproducir algo (el usuario tocó play de
     // nuevo, por ejemplo) siempre arranca con presupuesto de reintentos
     // fresco, aunque esa misma canción ya haya agotado el suyo antes.
-    _intentosRefrescoUrl = 0;
-    _cancionEnRefresco = null;
+    _refreshGuard.reset();
     _queue = songs;
     _currentIndex = initialIndex.clamp(0, _queue.isNotEmpty ? _queue.length - 1 : 0);
     _currentSong = _queue.isNotEmpty ? _queue[_currentIndex] : null;

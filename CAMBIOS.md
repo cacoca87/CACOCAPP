@@ -612,3 +612,29 @@ La pantalla reconstruida hace lo mismo que la original: lista `player.downloaded
 
 `flutter analyze` y `flutter test` siguen limpios. Instalá el APK y confirmame que tus canciones descargadas del R2 aparecen ahí.
 
+---
+
+# Undécima vuelta: control de versiones real, y tests para la lógica que causó el bucle infinito
+
+## 40. El proyecto pasó a tener control de versiones de verdad (git + GitHub)
+
+Hasta esta vuelta se venía trabajando sin git -- lo que ya había causado un problema real: tuve que reconstruir `downloaded_songs_view.dart` de memoria porque no había ningún historial del que recuperarlo al borrarlo por error. Se inicializó el repo, se armó un `.gitignore` que excluye lo que nunca debe versionarse (`android/local.properties` -- rutas del SDK específicas de tu máquina --, keystores, el zip de respaldo suelto, configuración local de Claude Code), y se conectó con el repo `CACOCAPP` que ya tenías en GitHub (se combinó con el README placeholder que había quedado ahí, quedándose con el real). Con esto, el pipeline de CI que se armó en la primera vuelta (`.github/workflows/flutter_ci.yml`) corrió por primera vez en la vida del proyecto.
+
+## 41. Se extrajo la lógica del bug del bucle infinito a su propia clase testeable, y se le escribieron tests reales
+
+**Archivos nuevos:** `lib/providers/refresh_retry_guard.dart`, `lib/utils/extension_guesser.dart`, `test/providers/refresh_retry_guard_test.dart`, `test/utils/extension_guesser_test.dart`
+**Archivo modificado:** `lib/providers/player_provider.dart`
+
+`PlayerProvider` no se puede testear como está: su constructor depende de `MyAudioHandler`, que a su vez crea un `AudioPlayer` real de `just_audio` y usa `audio_session`/`audio_service` -- levantar todo eso en un test unitario (sin un celular real) es fràgil y no es el camino profesional. En vez de forzar eso, se sacó la lógica que **de verdad** causó el bug de esta sesión (el conteo de reintentos del refresco de enlaces vencidos) a una clase aparte, `RefreshRetryGuard`, sin nada de streams ni de red -- pura lógica, 100% testeable en aislamiento.
+
+Los tests nuevos cubren exactamente el escenario real que viste en el log (dos canciones de YouTube fallando y alternándose sin parar): confirman que el presupuesto de reintentos de una canción no se "hereda" ni contamina el de otra, que se agota como corresponde, y que un pedido explícito de reproducir algo (`setQueue`) le da presupuesto fresco. También se extrajo `_adivinarExtension` (la lógica de la extensión de archivo al descargar, que tuvo su propio bug real en la cuarta vuelta) a una función pura en `extension_guesser.dart`, con tests para el caso real que rompía antes (un parámetro de query con punto, tipo `?rate=1.5`, confundido con una extensión de archivo).
+
+`flutter analyze` sigue sin errores y `flutter test` pasa con **25 tests** (subió de 14 -- los 11 nuevos son justo sobre la lógica más compleja y la que más veces se rompió esta sesión).
+
+## Lo que queda pendiente de la lista de mejoras "premium"
+
+- Firebase Crashlytics (reportes de error en producción) -- necesita que crees el proyecto de Firebase primero, avisame cuando tengas 5 minutos.
+- Seguir reduciendo el tamaño de `pantalla_principal.dart`.
+- Sacar claves/URLs hardcodeadas a configuración por entorno.
+- Tests para `getRecommendations`/`masEscuchadasIds` (lógica pura, se puede extraer igual que se hizo acá).
+
