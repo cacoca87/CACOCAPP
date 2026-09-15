@@ -92,7 +92,8 @@ class _LyricsScreenState extends State<LyricsScreen> {
       ),
       body: cancion == null
           ? Center(
-              child: Text("No hay canción reproduciéndose", style: AppTheme.body),
+              child:
+                  Text("No hay canción reproduciéndose", style: AppTheme.body),
             )
           : FutureBuilder<Lyrics>(
               future: _future,
@@ -144,7 +145,8 @@ class _LyricsScreenState extends State<LyricsScreen> {
         final posicion = snapshot.data ?? Duration.zero;
         final indiceActual = _indiceLineaActual(lineas, posicion);
 
-        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollALinea(indiceActual));
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _scrollALinea(indiceActual));
 
         return ListView.builder(
           controller: _scrollController,

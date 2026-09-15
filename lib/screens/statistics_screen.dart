@@ -43,7 +43,8 @@ class StatisticsScreen extends StatelessWidget {
       backgroundColor: AppTheme.ink,
       appBar: AppBar(
         backgroundColor: AppTheme.ink,
-        title: Text('Estadísticas de escucha', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        title: Text('Estadísticas de escucha',
+            style: AppTheme.subheading.copyWith(fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
           tooltip: "Volver",
@@ -74,15 +75,19 @@ class StatisticsScreen extends StatelessWidget {
                   child: BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
-                      maxY: top.isNotEmpty ? (top.first.value.toDouble() * 1.1) : 10.0,
+                      maxY: top.isNotEmpty
+                          ? (top.first.value.toDouble() * 1.1)
+                          : 10.0,
                       barTouchData: BarTouchData(
                         enabled: true,
                         touchTooltipData: BarTouchTooltipData(
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
                             // Buscamos de forma segura el título de la canción mediante su ID o índice
                             return BarTooltipItem(
-                              '${_formatearTiempo(rod.toY.toInt())}',
-                              const TextStyle(color: AppTheme.paper, fontWeight: FontWeight.bold),
+                              _formatearTiempo(rod.toY.toInt()),
+                              const TextStyle(
+                                  color: AppTheme.paper,
+                                  fontWeight: FontWeight.bold),
                             );
                           },
                         ),
@@ -120,13 +125,15 @@ class StatisticsScreen extends StatelessWidget {
                             },
                           ),
                         ),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
                       ),
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) => FlLine(
+                        getDrawingHorizontalLine: (value) => const FlLine(
                           color: AppTheme.surfaceLight,
                           strokeWidth: 1,
                         ),
@@ -140,7 +147,8 @@ class StatisticsScreen extends StatelessWidget {
                               toY: top[index].value.toDouble(),
                               color: AppTheme.amber,
                               width: 18,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(6)),
                             ),
                           ],
                         );
@@ -159,7 +167,8 @@ class StatisticsScreen extends StatelessWidget {
                     dense: true,
                     title: Text(
                       entry.key, // ID o referencia guardada en timeListened
-                      style: AppTheme.body.copyWith(fontSize: 13, color: AppTheme.paper),
+                      style: AppTheme.body
+                          .copyWith(fontSize: 13, color: AppTheme.paper),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -9,6 +9,14 @@ import 'song_cover.dart';
 /// tap ya no hace `setState` directo, avisa por [onSeleccionarElemento].
 class VistaSpotifyGrid extends StatelessWidget {
   final String titulo;
+
+  /// Etiqueta en singular que va debajo del nombre de cada tarjeta.
+  /// Antes se calculaba sacándole la última letra a [titulo], lo que
+  /// servía para "Playlists"/"Artistas" pero dejaba "Álbumes" como
+  /// "Álbume" en pantalla. Se pasa explícita para que cada sección
+  /// diga lo que corresponde.
+  final String tituloSingular;
+
   final List<String> elementos;
   final IconData icono;
   final bool esPantallaPequena;
@@ -18,6 +26,7 @@ class VistaSpotifyGrid extends StatelessWidget {
   const VistaSpotifyGrid({
     super.key,
     required this.titulo,
+    required this.tituloSingular,
     required this.elementos,
     required this.icono,
     required this.esPantallaPequena,
@@ -32,9 +41,11 @@ class VistaSpotifyGrid extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.library_music_outlined, size: 64, color: AppTheme.mutedInk),
+            const Icon(Icons.library_music_outlined,
+                size: 64, color: AppTheme.mutedInk),
             const SizedBox(height: 16),
-            Text("No hay $titulo disponibles", style: AppTheme.body.copyWith(fontSize: 16)),
+            Text("No hay $titulo disponibles",
+                style: AppTheme.body.copyWith(fontSize: 16)),
           ],
         ),
       );
@@ -45,7 +56,8 @@ class VistaSpotifyGrid extends StatelessWidget {
       children: [
         Text(
           titulo,
-          style: AppTheme.heading.copyWith(fontSize: esPantallaPequena ? 22 : 26),
+          style:
+              AppTheme.heading.copyWith(fontSize: esPantallaPequena ? 22 : 26),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -98,7 +110,8 @@ class VistaSpotifyGrid extends StatelessWidget {
                               );
                             }
                             return Container(
-                              decoration: AppTheme.gradientCard(AppTheme.gradientePara(nombreItem)),
+                              decoration: AppTheme.gradientCard(
+                                  AppTheme.gradientePara(nombreItem)),
                               child: Center(
                                 child: Icon(
                                   icono,
@@ -113,13 +126,16 @@ class VistaSpotifyGrid extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         nombreItem,
-                        style: AppTheme.body.copyWith(color: AppTheme.paper, fontWeight: FontWeight.bold, fontSize: 14),
+                        style: AppTheme.body.copyWith(
+                            color: AppTheme.paper,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        titulo.substring(0, titulo.length - 1),
+                        tituloSingular,
                         style: AppTheme.caption,
                       ),
                     ],

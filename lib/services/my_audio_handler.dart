@@ -58,7 +58,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   static const int _maxRetries = 8;
 
-  final StreamController<String> _mensajesController = StreamController<String>.broadcast();
+  final StreamController<String> _mensajesController =
+      StreamController<String>.broadcast();
   Stream<String> get mensajes => _mensajesController.stream;
 
   MyAudioHandler() {
@@ -100,7 +101,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
       session.becomingNoisyEventStream.listen((_) async {
         _wantsToPlay = false;
         await player.pause();
-        _ignoreSourceErrorsUntil = DateTime.now().add(const Duration(seconds: 2));
+        _ignoreSourceErrorsUntil =
+            DateTime.now().add(const Duration(seconds: 2));
       });
     } catch (_) {}
   }
@@ -144,19 +146,21 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
-  Future<void> _actualizarCaratulaReal(int index, MediaItem itemOriginal) async {
+  Future<void> _actualizarCaratulaReal(
+      int index, MediaItem itemOriginal) async {
     try {
       final songs = _lastSongs;
       if (songs == null || index < 0 || index >= songs.length) return;
       final urlReproduccion = songs[index].url;
 
       Uri? artUri;
-      final rutaEmbebida = await Id3CoverService.instance.getEmbeddedCoverPath(urlReproduccion);
+      final rutaEmbebida =
+          await Id3CoverService.instance.getEmbeddedCoverPath(urlReproduccion);
       if (rutaEmbebida != null) {
         artUri = Uri.file(rutaEmbebida);
       } else {
-        final urlItunes =
-            await ArtworkService.instance.getCoverUrl(itemOriginal.title, itemOriginal.artist ?? '');
+        final urlItunes = await ArtworkService.instance
+            .getCoverUrl(itemOriginal.title, itemOriginal.artist ?? '');
         if (urlItunes != null) artUri = Uri.tryParse(urlItunes);
       }
 
@@ -169,7 +173,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
       mediaItem.add(actualizado);
 
       final colaActualizada = List<MediaItem>.from(queue.value);
-      if (index < colaActualizada.length && colaActualizada[index].id == itemOriginal.id) {
+      if (index < colaActualizada.length &&
+          colaActualizada[index].id == itemOriginal.id) {
         colaActualizada[index] = actualizado;
         queue.add(colaActualizada);
       }
@@ -270,7 +275,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     // (a veces una completamente distinta, de tu biblioteca) mientras
     // el audio nuevo nunca sonaba. Ahora al menos el título es
     // siempre el correcto, se pueda reproducir o no.
-    final indiceInicial = initialIndex.clamp(0, songs.isNotEmpty ? songs.length - 1 : 0);
+    final indiceInicial =
+        initialIndex.clamp(0, songs.isNotEmpty ? songs.length - 1 : 0);
     if (mediaItems.isNotEmpty) {
       mediaItem.add(mediaItems[indiceInicial]);
     }
@@ -283,7 +289,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
         preload: true,
       );
     } catch (e, st) {
-      AppLogger.e('No se pudo cargar la fuente de audio', error: e, stackTrace: st);
+      AppLogger.e('No se pudo cargar la fuente de audio',
+          error: e, stackTrace: st);
       // Antes esta excepción se perdía en silencio: la UI no mostraba
       // ningún error y la pantalla se quedaba "trabada" sin explicar
       // por qué. Ahora se avisa por el mismo canal que ya se usa para
@@ -447,8 +454,9 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     if (enabled) await player.shuffle();
   }
 
-  Future<void> setRepeatMode(AudioServiceRepeatMode mode) async {
-    switch (mode) {
+  @override
+  Future<void> setRepeatMode(AudioServiceRepeatMode repeatMode) async {
+    switch (repeatMode) {
       case AudioServiceRepeatMode.one:
         await player.setLoopMode(LoopMode.one);
         break;

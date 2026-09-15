@@ -43,34 +43,43 @@ class BarraLateral extends StatelessWidget {
                   color: AppTheme.amber,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.graphic_eq_rounded, color: AppTheme.ink, size: 18),
+                child: const Icon(Icons.graphic_eq_rounded,
+                    color: AppTheme.ink, size: 18),
               ),
               const SizedBox(width: 10),
-              Text("CACOCAPP", style: AppTheme.wordmark.copyWith(fontSize: 18, letterSpacing: 0.4)),
+              Text("CACOCAPP",
+                  style: AppTheme.wordmark
+                      .copyWith(fontSize: 18, letterSpacing: 0.4)),
             ],
           ),
           const SizedBox(height: 28),
-          _buildItemMenu(Icons.home_rounded, "Tu Biblioteca", etiqueta: "Inicio"),
+          _buildItemMenu(Icons.home_rounded, "Tu Biblioteca",
+              etiqueta: "Inicio"),
           _buildItemMenu(Icons.queue_music_rounded, "Playlists"),
           _buildItemMenu(Icons.person_rounded, "Artistas"),
           _buildItemMenu(Icons.album_rounded, "Álbumes"),
           _buildItemMenu(Icons.bar_chart_rounded, "Estadísticas"),
           _buildItemMenu(Icons.auto_awesome_rounded, "Recomendaciones"),
           _buildItemMenu(Icons.travel_explore_rounded, "Descubrir"),
-          _buildItemMenu(Icons.cloud_queue_rounded, "Buscador Online"), // <--- NUEVA OPCIÓN AÑADIDA
+          _buildItemMenu(Icons.cloud_queue_rounded,
+              "Buscador Online"), // <--- NUEVA OPCIÓN AÑADIDA
           _buildItemMenu(Icons.download_done_rounded, "Música Descargada"),
-          Divider(color: AppTheme.hairline, height: 32),
-          Text("Crear biblioteca", style: AppTheme.caption.copyWith(color: AppTheme.mutedInk, letterSpacing: 0.6)),
+          const Divider(color: AppTheme.hairline, height: 32),
+          Text("Crear biblioteca",
+              style: AppTheme.caption
+                  .copyWith(color: AppTheme.mutedInk, letterSpacing: 0.6)),
           const SizedBox(height: 10),
           TextField(
             controller: controladorNuevaBib,
             style: AppTheme.body.copyWith(fontSize: 13, color: AppTheme.paper),
             decoration: InputDecoration(
               hintText: "Nombre...",
-              hintStyle: AppTheme.body.copyWith(fontSize: 12, color: AppTheme.faintInk),
+              hintStyle: AppTheme.body
+                  .copyWith(fontSize: 12, color: AppTheme.faintInk),
               filled: true,
               fillColor: AppTheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none,
@@ -97,7 +106,8 @@ class BarraLateral extends StatelessWidget {
                 final bib = bibliotecas[index];
                 final seleccionada = bib == bibliotecaSeleccionada &&
                     seccionActiva == "Tu Biblioteca";
-                final esProtegida = bib == "Principal (Drive)" || bib == "Favoritos";
+                final esProtegida =
+                    bib == "Principal (Drive)" || bib == "Favoritos";
                 return ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
@@ -106,7 +116,8 @@ class BarraLateral extends StatelessWidget {
                     style: AppTheme.body.copyWith(
                       fontSize: 14,
                       color: seleccionada ? AppTheme.amber : AppTheme.mutedInk,
-                      fontWeight: seleccionada ? FontWeight.w700 : FontWeight.w400,
+                      fontWeight:
+                          seleccionada ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
                   onTap: () {
@@ -136,7 +147,8 @@ class BarraLateral extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
-            Icon(icon, color: active ? AppTheme.amber : AppTheme.mutedInk, size: 20),
+            Icon(icon,
+                color: active ? AppTheme.amber : AppTheme.mutedInk, size: 20),
             const SizedBox(width: 14),
             Text(
               etiqueta ?? title,

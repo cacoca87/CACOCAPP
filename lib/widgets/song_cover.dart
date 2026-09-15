@@ -73,11 +73,13 @@ class _SongCoverState extends State<SongCover> {
     }
 
     if (widget.url.isNotEmpty) {
-      final embedded = await Id3CoverService.instance.getEmbeddedCover(widget.url);
+      final embedded =
+          await Id3CoverService.instance.getEmbeddedCover(widget.url);
       if (embedded != null) return _CoverResult(_CoverKind.bytes, embedded);
     }
 
-    final itunesUrl = await ArtworkService.instance.getCoverUrl(widget.title, widget.artist);
+    final itunesUrl =
+        await ArtworkService.instance.getCoverUrl(widget.title, widget.artist);
     if (itunesUrl != null) return _CoverResult(_CoverKind.url, itunesUrl);
 
     return const _CoverResult(_CoverKind.none, null);
@@ -117,7 +119,8 @@ class _SongCoverState extends State<SongCover> {
           );
         }
 
-        Widget cover = ClipRRect(borderRadius: widget.borderRadius, child: image);
+        Widget cover =
+            ClipRRect(borderRadius: widget.borderRadius, child: image);
         if (widget.showShadow) {
           cover = Container(
             decoration: BoxDecoration(
@@ -153,7 +156,8 @@ class _SongCoverState extends State<SongCover> {
                   color: AppTheme.amber,
                 ),
               )
-            : Icon(Icons.music_note_rounded, color: AppTheme.mutedInk, size: widget.size * 0.5),
+            : Icon(Icons.music_note_rounded,
+                color: AppTheme.mutedInk, size: widget.size * 0.5),
       ),
     );
   }

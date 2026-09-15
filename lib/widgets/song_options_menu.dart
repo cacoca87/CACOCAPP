@@ -211,6 +211,11 @@ Future<void> mostrarDialogoNuevaPlaylist(
       ],
     ),
   );
+  // El diálogo ya se cerró acá, así que el controlador no lo usa nadie
+  // más. Sin esto quedaba vivo para siempre: al vivir en una función
+  // suelta (no en un State) no hay ningún `dispose()` que lo libere, y
+  // se acumulaba uno nuevo cada vez que se abría el diálogo.
+  controlador.dispose();
 
   if (nombre == null || nombre.isEmpty) return;
   if (!context.mounted) return;

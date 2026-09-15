@@ -16,7 +16,8 @@ class RecommendationsScreen extends StatelessWidget {
   /// que realmente hay que ejecutar (volver a Inicio).
   final VoidCallback? onVolver;
 
-  const RecommendationsScreen({super.key, required this.allSongs, this.onVolver});
+  const RecommendationsScreen(
+      {super.key, required this.allSongs, this.onVolver});
 
   void _volver(BuildContext context) {
     if (onVolver != null) {
@@ -36,7 +37,8 @@ class RecommendationsScreen extends StatelessWidget {
       backgroundColor: AppTheme.ink,
       appBar: AppBar(
         backgroundColor: AppTheme.ink,
-        title: Text('Recomendado para ti', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        title: Text('Recomendado para ti',
+            style: AppTheme.subheading.copyWith(fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
           tooltip: "Volver",
@@ -68,7 +70,9 @@ class RecommendationsScreen extends StatelessWidget {
                     size: 44,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  title: Text(song.title, style: AppTheme.body.copyWith(color: AppTheme.paper, fontWeight: FontWeight.w600)),
+                  title: Text(song.title,
+                      style: AppTheme.body.copyWith(
+                          color: AppTheme.paper, fontWeight: FontWeight.w600)),
                   subtitle: Text(song.artist, style: AppTheme.small),
                   trailing: Icon(
                     esFavorita ? Icons.favorite : Icons.favorite_border,

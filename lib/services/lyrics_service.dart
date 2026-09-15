@@ -174,8 +174,9 @@ class LyricsService {
         final response = await _client.get(Uri.parse(url), headers: {
           'Range': 'bytes=0-524287'
         }).timeout(const Duration(seconds: 8));
-        if (response.statusCode != 200 && response.statusCode != 206)
+        if (response.statusCode != 200 && response.statusCode != 206) {
           return null;
+        }
         bytes = response.bodyBytes;
       }
 

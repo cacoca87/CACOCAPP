@@ -37,10 +37,13 @@ class CarruselPlaylists extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(titulo, style: AppTheme.subheading.copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+              Text(titulo,
+                  style: AppTheme.subheading
+                      .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
               TextButton(
                 onPressed: onVerTodo,
-                child: Text("Ver todo", style: AppTheme.caption.copyWith(fontSize: 12)),
+                child: Text("Ver todo",
+                    style: AppTheme.caption.copyWith(fontSize: 12)),
               ),
             ],
           ),
@@ -67,7 +70,8 @@ class CarruselPlaylists extends StatelessWidget {
                           Container(
                             width: ancho,
                             height: ancho,
-                            decoration: AppTheme.gradientCard(AppTheme.gradientePara(playlist.name)),
+                            decoration: AppTheme.gradientCard(
+                                AppTheme.gradientePara(playlist.name)),
                             child: Center(
                               child: Icon(
                                 Icons.playlist_play_rounded,
@@ -79,12 +83,16 @@ class CarruselPlaylists extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             playlist.name,
-                            style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: AppTheme.body.copyWith(
+                                color: AppTheme.paper,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text("${playlist.songs.length} canciones", style: AppTheme.small),
+                          Text("${playlist.songs.length} canciones",
+                              style: AppTheme.small),
                         ],
                       ),
                     ),

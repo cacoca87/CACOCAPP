@@ -2,7 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:CACOCAPP/models/song.dart';
 import 'package:CACOCAPP/providers/recommendation_engine.dart';
 
-Song _song(String id) => Song(id: id, title: id, artist: 'Artista', album: 'Album', url: 'x', coverUrl: '');
+Song _song(String id) => Song(
+    id: id,
+    title: id,
+    artist: 'Artista',
+    album: 'Album',
+    url: 'x',
+    coverUrl: '');
 
 void main() {
   group('calcularRecomendaciones', () {
@@ -17,7 +23,9 @@ void main() {
       expect(resultado.map((s) => s.id), everyElement('c'));
     });
 
-    test('si ya se escuchó todo, cae de nuevo sobre toda la biblioteca (no devuelve vacío)', () {
+    test(
+        'si ya se escuchó todo, cae de nuevo sobre toda la biblioteca (no devuelve vacío)',
+        () {
       final todas = [_song('a'), _song('b'), _song('c')];
       final resultado = calcularRecomendaciones(todas, ['a', 'b', 'c']);
 

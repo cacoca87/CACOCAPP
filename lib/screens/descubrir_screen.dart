@@ -34,6 +34,13 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
   bool _yaHizoAlgunaBusqueda = false;
   String? _generoActivo; // para resaltar el chip elegido, si vino de ahí
 
+  // Ver la nota del mismo contador en `dual_search_screen.dart`:
+  // cancelar el temporizador no frena una búsqueda que ya salió a la
+  // red, así que sin esto una consulta lenta podía llegar tarde y
+  // pisar los resultados de la búsqueda (o el género) que el usuario
+  // acababa de pedir.
+  int _generacionBusqueda = 0;
+
   void _volver() {
     if (widget.onVolver != null) {
       widget.onVolver!();
@@ -72,6 +79,7 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
   }
 
   Future<void> _ejecutarBusqueda(Future<List<Song>> Function() consulta) async {
+    final generacion = ++_generacionBusqueda;
     setState(() {
       _buscando = true;
       _error = null;
@@ -79,13 +87,13 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
     });
     try {
       final resultados = await consulta();
-      if (!mounted) return;
+      if (!mounted || generacion != _generacionBusqueda) return;
       setState(() {
         _resultados = resultados;
         _buscando = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generacion != _generacionBusqueda) return;
       setState(() {
         _error = JamendoService.instance.configurado
             ? 'No se pudo buscar. Revisa tu conexión.'
@@ -112,7 +120,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
       backgroundColor: AppTheme.ink,
       appBar: AppBar(
         backgroundColor: AppTheme.ink,
-        title: Text('Descubrir', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        title: Text('Descubrir',
+            style: AppTheme.subheading.copyWith(fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
           tooltip: "Volver",
@@ -130,17 +139,20 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
               ),
               child: TextField(
                 controller: _controlador,
-                style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 14),
+                style:
+                    AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 14),
                 textInputAction: TextInputAction.search,
                 onChanged: _onTextoCambio,
                 decoration: InputDecoration(
                   hintText: "Buscar en Jamendo (título, artista)...",
                   hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
-                  prefixIcon: const Icon(Icons.search, color: AppTheme.faintInk),
+                  prefixIcon:
+                      const Icon(Icons.search, color: AppTheme.faintInk),
                   suffixIcon: _controlador.text.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close, color: AppTheme.faintInk, size: 18),
+                          icon: const Icon(Icons.close,
+                              color: AppTheme.faintInk, size: 18),
                           onPressed: () {
                             _debounce?.cancel();
                             setState(() {
@@ -152,7 +164,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                           },
                         ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 ),
               ),
             ),
@@ -168,8 +181,10 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: JamendoService.generos.entries.map((entry) {
                 final activo = _generoActivo == entry.key;
-                final color = JamendoService.generosColores[entry.key] ?? AppTheme.amber;
-                final icono = JamendoService.generosIconos[entry.key] ?? Icons.music_note_rounded;
+                final color =
+                    JamendoService.generosColores[entry.key] ?? AppTheme.amber;
+                final icono = JamendoService.generosIconos[entry.key] ??
+                    Icons.music_note_rounded;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
@@ -185,12 +200,16 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                     selectedColor: color,
                     labelStyle: AppTheme.body.copyWith(
                       fontSize: 13,
-                      color: activo ? AppTheme.paper : AppTheme.paper.withValues(alpha: 0.85),
+                      color: activo
+                          ? AppTheme.paper
+                          : AppTheme.paper.withValues(alpha: 0.85),
                       fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(color: activo ? color : color.withValues(alpha: 0.35)),
+                      side: BorderSide(
+                          color:
+                              activo ? color : color.withValues(alpha: 0.35)),
                     ),
                   ),
                 );
@@ -209,7 +228,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(_error!, style: AppTheme.body, textAlign: TextAlign.center),
+                  child: Text(_error!,
+                      style: AppTheme.body, textAlign: TextAlign.center),
                 ),
               ),
             )
@@ -221,7 +241,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.travel_explore_rounded, size: 48, color: AppTheme.mutedInk),
+                      const Icon(Icons.travel_explore_rounded,
+                          size: 48, color: AppTheme.mutedInk),
                       const SizedBox(height: 12),
                       Text(
                         "Escribí algo o tocá un género — Jamendo tiene un catálogo "
@@ -237,7 +258,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
             )
           else if (_resultados.isEmpty)
             Expanded(
-              child: Center(child: Text('Sin resultados para eso', style: AppTheme.body)),
+              child: Center(
+                  child: Text('Sin resultados para eso', style: AppTheme.body)),
             )
           else
             Expanded(
@@ -279,7 +301,9 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                       ),
                       onPressed: () {
                         HapticFeedback.mediumImpact();
-                        context.read<PlaylistProvider>().toggleFavorite(cancion.id);
+                        context
+                            .read<PlaylistProvider>()
+                            .toggleFavorite(cancion.id);
                       },
                     ),
                     onTap: () {

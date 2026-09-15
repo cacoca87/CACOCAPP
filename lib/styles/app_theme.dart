@@ -18,7 +18,8 @@ class AppTheme {
   // ===== Paleta base =====
   static const Color ink = Color(0xFF14100E); // fondo base
   static const Color surface = Color(0xFF1F1915); // tarjetas
-  static const Color surfaceRaised = Color(0xFF2A211B); // elementos elevados / modales
+  static const Color surfaceRaised =
+      Color(0xFF2A211B); // elementos elevados / modales
   static const Color amber = Color(0xFFD9962E); // acento primario
   static const Color amberDark = Color(0xFFB37A22);
   static const Color amberLight = Color(0xFFE8B65E);
@@ -27,7 +28,8 @@ class AppTheme {
   static const Color mutedInk = Color(0xFF9C9186); // texto secundario
   static const Color faintInk = Color(0xFF6E6459); // texto terciario / captions
   static const Color hairline = Color(0xFF34291F); // divisores
-  static const Color danger = Color(0xFFE0554F); // errores/eliminar — distinto del "ember" decorativo
+  static const Color danger =
+      Color(0xFFE0554F); // errores/eliminar — distinto del "ember" decorativo
 
   // ===== Alias retrocompatibles (mismos nombres que usaba el resto del código) =====
   static const Color background = ink;
@@ -48,23 +50,37 @@ class AppTheme {
   // ===== Tipografía =====
   // Display: slab-serif con peso, para títulos y momentos de marca —
   // evoca la tipografía de tapas de vinilo de los 70s/80s.
-  static TextStyle _display({required double fontSize, required FontWeight weight, Color color = paper, double? height}) {
-    return GoogleFonts.zillaSlab(fontSize: fontSize, fontWeight: weight, color: color, height: height);
+  static TextStyle _display(
+      {required double fontSize,
+      required FontWeight weight,
+      Color color = paper,
+      double? height}) {
+    return GoogleFonts.zillaSlab(
+        fontSize: fontSize, fontWeight: weight, color: color, height: height);
   }
 
   // Cuerpo: sans limpia y muy legible, para listas y metadata densa.
-  static TextStyle _body({required double fontSize, required FontWeight weight, Color color = mutedInk}) {
-    return GoogleFonts.inter(fontSize: fontSize, fontWeight: weight, color: color);
+  static TextStyle _body(
+      {required double fontSize,
+      required FontWeight weight,
+      Color color = mutedInk}) {
+    return GoogleFonts.inter(
+        fontSize: fontSize, fontWeight: weight, color: color);
   }
 
-  static final TextStyle heading = _display(fontSize: 26, weight: FontWeight.w700);
-  static final TextStyle subheading = _display(fontSize: 17, weight: FontWeight.w600, color: paper);
+  static final TextStyle heading =
+      _display(fontSize: 26, weight: FontWeight.w700);
+  static final TextStyle subheading =
+      _display(fontSize: 17, weight: FontWeight.w600, color: paper);
   static final TextStyle body = _body(fontSize: 14, weight: FontWeight.w400);
-  static final TextStyle small = _body(fontSize: 12, weight: FontWeight.w400, color: faintInk);
-  static final TextStyle caption = _body(fontSize: 11, weight: FontWeight.w500, color: faintInk);
+  static final TextStyle small =
+      _body(fontSize: 12, weight: FontWeight.w400, color: faintInk);
+  static final TextStyle caption =
+      _body(fontSize: 11, weight: FontWeight.w500, color: faintInk);
 
   // Estilo de marca: para el nombre "CACOCAPP" y otros momentos de marca puntuales.
-  static final TextStyle wordmark = _display(fontSize: 20, weight: FontWeight.w700, color: paper);
+  static final TextStyle wordmark =
+      _display(fontSize: 20, weight: FontWeight.w700, color: paper);
 
   // ===== Decoraciones reutilizables =====
   static BoxDecoration cardDecoration = BoxDecoration(
@@ -104,7 +120,8 @@ class AppTheme {
 
   static BoxDecoration miniPlayerDecoration = BoxDecoration(
     color: surface,
-    borderRadius: const BorderRadius.vertical(top: Radius.circular(miniPlayerCornerRadius)),
+    borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(miniPlayerCornerRadius)),
     boxShadow: [
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.6),
@@ -186,7 +203,8 @@ class AppTheme {
         backgroundColor: ink,
         elevation: 0,
         iconTheme: const IconThemeData(color: paper),
-        titleTextStyle: GoogleFonts.inter(color: paper, fontWeight: FontWeight.w600, fontSize: 16),
+        titleTextStyle: GoogleFonts.inter(
+            color: paper, fontWeight: FontWeight.w600, fontSize: 16),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: surfaceRaised,

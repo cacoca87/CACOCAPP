@@ -845,3 +845,48 @@ Al minimizar, Flutter compara el índice 0 viejo (el fondo negro) con el índice
 Se dejaron las dos reglas escritas como comentario al principio del archivo, porque son justo el tipo de detalle que alguien (yo incluido) "limpia" sin saber que sostiene la reproducción.
 
 `flutter analyze`, `flutter test` (50 tests) y `flutter build apk --release` salieron limpios.
+
+## 55. Auditoría a fondo: el chequeo de calidad estaba apagado, 5 bugs reales y ~300 líneas muertas
+
+Pediste buscar bugs con calma y limpiar lo que no sirve, sin romper lo que ya funciona. Esto es lo que salió.
+
+### El hallazgo más importante: `flutter analyze` no estaba revisando casi nada
+
+**Archivo corregido:** `analysis_options.yaml`
+
+Ese archivo, que es el que le dice a Flutter qué revisar, **contenía por error una copia vieja del `pubspec.yaml`** (con `name:`, `dependencies:`, `wakelock_plus`, etc.) desde el primer commit del proyecto. Le faltaba la única línea que importa: `include: package:flutter_lints/flutter.yaml`. Resultado: **los lints de Flutter nunca corrieron**. Cada vez que te dije "analyze pasa limpio" era verdad, pero el chequeo estaba prácticamente apagado y no se notaba.
+
+Ya está escrito como corresponde. Al activarlo aparecieron 24 avisos (ninguno grave, todos de estilo) y se corrigieron todos. De ahora en adelante `flutter analyze` sí revisa de verdad -- incluidas reglas que detectan errores serios, como usar un `BuildContext` después de un `await`, que es una causa clásica de crashes.
+
+### Bugs reales encontrados y arreglados
+
+**1. Buscabas una cosa y aparecían resultados de otra** (`dual_search_screen.dart`, `descubrir_screen.dart`)
+Las dos búsquedas esperan a que dejes de escribir antes de salir a la red. Pero cancelar esa espera NO cancela una búsqueda que ya salió. Si escribías "aerosmith" (búsqueda lenta) y después "queen" (rápida), aparecían los de Queen y un rato después los de Aerosmith **los pisaban**: te quedabas viendo resultados de algo que ya no habías buscado. Se agregó un contador de generación que descarta las respuestas que llegan tarde. Es el mismo patrón que ya se había usado para el reproductor.
+
+**2. "Álbume"** (`vista_spotify_grid.dart`)
+La etiqueta debajo de cada tarjeta se generaba **cortándole la última letra al título de la sección**. Funcionaba de casualidad para "Playlists"→"Playlist" y "Artistas"→"Artista", pero dejaba **"Álbumes"→"Álbume"** mal escrito en todas las tarjetas de álbum. Ahora cada sección pasa su singular correcto ("Álbum").
+
+**3. Se creaban playlists duplicadas desde Música Descargada** (`downloaded_songs_view.dart`)
+Había **dos diálogos de "Nueva playlist" casi idénticos** en archivos distintos, y no se comportaban igual: el del menú de canción reutilizaba la playlist si ya existía una con ese nombre, pero el de Música Descargada creaba **una segunda playlist con el mismo nombre**. Se borró el duplicado y ahora las dos pantallas usan el mismo diálogo (el que estaba bien).
+
+**4. Fuga de memoria en el diálogo de nueva playlist** (`song_options_menu.dart`)
+El campo de texto creaba un controlador que nunca se liberaba -- al vivir en una función suelta y no en una pantalla, no hay ningún `dispose()` que lo limpie. Se acumulaba uno nuevo cada vez que abrías el diálogo. Ya se libera al cerrarse.
+
+**5. Crear una biblioteca fallaba en silencio** (`pantalla_principal.dart`)
+Si escribías un nombre que ya existía, o uno reservado ("Favoritos", "Principal (Drive)"), tocabas crear y **no pasaba absolutamente nada**, sin ninguna explicación. Ahora avisa por qué.
+
+### Limpieza: ~300 líneas de código inalcanzable
+
+**Archivos afectados:** `youtube_service.dart` (de 299 a 75 líneas), `player_provider.dart`, borrados `refresh_retry_guard.dart` y su test.
+
+Quedaba entera la maquinaria vieja para extraer el audio de YouTube y reproducirlo con el motor propio de la app: la cadena de tres métodos (resolución directa, servidor proxy en Render, instancias de Invidious), el sistema para refrescar enlaces vencidos, y el tope de reintentos que evitaba el bucle infinito.
+
+**Verifiqué que era inalcanzable antes de borrar nada:** todo ese camino se activaba solo para canciones con id `yt_...`, y desde que Búsqueda Online reproduce en el reproductor embebido **ningún lugar de la app crea una canción así**. También confirmé que una sesión guardada vieja no puede revivir una (`restoreSession` busca la canción dentro de tu biblioteca, y ninguna de YouTube está ahí). De paso se fue una constante `_proxyBaseUrl = 'https://TU-SERVIDOR.onrender.com'` que era un marcador de posición que nunca se completó.
+
+Los tests bajaron de 50 a 45 porque 5 probaban justamente el tope de reintentos que ya no existe. Tests de código borrado no prueban nada.
+
+### Lo que revisé y estaba bien
+
+Para que quede constancia: no hay archivos huérfanos, ninguna dependencia de `pubspec.yaml` sobra, no hay accesos a listas sin proteger (`.first` en listas posiblemente vacías), los `int.parse`/`jsonDecode` están todos dentro de un `try`, y salvo el caso del diálogo, todas las pantallas liberan bien sus controladores y temporizadores.
+
+`flutter analyze` (ahora con los lints de verdad), `flutter test` (45) y `flutter build apk --release` salieron limpios. También se corrió `dart format` sobre todo el proyecto, que no estaba formateado de forma pareja -- por eso el commit toca muchos archivos que no cambiaron de comportamiento.

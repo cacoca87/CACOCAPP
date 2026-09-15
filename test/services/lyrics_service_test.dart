@@ -51,8 +51,9 @@ void main() {
         var intentosConCanalComoArtista = 0;
 
         final client = MockClient((request) async {
-          if (request.url.host != 'lrclib.net')
+          if (request.url.host != 'lrclib.net') {
             return http.Response('Not Found', 404);
+          }
 
           final artista = request.url.queryParameters['artist_name'];
           if (artista == 'Dj Montro Live') {

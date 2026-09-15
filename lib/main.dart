@@ -116,7 +116,7 @@ class _AppBootstrapState extends State<AppBootstrap> {
               padding: const EdgeInsets.all(24),
               child: Text(
                 'Error iniciando el reproductor:\n$_error',
-                style: TextStyle(color: AppTheme.danger, fontSize: 13),
+                style: const TextStyle(color: AppTheme.danger, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -129,9 +129,9 @@ class _AppBootstrapState extends State<AppBootstrap> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.themeData,
-        home: Scaffold(
+        home: const Scaffold(
           backgroundColor: AppTheme.ink,
-          body: const Center(
+          body: Center(
             child: CircularProgressIndicator(color: AppTheme.amber),
           ),
         ),

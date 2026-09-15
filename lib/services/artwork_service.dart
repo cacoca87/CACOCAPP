@@ -30,7 +30,8 @@ class ArtworkService {
         final guardado = prefs.getString(prefKey);
         // String vacío = "ya se buscó, no se encontró nada" (evita
         // repetir la búsqueda a iTunes en cada apertura de la app).
-        final resultado = (guardado != null && guardado.isNotEmpty) ? guardado : null;
+        final resultado =
+            (guardado != null && guardado.isNotEmpty) ? guardado : null;
         _cache[key] = resultado;
         return resultado;
       }

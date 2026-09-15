@@ -6,13 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
-import 'package:just_audio/just_audio.dart'; // Asegura acceso a ProcessingState
 import '../models/song.dart';
 import '../services/my_audio_handler.dart';
-import '../services/youtube_service.dart'; // Importante para refrescar los enlaces expirados
 import '../utils/extension_guesser.dart';
 import 'recommendation_engine.dart';
-import 'refresh_retry_guard.dart';
 
 class PlayerProvider extends ChangeNotifier {
   final MyAudioHandler audioHandler;
@@ -46,20 +43,6 @@ class PlayerProvider extends ChangeNotifier {
   final Set<String> _descargando = {};
   Future<void>? _descargasListas;
 
-  // Guarda contra el bucle de "refresco de enlace expirado" (ver más
-  // abajo, en el constructor): sin esto, dos canciones de YouTube que
-  // fallan a la vez pueden quedar reintentando para siempre entre sí,
-  // cada una reseteando el contador de reintentos de la otra. La
-  // lógica vive aparte, en `RefreshRetryGuard`, para poder testearla
-  // sin tener que levantar todo el motor de audio -- ver
-  // test/providers/refresh_retry_guard_test.dart.
-  final RefreshRetryGuard _refreshGuard = RefreshRetryGuard();
-  // Se incrementa en cada `setQueue`. Sirve para que un refresco de
-  // enlace vencido que quedó esperando una respuesta de red se dé
-  // cuenta de que, mientras tanto, se pidió reproducir otra cosa, y no
-  // la pise al terminar.
-  int _playbackRequestId = 0;
-
   // Getters
   List<Song> get queue => _queue;
   int get currentIndex => _currentIndex;
@@ -69,8 +52,9 @@ class PlayerProvider extends ChangeNotifier {
   Song? get currentSong => _currentSong;
   bool get sleepTimerActivo => _sleepTimer != null;
   List<String> get historialIds => List.unmodifiable(_historial);
-  
-  List<String> get masEscuchadasIds => ordenarPorMasEscuchadas(_conteoReproducciones);
+
+  List<String> get masEscuchadasIds =>
+      ordenarPorMasEscuchadas(_conteoReproducciones);
 
   int? get sleepTimerMinutosRestantes {
     if (_sleepTimerEndsAt == null) return null;
@@ -79,7 +63,8 @@ class PlayerProvider extends ChangeNotifier {
     return (restante.inSeconds / 60).ceil();
   }
 
-  Map<String, int> get timeListened => Map.unmodifiable(_tiempoEscuchadoSegundos);
+  Map<String, int> get timeListened =>
+      Map.unmodifiable(_tiempoEscuchadoSegundos);
 
   String tituloDeCancion(String songId) => _tituloPorCancion[songId] ?? songId;
 
@@ -89,7 +74,8 @@ class PlayerProvider extends ChangeNotifier {
   /// artista, carátula) sin importar de dónde vinieron originalmente
   /// (biblioteca del Drive, Jamendo, o el buscador online) -- para
   /// mostrarlas todas juntas en una sola pantalla de "Música descargada".
-  List<Song> get downloadedSongs => List.unmodifiable(_cancionesDescargadas.values);
+  List<Song> get downloadedSongs =>
+      List.unmodifiable(_cancionesDescargadas.values);
 
   /// Se resuelve cuando terminó de leer las descargas guardadas en
   /// disco (SharedPreferences). Como `_cargarDescargas()` se dispara
@@ -108,83 +94,6 @@ class PlayerProvider extends ChangeNotifier {
         _detenerTemporizadorDeEscucha();
       }
       notifyListeners();
-    });
-
-    // ESCUCHA INTELIGENTE DE ERRORES DE REPRODUCCIÓN Y RECUPERACIÓN DE ENLACES
-    // Esto SOLO aplica a canciones de YouTube: son las únicas cuyas URLs
-    // de audio vienen firmadas con expiración. Las de Drive/Jamendo/
-    // descargas no necesitan (ni pueden) "refrescarse" así.
-    audioHandler.player.playerStateStream.listen((playerState) async {
-      final estaFallando = playerState.processingState == ProcessingState.idle ||
-          (playerState.processingState != ProcessingState.completed && !playerState.playing && _isPlaying);
-
-      if (!estaFallando) {
-        // Reproducción normal (o recién arrancando bien): se limpia
-        // cualquier racha de reintentos previa para que la próxima vez
-        // que ESTA canción falle empiece a contar de cero de nuevo.
-        _refreshGuard.reset();
-        return;
-      }
-
-      final song = _currentSong;
-      final esDeYoutube = song != null && song.id.startsWith('yt_');
-      if (!esDeYoutube || isDownloaded(song.id) || song.url.isEmpty) return;
-
-      // Tope de reintentos POR canción: sin esto, si la URL nueva
-      // también falla, el estado vuelve a "idle", este listener vuelve
-      // a dispararse, y así para siempre -- confirmado en la práctica
-      // (dos canciones de YouTube quedaron alternándose en este bucle
-      // sin parar, porque cada refresco "exitoso" reseteaba el propio
-      // contador de reintentos de `my_audio_handler.dart`).
-      if (!_refreshGuard.deberiaReintentar(song.id)) return;
-
-      debugPrint(
-        'Enlace expirado o caída detectada. Refrescando URL para: ${song.title} '
-        '(intento ${_refreshGuard.intentosPara(song.id)}/${_refreshGuard.maxIntentos})',
-      );
-
-      // Token de generación: si mientras esto está en vuelo el usuario
-      // pone a sonar otra cosa (setQueue lo incrementa), este intento
-      // se descarta en vez de pisar la canción nueva al terminar.
-      final generacionAlEmpezar = _playbackRequestId;
-      try {
-        // song.id tiene forma "yt_<videoId>" -- hay que sacarle el
-        // prefijo antes de pedirle el audio a YoutubeService, que
-        // espera el ID de video real. Pasarle "yt_<videoId>" tal
-        // cual (como se hacía antes) hacía que esto fallara siempre
-        // en silencio y la reproducción se quedara trabada.
-        final videoId = song.id.substring(3);
-        final nuevaUrl = await YoutubeService.instance.obtenerUrlAudioPuro(videoId);
-
-        if (generacionAlEmpezar != _playbackRequestId) return;
-
-        if (nuevaUrl != null && nuevaUrl.isNotEmpty) {
-          // Creamos una nueva instancia de Song ya que 'url' es final
-          final songActualizada = Song(
-            id: song.id,
-            title: song.title,
-            artist: song.artist,
-            album: song.album,
-            url: nuevaUrl,
-            coverUrl: song.coverUrl,
-            playlists: song.playlists,
-          );
-
-          final posicionActual = audioHandler.player.position;
-          // setQueue es el mismo camino que usa el resto de la app
-          // para reproducir -- a diferencia de `playMediaItem`, que
-          // no está implementado en este proyecto y no hacía nada.
-          await setQueue(
-            [songActualizada],
-            initialIndex: 0,
-            initialPosition: posicionActual,
-            autoplay: true,
-          );
-          debugPrint('¡Enlace refrescado con éxito! Reanudando reproducción...');
-        }
-      } catch (e) {
-        debugPrint('No se pudo refrescar el enlace automáticamente: $e');
-      }
     });
 
     audioHandler.mediaItem.listen((item) {
@@ -379,7 +288,9 @@ class PlayerProvider extends ChangeNotifier {
       final extension = extensionForzada ?? adivinarExtensionDeUrl(song.url);
       final archivo = File('${carpeta.path}/${song.id}.$extension');
 
-      final respuesta = await http.get(Uri.parse(song.url)).timeout(const Duration(minutes: 5));
+      final respuesta = await http
+          .get(Uri.parse(song.url))
+          .timeout(const Duration(minutes: 5));
       if (respuesta.statusCode == 200) {
         await archivo.writeAsBytes(respuesta.bodyBytes);
         _rutasDescargadas[song.id] = archivo.path;
@@ -427,20 +338,13 @@ class PlayerProvider extends ChangeNotifier {
     Duration initialPosition = Duration.zero,
     bool autoplay = true,
   }) async {
-    // Invalida cualquier refresco de enlace de YouTube que haya quedado
-    // en vuelo para la canción anterior -- si no, cuando ese refresco
-    // viejo termine, puede pisar la canción que se está por poner acá.
-    _playbackRequestId++;
     // Si había un video de YouTube sonando en la burbuja flotante, se
     // pausa -- solo cuando esto realmente va a sonar (no en la
     // restauración silenciosa de sesión al abrir la app).
     if (autoplay) onEmpiezaOtraReproduccion?.call();
-    // Un pedido explícito de reproducir algo (el usuario tocó play de
-    // nuevo, por ejemplo) siempre arranca con presupuesto de reintentos
-    // fresco, aunque esa misma canción ya haya agotado el suyo antes.
-    _refreshGuard.reset();
     _queue = songs;
-    _currentIndex = initialIndex.clamp(0, _queue.isNotEmpty ? _queue.length - 1 : 0);
+    _currentIndex =
+        initialIndex.clamp(0, _queue.isNotEmpty ? _queue.length - 1 : 0);
     _currentSong = _queue.isNotEmpty ? _queue[_currentIndex] : null;
 
     final cancionesParaReproducir = songs
@@ -567,7 +471,7 @@ class PlayerProvider extends ChangeNotifier {
         final songId = state['currentSongId'] as String? ?? '';
         _isShuffleEnabled = state['shuffle'] as bool? ?? false;
         _repeatMode = state['repeat'] as int? ?? 0;
-        
+
         final songIndex = allSongs.indexWhere((s) => s.id == songId);
         if (songIndex != -1 && allSongs.isNotEmpty) {
           final positionMs = prefs.getInt('last_position') ?? 0;

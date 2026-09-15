@@ -101,10 +101,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       if (!mounted) return;
       setState(() => actualizando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("No se pudo actualizar. Revisa tu conexión."),
+        const SnackBar(
+          content: Text("No se pudo actualizar. Revisa tu conexión."),
           backgroundColor: AppTheme.danger,
-          duration: const Duration(seconds: 2),
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -169,14 +169,29 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     return 'La playlist "$bibliotecaSeleccionada" está vacía.\nAgrégale canciones desde el menú (⋮) de cualquier canción.';
   }
 
+  void _avisar(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)),
+    );
+  }
+
   void _crearBiblioteca() {
     final nombre = _nuevaBibController.text.trim();
     if (nombre.isEmpty) return;
-    if (nombre == "Principal (Drive)" || nombre == "Favoritos") return;
+
+    // Antes estos dos casos hacían `return` en silencio: tocabas
+    // "crear", no pasaba nada, y no había forma de saber por qué.
+    if (nombre == "Principal (Drive)" || nombre == "Favoritos") {
+      _avisar('"$nombre" es un nombre reservado de la app. Probá con otro.');
+      return;
+    }
 
     final provider = context.read<PlaylistProvider>();
     final yaExiste = provider.playlists.any((p) => p.name == nombre);
-    if (yaExiste) return;
+    if (yaExiste) {
+      _avisar('Ya tenés una biblioteca llamada "$nombre".');
+      return;
+    }
 
     provider.createPlaylist(nombre);
     setState(() {
@@ -273,15 +288,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
     if (nuevoNombre == null ||
         nuevoNombre.isEmpty ||
-        nuevoNombre == nombreActual) return;
+        nuevoNombre == nombreActual) {
+      return;
+    }
     if (!mounted) return;
 
     playlistProvider.renamePlaylist(playlistARenombrar.id, nuevoNombre);
     setState(() {
-      if (bibliotecaSeleccionada == nombreActual)
+      if (bibliotecaSeleccionada == nombreActual) {
         bibliotecaSeleccionada = nuevoNombre;
-      if (subFiltroSeleccionado == nombreActual)
+      }
+      if (subFiltroSeleccionado == nombreActual) {
         subFiltroSeleccionado = nuevoNombre;
+      }
     });
   }
 
@@ -358,8 +377,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     setState(() {
       seccionActiva = seccion;
       subFiltroSeleccionado = null;
-      if (seccion == "Tu Biblioteca")
+      if (seccion == "Tu Biblioteca") {
         bibliotecaSeleccionada = "Principal (Drive)";
+      }
     });
   }
 
@@ -590,6 +610,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             Expanded(
               child: VistaSpotifyGrid(
                 titulo: "Playlists",
+                tituloSingular: "Playlist",
                 elementos: nombresBibliotecas
                     .where((b) => b != "Principal (Drive)")
                     .toList(),
@@ -603,6 +624,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             Expanded(
               child: VistaSpotifyGrid(
                 titulo: "Artistas",
+                tituloSingular: "Artista",
                 elementos: listaArtistas,
                 icono: Icons.person_rounded,
                 esPantallaPequena: esPantallaPequena,
@@ -615,6 +637,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             Expanded(
               child: VistaSpotifyGrid(
                 titulo: "Álbumes",
+                tituloSingular: "Álbum",
                 elementos: listaAlbumes,
                 icono: Icons.album_rounded,
                 esPantallaPequena: esPantallaPequena,
@@ -914,8 +937,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   setState(() {
                     seccionActiva = seccion;
                     subFiltroSeleccionado = null;
-                    if (seccion == "Tu Biblioteca")
+                    if (seccion == "Tu Biblioteca") {
                       bibliotecaSeleccionada = "Principal (Drive)";
+                    }
                   });
                   Navigator.pop(context);
                 },

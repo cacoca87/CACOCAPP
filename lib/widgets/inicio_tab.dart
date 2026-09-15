@@ -93,7 +93,8 @@ class InicioTab extends StatelessWidget {
                       color: AppTheme.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.library_music_rounded, color: AppTheme.ink),
+                    child: const Icon(Icons.library_music_rounded,
+                        color: AppTheme.ink),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -102,14 +103,19 @@ class InicioTab extends StatelessWidget {
                       children: [
                         Text(
                           "Toda tu música",
-                          style: AppTheme.body.copyWith(color: AppTheme.paper, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: AppTheme.body.copyWith(
+                              color: AppTheme.paper,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15),
                         ),
                         const SizedBox(height: 2),
-                        Text("$totalCanciones canciones en tu biblioteca", style: AppTheme.small),
+                        Text("$totalCanciones canciones en tu biblioteca",
+                            style: AppTheme.small),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppTheme.mutedInk),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppTheme.mutedInk),
                 ],
               ),
             ),
@@ -127,7 +133,8 @@ class InicioTab extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.amber.withValues(alpha: 0.3)),
+                  border:
+                      Border.all(color: AppTheme.amber.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -138,7 +145,8 @@ class InicioTab extends StatelessWidget {
                         color: AppTheme.amber.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.video_library_rounded, color: AppTheme.amber),
+                      child: const Icon(Icons.video_library_rounded,
+                          color: AppTheme.amber),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -147,14 +155,19 @@ class InicioTab extends StatelessWidget {
                         children: [
                           Text(
                             "Buscador Online",
-                            style: AppTheme.body.copyWith(color: AppTheme.paper, fontWeight: FontWeight.bold, fontSize: 15),
+                            style: AppTheme.body.copyWith(
+                                color: AppTheme.paper,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15),
                           ),
                           const SizedBox(height: 2),
-                          Text("Busca y mira videos de YouTube en la app", style: AppTheme.small),
+                          Text("Busca y mira videos de YouTube en la app",
+                              style: AppTheme.small),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded, color: AppTheme.amber),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: AppTheme.amber),
                   ],
                 ),
               ),
@@ -167,7 +180,9 @@ class InicioTab extends StatelessWidget {
           // Estadísticas, Recomendaciones, Descubrir) -- sin esto, esas
           // secciones no tenían ninguna presencia visual en Inicio y
           // solo se llegaba a ellas abriendo el drawer.
-          Text("Explorar", style: AppTheme.heading.copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+          Text("Explorar",
+              style: AppTheme.heading
+                  .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
           const SizedBox(height: 10),
           GridView.count(
             shrinkWrap: true,
@@ -222,7 +237,8 @@ class InicioTab extends StatelessWidget {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.auto_awesome_rounded, size: 48, color: AppTheme.mutedInk),
+                    const Icon(Icons.auto_awesome_rounded,
+                        size: 48, color: AppTheme.mutedInk),
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -315,7 +331,8 @@ class _AccesoRapido extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTheme.small.copyWith(color: AppTheme.paper, fontSize: 11),
+              style:
+                  AppTheme.small.copyWith(color: AppTheme.paper, fontSize: 11),
             ),
           ],
         ),

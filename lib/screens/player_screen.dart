@@ -502,10 +502,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                           playing ? "Pausar" : "Reproducir",
                                       onPressed: () {
                                         HapticFeedback.mediumImpact();
-                                        if (playing)
+                                        if (playing) {
                                           audioHandler.pause();
-                                        else
+                                        } else {
                                           audioHandler.play();
+                                        }
                                       },
                                       constraints: const BoxConstraints(),
                                     );

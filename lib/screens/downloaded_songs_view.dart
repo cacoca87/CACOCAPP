@@ -6,6 +6,7 @@ import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../styles/app_theme.dart';
 import '../widgets/song_cover.dart';
+import '../widgets/song_options_menu.dart';
 
 /// Lista todo lo que está descargado para escuchar offline, sin
 /// importar de dónde vino originalmente (biblioteca del Drive/R2,
@@ -36,54 +37,6 @@ class DownloadedSongsView extends StatelessWidget {
     }
   }
 
-  Future<void> _mostrarDialogoNuevaPlaylist(BuildContext context, Song cancion) async {
-    final controlador = TextEditingController();
-    final nombre = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text("Nueva playlist", style: AppTheme.subheading.copyWith(fontSize: 17)),
-        content: TextField(
-          controller: controlador,
-          autofocus: true,
-          style: AppTheme.body.copyWith(color: AppTheme.paper),
-          decoration: InputDecoration(
-            hintText: "Nombre de la playlist",
-            hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
-            filled: true,
-            fillColor: AppTheme.surfaceLight,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text("Cancelar", style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, controlador.text.trim()),
-            child: Text("Crear", style: AppTheme.body.copyWith(color: AppTheme.amber, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-    if (nombre == null || nombre.isEmpty || !context.mounted) return;
-
-    final playlistProvider = context.read<PlaylistProvider>();
-    final playlist = playlistProvider.createPlaylist(nombre);
-    playlistProvider.addSongToPlaylist(playlist.id, cancion);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Se agregó "${cancion.title}" a "$nombre"')),
-      );
-    }
-  }
-
   void _mostrarMenu(BuildContext context, Song cancion) {
     final playlistProvider = context.read<PlaylistProvider>();
     final esFavorita = playlistProvider.isFavorite(cancion.id);
@@ -102,7 +55,9 @@ class DownloadedSongsView extends StatelessWidget {
               const SizedBox(height: 8),
               ListTile(
                 leading: Icon(
-                  esFavorita ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  esFavorita
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
                   color: esFavorita ? AppTheme.amber : AppTheme.mutedInk,
                 ),
                 title: Text(
@@ -114,25 +69,32 @@ class DownloadedSongsView extends StatelessWidget {
                   Navigator.pop(sheetContext);
                 },
               ),
-              if (playlistProvider.playlists.isNotEmpty) const Divider(color: AppTheme.hairline, height: 1),
+              if (playlistProvider.playlists.isNotEmpty)
+                const Divider(color: AppTheme.hairline, height: 1),
               for (final playlist in playlistProvider.playlists)
                 ListTile(
-                  leading: const Icon(Icons.folder_rounded, color: AppTheme.primary),
-                  title: Text(playlist.name, style: AppTheme.body.copyWith(color: AppTheme.paper)),
+                  leading:
+                      const Icon(Icons.folder_rounded, color: AppTheme.primary),
+                  title: Text(playlist.name,
+                      style: AppTheme.body.copyWith(color: AppTheme.paper)),
                   onTap: () {
                     playlistProvider.addSongToPlaylist(playlist.id, cancion);
                     Navigator.pop(sheetContext);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Se agregó "${cancion.title}" a "${playlist.name}"')),
+                      SnackBar(
+                          content: Text(
+                              'Se agregó "${cancion.title}" a "${playlist.name}"')),
                     );
                   },
                 ),
               ListTile(
-                leading: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primary),
-                title: Text("Nueva playlist...", style: AppTheme.body.copyWith(color: AppTheme.paper)),
+                leading: const Icon(Icons.add_circle_outline_rounded,
+                    color: AppTheme.primary),
+                title: Text("Nueva playlist...",
+                    style: AppTheme.body.copyWith(color: AppTheme.paper)),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  _mostrarDialogoNuevaPlaylist(context, cancion);
+                  mostrarDialogoNuevaPlaylist(context, cancion);
                 },
               ),
               const SizedBox(height: 8),
@@ -152,7 +114,8 @@ class DownloadedSongsView extends StatelessWidget {
       backgroundColor: AppTheme.ink,
       appBar: AppBar(
         backgroundColor: AppTheme.ink,
-        title: Text('Música descargada', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        title: Text('Música descargada',
+            style: AppTheme.subheading.copyWith(fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
           tooltip: "Volver",
@@ -166,7 +129,8 @@ class DownloadedSongsView extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.download_done_rounded, size: 48, color: AppTheme.mutedInk),
+                    const Icon(Icons.download_done_rounded,
+                        size: 48, color: AppTheme.mutedInk),
                     const SizedBox(height: 12),
                     Text(
                       "Todavía no descargaste ninguna canción. Tocá el ícono de "
@@ -209,7 +173,8 @@ class DownloadedSongsView extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.more_vert_rounded, color: AppTheme.mutedInk),
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: AppTheme.mutedInk),
                     tooltip: "Opciones",
                     onPressed: () => _mostrarMenu(context, cancion),
                   ),

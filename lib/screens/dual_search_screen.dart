@@ -31,6 +31,15 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
   bool _cargandoResultados = false;
   Timer? _debounce;
 
+  // Se incrementa con cada búsqueda lanzada. `_debounce.cancel()` solo
+  // cancela un temporizador que todavía no disparó -- no puede frenar
+  // una búsqueda que ya salió a la red. Sin este contador, si escribís
+  // "aerosmith" (búsqueda lenta) y después "queen" (rápida), los
+  // resultados de Queen aparecen primero y los de Aerosmith los pisan
+  // al llegar tarde: quedabas viendo resultados de algo que ya no
+  // habías buscado.
+  int _generacionBusqueda = 0;
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -41,6 +50,7 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
   void _onSearchChanged(String query) {
     _ultimaBusqueda = query;
     if (_debounce?.isActive ?? false) _debounce!.cancel();
+    final generacion = ++_generacionBusqueda;
 
     if (query.trim().isEmpty) {
       setState(() {
@@ -55,13 +65,14 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
 
     _debounce = Timer(const Duration(milliseconds: 600), () async {
       final resultados = await YoutubeService.instance.buscarVideos(query);
-      if (mounted) {
-        setState(() {
-          _resultados = resultados;
-          _ultimosResultados = resultados;
-          _cargandoResultados = false;
-        });
-      }
+      // Si mientras esta búsqueda estaba en la red se escribió otra
+      // cosa, se descarta en vez de pisar los resultados nuevos.
+      if (!mounted || generacion != _generacionBusqueda) return;
+      setState(() {
+        _resultados = resultados;
+        _ultimosResultados = resultados;
+        _cargandoResultados = false;
+      });
     });
   }
 

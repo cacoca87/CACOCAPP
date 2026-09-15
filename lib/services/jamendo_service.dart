@@ -38,7 +38,8 @@ class JamendoService {
   /// (ej. con el paquete `mocktail` o `http_mock_adapter`) para
   /// testear `buscar`/`buscarPorGenero` sin depender de la red.
   /// No usar esto en código de la app -- ahí siempre se usa `.instance`.
-  factory JamendoService.testable(http.Client client) => JamendoService._(client: client);
+  factory JamendoService.testable(http.Client client) =>
+      JamendoService._(client: client);
 
   final http.Client _client;
 
@@ -114,11 +115,13 @@ class JamendoService {
   Future<List<Song>> buscarPorGenero(String tag, {int limite = 30}) {
     return _consultar({
       'tags': tag,
-      'order': 'popularity_total', // trae primero lo más escuchado de ese género
+      'order':
+          'popularity_total', // trae primero lo más escuchado de ese género
     }, limite: limite);
   }
 
-  Future<List<Song>> _consultar(Map<String, String> parametros, {required int limite}) async {
+  Future<List<Song>> _consultar(Map<String, String> parametros,
+      {required int limite}) async {
     if (!configurado) {
       throw Exception(
         'Falta configurar el client_id de Jamendo en jamendo_service.dart '
@@ -134,7 +137,8 @@ class JamendoService {
       ...parametros,
     });
 
-    final respuesta = await _client.get(url).timeout(const Duration(seconds: 10));
+    final respuesta =
+        await _client.get(url).timeout(const Duration(seconds: 10));
     if (respuesta.statusCode != 200) {
       throw Exception('Jamendo respondió ${respuesta.statusCode}');
     }

@@ -37,7 +37,8 @@ class DriveService {
         return canciones;
       }
     } catch (e) {
-      AppLogger.w('No se pudo cargar la lista dinámica, usando respaldo fijo: $e');
+      AppLogger.w(
+          'No se pudo cargar la lista dinámica, usando respaldo fijo: $e');
     }
 
     final cancionesFijas = _construirCanciones(_nombresArchivosFijos);
@@ -50,9 +51,8 @@ class DriveService {
   }
 
   Future<List<String>> _obtenerListaDesdeWorker() async {
-    final response = await http
-        .get(Uri.parse(listUrl))
-        .timeout(const Duration(seconds: 10));
+    final response =
+        await http.get(Uri.parse(listUrl)).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
       throw Exception('El Worker respondió ${response.statusCode}');

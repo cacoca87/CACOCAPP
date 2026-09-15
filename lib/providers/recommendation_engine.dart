@@ -16,8 +16,10 @@ List<Song> calcularRecomendaciones(
   if (allSongs.isEmpty) return [];
 
   final historial = historialIds.toSet();
-  final noEscuchadas = allSongs.where((song) => !historial.contains(song.id)).toList();
-  final candidatas = noEscuchadas.isNotEmpty ? noEscuchadas : List<Song>.from(allSongs);
+  final noEscuchadas =
+      allSongs.where((song) => !historial.contains(song.id)).toList();
+  final candidatas =
+      noEscuchadas.isNotEmpty ? noEscuchadas : List<Song>.from(allSongs);
 
   final copia = List<Song>.from(candidatas)..shuffle();
   return copia.take(cantidad).toList();

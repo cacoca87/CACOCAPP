@@ -38,10 +38,13 @@ class CarruselCanciones extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(titulo, style: AppTheme.subheading.copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+              Text(titulo,
+                  style: AppTheme.subheading
+                      .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
               TextButton(
                 onPressed: onVerTodo,
-                child: Text("Ver todo", style: AppTheme.caption.copyWith(fontSize: 12)),
+                child: Text("Ver todo",
+                    style: AppTheme.caption.copyWith(fontSize: 12)),
               ),
             ],
           ),
@@ -77,7 +80,10 @@ class CarruselCanciones extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(
                             cancion.title,
-                            style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: AppTheme.body.copyWith(
+                                color: AppTheme.paper,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

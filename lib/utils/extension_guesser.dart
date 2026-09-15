@@ -6,7 +6,9 @@
 /// de streaming de YouTube).
 String adivinarExtensionDeUrl(String url) {
   try {
-    final segmento = Uri.parse(url).pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
+    final segmento = Uri.parse(url)
+        .pathSegments
+        .lastWhere((s) => s.isNotEmpty, orElse: () => '');
     if (segmento.contains('.')) {
       final ext = segmento.split('.').last;
       if (ext.isNotEmpty && ext.length <= 5) return ext;

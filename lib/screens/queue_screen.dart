@@ -21,7 +21,8 @@ class QueueScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppTheme.ink,
         elevation: 0,
-        title: Text("Cola de reproducción", style: AppTheme.subheading.copyWith(fontSize: 16)),
+        title: Text("Cola de reproducción",
+            style: AppTheme.subheading.copyWith(fontSize: 16)),
       ),
       body: cola.isEmpty
           ? Center(
@@ -48,7 +49,8 @@ class QueueScreen extends StatelessWidget {
                       cancion.title,
                       style: AppTheme.body.copyWith(
                         color: esActual ? AppTheme.amber : AppTheme.paper,
-                        fontWeight: esActual ? FontWeight.bold : FontWeight.w500,
+                        fontWeight:
+                            esActual ? FontWeight.bold : FontWeight.w500,
                         fontSize: 14,
                       ),
                       maxLines: 1,
@@ -61,7 +63,8 @@ class QueueScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: esActual
-                        ? const Icon(Icons.equalizer_rounded, color: AppTheme.amber, size: 20)
+                        ? const Icon(Icons.equalizer_rounded,
+                            color: AppTheme.amber, size: 20)
                         : Text("${index + 1}", style: AppTheme.small),
                     onTap: esActual
                         ? null

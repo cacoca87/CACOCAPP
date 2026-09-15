@@ -97,8 +97,9 @@ class AudioEffectsProvider extends ChangeNotifier {
   }
 
   Future<void> _onSesionCambio(int? sessionId) async {
-    if (sessionId == null || sessionId == 0 || sessionId == _ultimaSesion)
+    if (sessionId == null || sessionId == 0 || sessionId == _ultimaSesion) {
       return;
+    }
     _ultimaSesion = sessionId;
     _cargando = true;
     notifyListeners();

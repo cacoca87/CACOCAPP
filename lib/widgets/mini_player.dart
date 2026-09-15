@@ -25,7 +25,7 @@ class MiniPlayer extends StatelessWidget {
       child: Container(
         height: 65,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppTheme.surface,
           border: Border(top: BorderSide(color: AppTheme.hairline, width: 1)),
         ),
@@ -50,7 +50,10 @@ class MiniPlayer extends StatelessWidget {
                 children: [
                   Text(
                     song.title,
-                    style: AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 13, fontWeight: FontWeight.w700),
+                    style: AppTheme.body.copyWith(
+                        color: AppTheme.paper,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -66,7 +69,9 @@ class MiniPlayer extends StatelessWidget {
             ),
             IconButton(
               icon: Icon(
-                player.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                player.isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded,
                 color: AppTheme.paper,
                 size: 26,
               ),
@@ -77,7 +82,8 @@ class MiniPlayer extends StatelessWidget {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.skip_next_rounded, color: AppTheme.paper, size: 24),
+              icon: const Icon(Icons.skip_next_rounded,
+                  color: AppTheme.paper, size: 24),
               tooltip: "Siguiente",
               onPressed: () {
                 HapticFeedback.selectionClick();
