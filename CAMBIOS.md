@@ -1480,3 +1480,55 @@ columna libre.
 de todo el repo y `flutter build apk --release` salieron limpios. También se
 verificó que el nombre de la sección "Juegos" coincida en los tres lugares donde
 se usa (barra lateral, grilla Explorar y el despacho de secciones).
+
+## 67. Revisión de bugs sobre lo recién agregado
+
+Los juegos sumaron unas 900 líneas nuevas, que son las menos revisadas de todo
+el proyecto. Este es el repaso sobre eso y sobre la barra del video.
+
+### Bug real: la barra del video podía quedar flotando
+
+**Archivo:** `lib/widgets/online_video_overlay.dart`
+
+Al calcular dónde poner la barra chica, se descontaba siempre el alto del mini
+reproductor. Pero el mini reproductor **desaparece** cuando no hay ninguna
+canción de la biblioteca cargada (devuelve un widget vacío). O sea que si
+abrías la app y usabas solo Búsqueda Online, sin tocar tu biblioteca, la barra
+del video quedaba flotando con un hueco vacío debajo.
+
+Ahora el alto se descuenta solo cuando el mini reproductor está realmente ahí.
+Se consulta con `select` y no con `watch`, para que el overlay se rehaga
+únicamente cuando ese dato cambia y no en cada latido del reproductor -- rehacer
+el overlay de más significa rehacer el envoltorio del WebView, que no es gratis.
+
+### Dos incoherencias mías, de la vuelta anterior
+
+1. El comentario de `tetris_screen.dart` decía que el mini reproductor queda
+   visible durante el juego. **Es falso**: los juegos se abren como ruta propia
+   (así lo dice, correctamente, el comentario de `juegos_screen.dart`), y el
+   mini reproductor no se ve. Corregido, explicando además por qué se decidió
+   así: los controles del juego ya ocupan la franja de abajo.
+2. En `carrera_screen.dart` el comentario de los colores decía "2 los rivales"
+   cuando la constante vale 3. Corregido.
+
+### El cartel decía "¡Nuevo récord!" cuando empatabas
+
+**Archivos:** `tetris_screen.dart`, `carrera_screen.dart`
+
+El cartel de fin de juego decidía si mostrar "¡Nuevo récord!" comparando el
+puntaje contra `_record`... **después** de haber actualizado `_record`. Con lo
+cual, empatar el récord anterior también contaba como nuevo. Ahora el dato se
+guarda al terminar, antes de tocar el récord.
+
+### Lo que se revisó y estaba bien
+
+- Los dos juegos cancelan su temporizador y sueltan el observador del ciclo de
+  vida al salir de la pantalla.
+- Los `setState` que vienen después de un `await` (la lectura del récord)
+  comprueban `mounted` antes.
+- No quedaron archivos huérfanos ni marcadores de posición sin completar.
+- Los nombres de sección siguen coincidiendo en los tres lugares donde se usan,
+  ahora incluyendo "Juegos".
+
+`flutter analyze`, `flutter test` (81), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

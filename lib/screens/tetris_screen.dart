@@ -10,8 +10,10 @@ import '../widgets/tablero_juego.dart';
 /// cubierta por tests; acá solo se dibuja y se recogen los toques.
 ///
 /// La música sigue sonando mientras jugás: el juego no toca el motor de
-/// audio, y el mini reproductor queda visible abajo porque esta pantalla
-/// se inserta dentro de `PantallaPrincipal` como una sección más.
+/// audio. El mini reproductor NO se ve acá -- esta pantalla se abre como
+/// ruta propia, a diferencia del resto de las secciones, porque los
+/// controles del juego ya ocupan la franja de abajo y los dos se
+/// pelearían el lugar. Para cambiar de canción hay que volver.
 class TetrisScreen extends StatefulWidget {
   final VoidCallback? onVolver;
   const TetrisScreen({super.key, this.onVolver});
@@ -28,6 +30,9 @@ class _TetrisScreenState extends State<TetrisScreen>
   Timer? _reloj;
   int _record = 0;
   bool _enPausa = false;
+  // Se guarda al terminar, ANTES de actualizar `_record`: si se comparara
+  // después, un puntaje igual al récord anterior también diría "nuevo".
+  bool _fueRecord = false;
   int _nivelDelReloj = 1;
 
   @override
@@ -88,7 +93,8 @@ class _TetrisScreenState extends State<TetrisScreen>
   void _revisarFinYVelocidad() {
     if (_juego.terminado) {
       _reloj?.cancel();
-      if (_juego.puntaje > _record) {
+      _fueRecord = _juego.puntaje > _record;
+      if (_fueRecord) {
         setState(() => _record = _juego.puntaje);
         _guardarRecord(_juego.puntaje);
       }
@@ -166,8 +172,7 @@ class _TetrisScreenState extends State<TetrisScreen>
                     if (_juego.terminado)
                       CartelFinDeJuego(
                         puntaje: _juego.puntaje,
-                        esRecord:
-                            _juego.puntaje >= _record && _juego.puntaje > 0,
+                        esRecord: _fueRecord,
                         onReiniciar: _reiniciar,
                       )
                     else if (_enPausa)

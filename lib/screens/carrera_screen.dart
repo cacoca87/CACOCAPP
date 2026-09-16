@@ -23,7 +23,8 @@ class _CarreraScreenState extends State<CarreraScreen>
     with WidgetsBindingObserver {
   static const _claveRecord = 'carrera_record_v1';
 
-  /// Colores del tablero: 1 es tu auto (ámbar), 2 los rivales (rojo).
+  /// Índices de color del tablero: tu auto en ámbar, los rivales en rojo
+  /// vino. Se corresponden con `TableroJuego.colores`.
   static const int _colorJugador = 1;
   static const int _colorRival = 3;
 
@@ -31,6 +32,9 @@ class _CarreraScreenState extends State<CarreraScreen>
   Timer? _reloj;
   int _record = 0;
   bool _enPausa = false;
+  // Se guarda al terminar, ANTES de actualizar `_record`: si se comparara
+  // después, un puntaje igual al récord anterior también diría "nuevo".
+  bool _fueRecord = false;
   int _nivelDelReloj = 1;
 
   @override
@@ -85,7 +89,8 @@ class _CarreraScreenState extends State<CarreraScreen>
   void _revisarFinYVelocidad() {
     if (_juego.terminado) {
       _reloj?.cancel();
-      if (_juego.puntaje > _record) {
+      _fueRecord = _juego.puntaje > _record;
+      if (_fueRecord) {
         setState(() => _record = _juego.puntaje);
         _guardarRecord(_juego.puntaje);
       }
@@ -169,8 +174,7 @@ class _CarreraScreenState extends State<CarreraScreen>
                     if (_juego.terminado)
                       CartelFinDeJuego(
                         puntaje: _juego.puntaje,
-                        esRecord:
-                            _juego.puntaje >= _record && _juego.puntaje > 0,
+                        esRecord: _fueRecord,
                         onReiniciar: _reiniciar,
                       )
                     else if (_enPausa)

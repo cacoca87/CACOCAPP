@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../providers/online_video_provider.dart';
+import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
@@ -96,6 +97,14 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
 
     final minimizado = provider.minimizado;
     final padding = MediaQuery.of(context).padding;
+    // El mini reproductor desaparece cuando no hay ninguna canción de la
+    // biblioteca cargada, así que su alto no siempre está ocupado: si se
+    // descontara igual, la barra del video quedaría flotando con un
+    // hueco debajo. Se usa `select` y no `watch` para que el overlay se
+    // rehaga solo cuando este booleano cambia, y no en cada latido del
+    // reproductor.
+    final hayMiniPlayer =
+        context.select<PlayerProvider, bool>((p) => p.currentSong != null);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -106,7 +115,7 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
         // el video a la izquierda y los controles a la derecha.
         final topBarra = altoPantalla -
             padding.bottom -
-            _altoMiniPlayer -
+            (hayMiniPlayer ? _altoMiniPlayer : 0) -
             _margenLateral -
             _altoBarra;
         final rectBarra = Rect.fromLTWH(
