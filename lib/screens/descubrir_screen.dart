@@ -151,6 +151,7 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                   suffixIcon: _controlador.text.isEmpty
                       ? null
                       : IconButton(
+                          tooltip: "Borrar búsqueda",
                           icon: const Icon(Icons.close,
                               color: AppTheme.faintInk, size: 18),
                           onPressed: () {

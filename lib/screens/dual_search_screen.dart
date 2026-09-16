@@ -133,6 +133,7 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                 hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
                 prefixIcon: const Icon(Icons.search, color: AppTheme.amber),
                 suffixIcon: IconButton(
+                  tooltip: "Borrar búsqueda",
                   icon: const Icon(Icons.clear, color: AppTheme.mutedInk),
                   onPressed: () {
                     _searchController.clear();

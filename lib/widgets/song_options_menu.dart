@@ -239,6 +239,22 @@ Future<void> mostrarDialogoNuevaPlaylist(
 }
 
 Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
+  final provider = context.read<PlayerProvider>();
+
+  // `downloadSong` devuelve `false` tanto si falló como si esa canción
+  // ya se está bajando. Sin esta comprobación, tocar descargar dos veces
+  // mostraba "No se pudo descargar, revisá tu conexión" mientras la
+  // descarga andaba perfecto.
+  if (provider.isDownloading(cancion.id)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('"${cancion.title}" ya se está descargando.'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    return;
+  }
+
   final confirmar = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -266,7 +282,6 @@ Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
   );
   if (confirmar != true || !context.mounted) return;
 
-  final provider = context.read<PlayerProvider>();
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text('Descargando "${cancion.title}"...'),

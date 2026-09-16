@@ -1997,3 +1997,44 @@ varias vueltas también extrae el **artista**. Corregido.
 
 `flutter analyze`, `flutter test` (**142**, subieron de 134), el chequeo de
 formato de todo el repo y `flutter build apk --release` salieron limpios.
+
+## 76. Pasadas 21 a 25: un error que mentía y dos botones sin nombre
+
+### Pasada 21: "No se pudo descargar" cuando en realidad estaba descargando
+
+**Archivo:** `lib/widgets/song_options_menu.dart`
+
+`downloadSong` devuelve `false` en dos situaciones muy distintas: cuando la
+descarga **falló**, y cuando esa canción **ya se está bajando** (la guarda contra
+el doble toque). Quien lo llamaba trataba los dos casos igual, así que tocar
+descargar dos veces mostraba *"No se pudo descargar. Revisa tu conexión"*
+mientras la descarga andaba perfecto.
+
+Ahora se comprueba antes si ya está en curso y se avisa con el mensaje correcto.
+
+### Pasada 22: accesibilidad
+
+La app no usa `Semantics` en ningún lado, lo que a primera vista parece un vacío
+grande. No lo es tanto: los `tooltip` de los botones cumplen esa misma función
+para un lector de pantalla, y hay 56 repartidos.
+
+Revisando los 38 `IconButton` uno por uno, **solo dos no tenían nombre**: los
+botones de borrar el texto de las dos búsquedas. Ya lo tienen.
+
+(Dos de los que aparecían como sospechosos eran falsos positivos: sí tenían
+tooltip, solo que declarado más abajo de donde miraba mi búsqueda.)
+
+### Pasadas 23 a 25: sin hallazgos
+
+- **Panel de audio**: las bandas del ecualizador viven en un alto fijo de 180
+  píxeles, que era sospechoso por el patrón que ya dio problemas. Pero el slider
+  usa `Expanded`, así que si la etiqueta crece con la escala de texto, el slider
+  se achica y nada desborda.
+- **Confirmación de descarga**: pide confirmación, avisa que puede gastar datos
+  móviles, y comprueba `mounted` después de cada espera.
+- **Textos generados**: la antigüedad de las noticias no tiene errores de plural
+  ("hace 1 día" se muestra como "ayer", y los minutos y horas van abreviados, que
+  funcionan igual en singular y plural).
+
+`flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.
