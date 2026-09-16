@@ -1206,3 +1206,51 @@ nuevo:
   desaparecen del todo al desinstalarla.
 
 Lo recomendable es desinstalar la versión vieja antes de instalar esta.
+
+## 62. Por fin la causa del arrastre: el WebView es una vista de Android, no un widget de Flutter
+
+**Archivo:** `lib/widgets/online_video_overlay.dart`
+
+Probaste y diste un dato que lo cambió todo: *"al achicarlo no se puede abrir
+por ahí, solo se puede pausar o dar play"*.
+
+Eso significa que el reproductor **sí** estaba recibiendo tus toques con la
+burbuja chica. Y si él los recibe, no llegan al código de la app -- por eso no
+se podía ni arrastrar ni agrandar tocándola. Todos los intentos anteriores
+(sección 62 incluida) partían de la idea contraria: que el toque no llegaba a
+ningún lado.
+
+**La causa real.** El reproductor de YouTube no es un widget de Flutter: es un
+**WebView**, una vista nativa de Android incrustada dentro de la app. Android le
+entrega los toques directamente, sin pasar por Flutter. Por eso las dos
+herramientas que veníamos usando no podían funcionar nunca:
+
+- El `IgnorePointer` que lo envolvía no le saca los toques a una vista nativa.
+- El `GestureDetector` puesto alrededor tampoco los ve, porque para cuando
+  Flutter podría enterarse, Android ya se los dio al WebView.
+
+**El arreglo.** Los gestos pasaron a ser una capa transparente **por encima**
+del reproductor, dentro del mismo `Stack`, en vez de estar alrededor o debajo.
+Sobre una vista nativa de Android, un widget de Flutter dibujado encima sí
+recibe los toques con normalidad.
+
+Eso cambia el comportamiento de la burbuja chica, a propósito:
+- **Tocarla la agranda** (antes pausaba el video).
+- **Arrastrarla la mueve** por la pantalla.
+- Los controles de YouTube quedan tapados mientras está chica. Es intencional:
+  a 160×96 píxeles son casi imposibles de acertar, y toda la superficie rinde
+  más sirviendo para agrandar y mover. En pantalla completa la capa no existe,
+  así que ahí funcionan como siempre.
+
+**La X para cerrar.** Ya existía, pero medía 16 píxeles y estaba pegada al
+borde: por eso no la encontrabas. Ahora es bastante más grande, con fondo
+oscuro para que se vea sobre cualquier video, y va *después* de la capa de
+gestos dentro del `Stack` -- si fuera antes, el toque de "agrandar" se comería
+el de "cerrar".
+
+Se agregó una tercera regla al encabezado del archivo, junto a las dos que ya
+estaban, para que nadie vuelva a envolver el reproductor en un `IgnorePointer`
+o en un `GestureDetector` sin saber por qué no sirve.
+
+`flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
+limpios.

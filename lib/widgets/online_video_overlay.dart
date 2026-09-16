@@ -28,12 +28,16 @@ import '../styles/app_theme.dart';
 /// que poder reconocerlo como "el mismo" entre un estado y el otro. Si
 /// cambia de tipo o de índice dentro del `Stack`, lo destruye igual
 /// aunque el código lo escriba una sola vez. Por eso, al tocar este
-/// archivo hay dos reglas que no se pueden romper:
+/// archivo hay tres reglas que no se pueden romper:
 ///   1. El reproductor siempre lleva `_claveReproductor`.
 ///   2. El reproductor siempre es un `AnimatedPositioned` (nunca se
 ///      alterna con `Positioned`).
-/// Romper cualquiera de las dos hace volver el bug de "se congela y
-/// deja de sonar al minimizar".
+///   3. Los gestos de la burbuja van ENCIMA del reproductor, dentro de
+///      su propio `Stack`. El reproductor es una vista nativa de
+///      Android y recibe los toques por su cuenta, así que un
+///      `GestureDetector` puesto alrededor (o un `IgnorePointer`) no
+///      sirve: los toques nunca llegan.
+/// Romper cualquiera de las tres hace volver un bug ya arreglado.
 class OnlineVideoOverlay extends StatefulWidget {
   const OnlineVideoOverlay({super.key});
 
@@ -106,6 +110,18 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
 
         final rectActual = minimizado ? rectBurbuja : rectCompleto;
 
+        // El orden de este Stack es lo que hace que la burbuja responda.
+        //
+        // El reproductor de YouTube es una vista NATIVA de Android (un
+        // WebView), no un widget de Flutter. Envolverlo en un
+        // `IgnorePointer`, como se hacía antes, no le saca los toques:
+        // Android se los entrega directo. Por eso, estando la burbuja
+        // chica, tocarla pausaba el video en vez de agrandarla, y
+        // arrastrarla no hacía nada -- los gestos nunca llegaban al
+        // código de la app.
+        //
+        // La solución es poner los gestos ENCIMA del WebView, como una
+        // capa transparente de Flutter, en vez de debajo.
         final reproductor = Container(
           clipBehavior: Clip.antiAlias,
           decoration: minimizado
@@ -124,92 +140,82 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
               : const BoxDecoration(),
           child: Stack(
             children: [
-              // Mientras está minimizado, los controles nativos de
-              // YouTube quedan demasiado chicos para tocarlos bien --
-              // se ignoran los toques acá y se usa el GestureDetector
-              // de afuera (tap = expandir, arrastre = mover). En
-              // pantalla completa SÍ reciben los toques normalmente.
-              IgnorePointer(
-                ignoring: minimizado,
-                child: StreamBuilder<YoutubePlayerValue>(
-                  stream: controller.stream,
-                  builder: (context, snapshot) {
-                    final valor = snapshot.data;
-                    if (!minimizado && valor != null && valor.hasError) {
-                      return Container(
-                        color: AppTheme.ink,
-                        padding: const EdgeInsets.all(24),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'YouTube no dejó reproducir este video acá '
-                          '(código ${valor.error}). Probá con otro resultado.',
-                          textAlign: TextAlign.center,
-                          style:
-                              AppTheme.body.copyWith(color: AppTheme.mutedInk),
-                        ),
-                      );
-                    }
-                    return YoutubePlayer(controller: controller);
-                  },
-                ),
+              StreamBuilder<YoutubePlayerValue>(
+                stream: controller.stream,
+                builder: (context, snapshot) {
+                  final valor = snapshot.data;
+                  if (!minimizado && valor != null && valor.hasError) {
+                    return Container(
+                      color: AppTheme.ink,
+                      padding: const EdgeInsets.all(24),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'YouTube no dejó reproducir este video acá '
+                        '(código ${valor.error}). Probá con otro resultado.',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
+                      ),
+                    );
+                  }
+                  return YoutubePlayer(controller: controller);
+                },
               ),
+
+              // Capa de gestos: solo existe con la burbuja chica. Tapa
+              // los controles de YouTube a propósito -- son demasiado
+              // pequeños para acertarles a ese tamaño, y es preferible
+              // que toda la superficie sirva para agrandar y arrastrar.
+              // En pantalla completa esta capa no está, así que ahí los
+              // controles funcionan con normalidad.
+              if (minimizado)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => provider.expandir(),
+                    onPanStart: (_) => setState(() => _arrastrando = true),
+                    onPanEnd: (_) => setState(() => _arrastrando = false),
+                    onPanUpdate: (details) => setState(() {
+                      final base = _posicionBurbuja ??
+                          Offset(rectBurbuja.left, rectBurbuja.top);
+                      final nueva = base + details.delta;
+                      _posicionBurbuja = Offset(
+                        nueva.dx.clamp(
+                            0.0,
+                            (anchoPantalla - _anchoBurbuja)
+                                .clamp(0.0, double.infinity)),
+                        nueva.dy.clamp(
+                            0.0,
+                            (altoPantalla - _altoBurbuja)
+                                .clamp(0.0, double.infinity)),
+                      );
+                    }),
+                  ),
+                ),
+
+              // La X va DESPUÉS de la capa de gestos para quedar por
+              // encima de ella; si no, el tap de "agrandar" se comería
+              // el de "cerrar". Es grande a propósito: la anterior era
+              // de 16px y resultaba imposible de acertar.
               if (minimizado)
                 Positioned(
-                  top: 2,
-                  right: 2,
+                  top: 4,
+                  right: 4,
                   child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => provider.cerrar(),
                     child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                          color: Colors.black54, shape: BoxShape.circle),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        shape: BoxShape.circle,
+                      ),
                       child: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 16),
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ),
             ],
           ),
-        );
-
-        final gestos = GestureDetector(
-          // `opaque` mientras está en burbuja: sin esto el detector usa
-          // `deferToChild`, o sea que solo recibe toques si algo de
-          // ADENTRO los recibe -- y adentro está el `IgnorePointer` que
-          // justamente desactiva el WebView. La burbuja no capturaba
-          // nada y los toques pasaban de largo a la lista de resultados
-          // que está debajo: arrastrarla hacía scroll de la lista en vez
-          // de moverla. Expandido NO va opaco, porque ahí los toques
-          // tienen que llegar a los controles del reproductor.
-          behavior: minimizado
-              ? HitTestBehavior.opaque
-              : HitTestBehavior.deferToChild,
-          onTap: minimizado ? () => provider.expandir() : null,
-          // Se separa el "empieza a arrastrar"/"termina de arrastrar"
-          // para saber cuándo animar la posición y cuándo no (ver
-          // `_arrastrando` más arriba).
-          onPanStart:
-              minimizado ? (_) => setState(() => _arrastrando = true) : null,
-          onPanEnd:
-              minimizado ? (_) => setState(() => _arrastrando = false) : null,
-          onPanUpdate: minimizado
-              ? (details) => setState(() {
-                    final base = _posicionBurbuja ??
-                        Offset(rectBurbuja.left, rectBurbuja.top);
-                    final nueva = base + details.delta;
-                    _posicionBurbuja = Offset(
-                      nueva.dx.clamp(
-                          0.0,
-                          (anchoPantalla - _anchoBurbuja)
-                              .clamp(0.0, double.infinity)),
-                      nueva.dy.clamp(
-                          0.0,
-                          (altoPantalla - _altoBurbuja)
-                              .clamp(0.0, double.infinity)),
-                    );
-                  })
-              : null,
-          child: reproductor,
         );
 
         // Mientras se arrastra, la duración baja a cero: la posición se
@@ -232,7 +238,7 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
           top: rectActual.top,
           width: rectActual.width,
           height: rectActual.height,
-          child: gestos,
+          child: reproductor,
         );
 
         // Envuelto en Material (transparente, sin pintar nada por su
