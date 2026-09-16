@@ -60,6 +60,7 @@ class BarraLateral extends StatelessWidget {
           _buildItemMenu(Icons.album_rounded, "Álbumes"),
           _buildItemMenu(Icons.bar_chart_rounded, "Estadísticas"),
           _buildItemMenu(Icons.videogame_asset_rounded, "Juegos"),
+          _buildItemMenu(Icons.newspaper_rounded, "Noticias"),
           _buildItemMenu(Icons.auto_awesome_rounded, "Recomendaciones"),
           _buildItemMenu(Icons.travel_explore_rounded, "Descubrir"),
           _buildItemMenu(Icons.cloud_queue_rounded,

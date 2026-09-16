@@ -11,6 +11,29 @@ import 'song_cover.dart';
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key});
 
+  /// Alto de la barra, sin contar la línea de progreso de arriba.
+  ///
+  /// Crece con la escala de texto del sistema en vez de ser un número
+  /// fijo. Antes eran 65 píxeles a secas, y en un celular con la letra
+  /// más grande -- que es la configuración de fábrica de varios Samsung,
+  /// y algo que mucha gente sube a mano -- el título y el artista no
+  /// entraban y quedaban cortados. Esa es la clase de falla que anda
+  /// perfecto en el celular donde se programó y se rompe en el de otro.
+  ///
+  /// Se topea en 1.6 para que, con escalas enormes, la barra no se coma
+  /// media pantalla: el título completo siempre está en el reproductor
+  /// grande, que es donde hay lugar de sobra.
+  static double altoBarra(BuildContext context) {
+    final escala = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
+    return 65 * escala;
+  }
+
+  /// Alto total, incluyendo la línea de progreso. Lo usa
+  /// `online_video_overlay.dart` para ubicar la barra del video justo
+  /// encima; tienen que salir del mismo lugar o una se le monta a la
+  /// otra.
+  static double altoTotal(BuildContext context) => altoBarra(context) + 2;
+
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
@@ -28,7 +51,7 @@ class MiniPlayer extends StatelessWidget {
         children: [
           const _LineaDeProgreso(),
           Container(
-            height: 65,
+            height: altoBarra(context),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: const BoxDecoration(
               color: AppTheme.surface,

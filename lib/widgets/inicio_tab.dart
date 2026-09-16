@@ -300,6 +300,11 @@ class InicioTab extends StatelessWidget {
                 etiqueta: "Juegos",
                 onTap: () => onIrASeccion("Juegos"),
               ),
+              _AccesoRapido(
+                icono: Icons.newspaper_rounded,
+                etiqueta: "Noticias",
+                onTap: () => onIrASeccion("Noticias"),
+              ),
             ],
           ),
           const SizedBox(height: 24),

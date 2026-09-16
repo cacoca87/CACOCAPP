@@ -1665,3 +1665,78 @@ disparar, y hay un test que lo cubre.
 
 `flutter analyze`, `flutter test` (**114**, subieron de 85), el chequeo de
 formato de todo el repo y `flutter build apk --release` salieron limpios.
+
+## 70. La sección de Noticias que pidió el profesor, y un bug que solo aparecería en SU celular
+
+Dos cosas antes de presentar: lo que el profesor pidió y no estaba, y un riesgo
+concreto de que la app se vea mal justo en el teléfono donde la van a calificar.
+
+### El bug que no se ve en tu celular
+
+**Archivos:** `lib/widgets/mini_player.dart`, `lib/widgets/online_video_overlay.dart`
+
+La app se probó siempre en un Xiaomi. El mini reproductor tenía una **altura
+fija de 65 píxeles** con el título y el artista adentro, y la app no limitaba la
+escala de texto del sistema. En un celular con la letra más grande -- que es la
+configuración de fábrica de varios Samsung, y algo que mucha gente sube a mano
+-- ese texto no entra y queda cortado.
+
+Peor: la barra del video de YouTube tenía escrito a mano "el mini reproductor
+mide 67 píxeles". Dos widgets distintos con la misma medida copiada; si uno
+cambiaba, el otro se le montaba encima.
+
+Ahora el alto **crece con la escala de texto** (con tope, para que no se coma
+media pantalla) y sale de un solo lugar: `MiniPlayer.altoTotal(context)`, que es
+lo que consulta la barra del video. Una sola fuente de verdad en vez de un
+número copiado.
+
+Es exactamente la clase de falla que anda perfecto donde se programó y se rompe
+en el celular de otro.
+
+### Noticias
+
+**Archivos nuevos:** `lib/models/noticia.dart`, `lib/utils/rss_parser.dart`,
+`lib/services/noticias_service.dart`, `lib/screens/noticias_screen.dart`, más
+sus dos archivos de tests (**20 tests**).
+
+Siete categorías: negocios internacionales, comercio global, logística, cadena
+de suministro, contratos, tecnología, y música (rock clásico de los 60 a los
+90). Las seis primeras son las que pidió el profesor.
+
+**Fuente: el RSS de Google Noticias.** Es gratuito, no pide clave de API, no
+tiene límite de consultas y funciona en español; con un mismo mecanismo se
+cubren las siete categorías cambiando solo el texto de búsqueda. La contra,
+dicha de frente: no es una API oficial documentada, así que Google podría
+cambiarla. Si pasa, los tests del parser son los que lo van a delatar, y el
+plan B son los RSS propios de cada diario.
+
+Detalles que importan:
+
+- **Se distingue "no hay internet" de "el servidor falló".** Son dos problemas
+  distintos y el usuario puede hacer algo distinto con cada uno; el mensaje y el
+  ícono cambian según el caso, y siempre hay un botón de reintentar. Esto es lo
+  que quedaba pendiente de "manejo de sin conexión" desde hace varias vueltas.
+- **Se lee la respuesta como bytes UTF-8 y no como texto.** Tomándola directo,
+  "Gestión" llegaría como "GestiÃ³n". Hay un test que lo cubre.
+- **Se recorta el nombre del medio repetido al final del titular.** Google
+  Noticias agrega " - El Comercio" a cada título, y como el medio ya se muestra
+  aparte, quedaría la misma información dos veces. Pero solo se recorta si lo
+  que sigue al guion parece un nombre de medio: hay un test con el titular
+  "Acuerdo Perú - Estados Unidos entra en vigencia" que verifica que no se corte
+  por la mitad.
+- **Un XML roto devuelve lista vacía en vez de reventar.** Pasa de verdad: a
+  veces el servidor responde una página de error en HTML con código 200.
+- **Contador de generación al cambiar de categoría**, igual que en las
+  búsquedas: si cambiás de categoría mientras una carga lenta sigue en la red,
+  la respuesta vieja no pisa a la nueva.
+- Las noticias se abren en el navegador del celular, no dentro de la app: son
+  sitios de terceros con sus anuncios y ventanas de consentimiento, y el
+  navegador ya trae lector, zoom y traductor.
+
+Dependencias nuevas: `xml` (para leer el feed) y `url_launcher` (para abrir las
+noticias).
+
+`flutter analyze`, `flutter test` (**134**, subieron de 114), el chequeo de
+formato de todo el repo y `flutter build apk --release` salieron limpios. Se
+verificó además que el nombre "Noticias" coincida en los tres lugares donde se
+usa.

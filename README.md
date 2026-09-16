@@ -35,6 +35,8 @@ YouTube reproducidos en un reproductor flotante.
 - Estadísticas de escucha y recomendaciones según lo que más escuchás.
 - Cuatro juegos clásicos (Bloques, Carrera, Serpiente y Disparos) para jugar
   mientras suena la música, sin que se corte.
+- Sección de Noticias por categoría: negocios internacionales, comercio global,
+  logística, cadena de suministro, contratos, tecnología y música.
 - Compartir al selector nativo de Android (WhatsApp, X, Instagram, etc.).
 
 ## Cómo correrlo
@@ -69,6 +71,7 @@ lib/
     my_audio_handler         motor de audio (just_audio + audio_service)
     id3_cover_service        etiquetas y carátulas incrustadas en los MP3
     lyrics_service           letras sincronizadas
+    noticias_service         noticias por categoría (RSS de Google Noticias)
   utils/                    funciones puras (parseo, ayudantes)
                             incluye la lógica de los dos juegos
   styles/app_theme.dart     identidad visual

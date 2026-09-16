@@ -6,6 +6,7 @@ import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
+import 'mini_player.dart';
 
 /// Muestra el video de YouTube que esté sonando (si hay uno), en
 /// pantalla completa o achicado en una barra fija abajo -- según
@@ -62,8 +63,6 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
   static const double _altoVideoChico = 48;
   static const double _anchoVideoChico = _altoVideoChico * 16 / 9;
   static const double _margenLateral = 8;
-  // Alto del mini reproductor (65) más su línea de progreso (2).
-  static const double _altoMiniPlayer = 67;
 
   // Ver la regla 1 del comentario de arriba.
   static const _claveReproductor = ValueKey('reproductor-youtube');
@@ -115,7 +114,11 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
         // el video a la izquierda y los controles a la derecha.
         final topBarra = altoPantalla -
             padding.bottom -
-            (hayMiniPlayer ? _altoMiniPlayer : 0) -
+            // El alto sale del propio mini reproductor y no de un número
+            // escrito acá: crece con la escala de texto del sistema, y si
+            // los dos no salieran del mismo lugar, en un celular con la
+            // letra grande esta barra se le montaría encima.
+            (hayMiniPlayer ? MiniPlayer.altoTotal(context) : 0) -
             _margenLateral -
             _altoBarra;
         final rectBarra = Rect.fromLTWH(

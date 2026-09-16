@@ -40,6 +40,8 @@ dependencies:
   # (SharePlus.instance.share(ShareParams(...)), la forma actual desde
   # que se deprecó el Share.share() estático viejo).
   share_plus: ^13.0.0
+  xml: ^6.6.1
+  url_launcher: ^6.3.2
   # OJO: se quitaron "video_player" y "wakelock_plus" — confirmado con
   # grep en todo lib/ que ninguna de las dos se importaba desde ningún
   # lado. Igual que "dio"/"sqflite"/"audio_effects" antes, quedaron del

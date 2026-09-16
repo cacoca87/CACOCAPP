@@ -22,6 +22,7 @@ import 'recommendations_screen.dart';
 import 'descubrir_screen.dart';
 import 'downloaded_songs_view.dart';
 import 'juegos_screen.dart';
+import 'noticias_screen.dart';
 import 'dual_search_screen.dart'; // <--- IMPORTACIÓN DE TU BUSCADOR ONLINE
 import 'pantalla_principal_desktop.dart';
 
@@ -457,6 +458,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       widgetCentral = DownloadedSongsView(onVolver: _volverAInicio);
     } else if (seccionActiva == "Juegos") {
       widgetCentral = JuegosScreen(onVolver: _volverAInicio);
+    } else if (seccionActiva == "Noticias") {
+      widgetCentral = NoticiasScreen(onVolver: _volverAInicio);
     } else {
       final mostrarInicio = seccionActiva == "Tu Biblioteca" &&
           bibliotecaSeleccionada == "Principal (Drive)" &&
