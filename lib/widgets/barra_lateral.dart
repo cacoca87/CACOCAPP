@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
+import '../utils/bibliotecas_reservadas.dart';
 
 class BarraLateral extends StatelessWidget {
   final String seccionActiva;
@@ -31,8 +32,8 @@ class BarraLateral extends StatelessWidget {
       width: esDrawer ? 260 : 240,
       color: AppTheme.ink,
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
           Row(
             children: [
@@ -100,37 +101,47 @@ class BarraLateral extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Expanded(
-            child: ListView.builder(
-              itemCount: bibliotecas.length,
-              itemBuilder: (context, index) {
-                final bib = bibliotecas[index];
-                final seleccionada = bib == bibliotecaSeleccionada &&
-                    seccionActiva == "Tu Biblioteca";
-                final esProtegida =
-                    bib == "Principal (Drive)" || bib == "Favoritos";
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    bib,
-                    style: AppTheme.body.copyWith(
-                      fontSize: 14,
-                      color: seleccionada ? AppTheme.amber : AppTheme.mutedInk,
-                      fontWeight:
-                          seleccionada ? FontWeight.w700 : FontWeight.w400,
-                    ),
+          // La lista de bibliotecas ya no va en un `Expanded`: toda la
+          // barra es una sola lista que se desliza. Con la letra del
+          // sistema agrandada, los once accesos de arriba mas el
+          // formulario de crear no entraban en la pantalla y el
+          // contenido se desbordaba.
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: bibliotecas.length,
+            itemBuilder: (context, index) {
+              final bib = bibliotecas[index];
+              final seleccionada = bib == bibliotecaSeleccionada &&
+                  seccionActiva == "Tu Biblioteca";
+              // Las cuatro vistas propias de la app no se pueden
+              // renombrar ni borrar. Antes solo se protegian dos, asi
+              // que mantener apretado "Recientes" abria un menu cuyas
+              // dos opciones no hacian absolutamente nada.
+              final esProtegida = nombresReservadosDeBiblioteca.contains(bib);
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  bib,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.body.copyWith(
+                    fontSize: 14,
+                    color: seleccionada ? AppTheme.amber : AppTheme.mutedInk,
+                    fontWeight:
+                        seleccionada ? FontWeight.w700 : FontWeight.w400,
                   ),
-                  onTap: () {
-                    onSeleccionarBiblioteca(bib);
-                    if (esDrawer) Navigator.pop(context);
-                  },
-                  onLongPress: (esProtegida || onEliminarBiblioteca == null)
-                      ? null
-                      : () => onEliminarBiblioteca!(bib),
-                );
-              },
-            ),
+                ),
+                onTap: () {
+                  onSeleccionarBiblioteca(bib);
+                  if (esDrawer) Navigator.pop(context);
+                },
+                onLongPress: (esProtegida || onEliminarBiblioteca == null)
+                    ? null
+                    : () => onEliminarBiblioteca!(bib),
+              );
+            },
           ),
         ],
       ),

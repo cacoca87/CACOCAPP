@@ -40,9 +40,15 @@ class PlaylistProvider extends ChangeNotifier {
     _persist();
   }
 
+  // Contador para el id de las playlists nuevas. Solo con la hora en
+  // milisegundos, dos playlists creadas dentro del mismo milisegundo
+  // compartian id, y como las playlists se buscan por id una de las dos
+  // quedaba inalcanzable (o se editaba la otra sin querer).
+  int _contadorDeIds = 0;
+
   Playlist createPlaylist(String name) {
     final playlist = Playlist(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: '${DateTime.now().millisecondsSinceEpoch}_${_contadorDeIds++}',
       name: name,
     );
     _playlists.add(playlist);

@@ -40,7 +40,7 @@ class VistaSpotifyGrid extends StatelessWidget {
     if (elementos.isEmpty) {
       return EstadoVacio(
         icono: Icons.library_music_outlined,
-        mensaje: "No hay $titulo disponibles todavía.",
+        mensaje: "No hay ${titulo.toLowerCase()} disponibles todavía.",
       );
     }
 
