@@ -1004,3 +1004,100 @@ Lo anoto para que quede constancia de qué se miró, no solo de qué se arregló
 Las secciones se piden por su nombre en texto (`"Álbumes"`, `"Estadísticas"`, etc.), y un solo typo haría que un botón no hiciera nada en silencio. Crucé todos los nombres que piden la pantalla de inicio y la barra lateral contra los que la pantalla principal sabe manejar: **coinciden todos**. La entrada "Inicio" de la barra lateral es solo una etiqueta; por dentro apunta a "Tu Biblioteca", que sí está contemplada.
 
 `flutter analyze`, `flutter test` (48) y `flutter build apk --release` salieron limpios.
+
+## 59. Cuarta pasada: el README describía otra app, y había un artista llamado "Remaster"
+
+Esta vuelta fui por dos capas que ninguna auditoría anterior había tocado: la
+documentación y la configuración del proyecto (Android, repositorio, CI).
+
+### El README describía una app distinta
+
+**Archivo:** `README.md` (reescrito entero)
+
+Es lo primero que ve cualquiera que abra el repo en GitHub -- tu profesor
+incluido -- y estaba completamente desactualizado. Decía:
+
+- Que la app se llamaba **"MiMúsica"**.
+- Que la estructura tenía archivos como `home_screen.dart`, `playlists_screen.dart`
+  y `lib/data/sample_data.dart`, **ninguno de los cuales existe**.
+- Que para agregar canciones había que editar ese `sample_data.dart` inexistente.
+- Que "persistencia real" era un próximo paso pendiente, cuando las playlists y
+  favoritos se guardan desde hace rato.
+- No mencionaba **ninguna** de las funciones reales: ni la biblioteca de R2, ni
+  Búsqueda Online, ni Descubrir/Jamendo, ni descargas, ni estadísticas, ni
+  recomendaciones, ni el ecualizador, ni compartir.
+
+El nuevo describe lo que la app hace de verdad, la estructura real de carpetas,
+cómo correrla y probarla, y suma una sección con las decisiones de diseño que
+cuesta entender desde afuera (por qué YouTube va por WebView, por qué la app
+está bloqueada en vertical, por qué el reproductor lleva una `Key` fija) y otra
+con las limitaciones conocidas, dicha de frente.
+
+### Bug visible: existía un artista llamado "Remaster"
+
+**Archivos:** `lib/services/drive_service.dart`, nuevo `lib/utils/nombre_archivo_parser.dart`
+
+Cuando un MP3 no trae etiquetas ID3, el artista se deduce del nombre del
+archivo partiéndolo por `" - "`. La regla vieja era "la primera parte es el
+título, la segunda el artista", lo que funciona con dos partes pero se rompe
+con tres:
+
+- `Black Dog - Remaster - Led Zeppelin.mp3` → artista: **"Remaster"**
+- `Ramble On - Remaster - Led Zeppelin.mp3` → artista: **"Remaster"**
+
+O sea que en la pantalla de Artistas aparecía **"Remaster" como si fuera una
+banda**, con dos canciones adentro.
+
+**Arreglo:** la deducción ahora saltea las partes que describen la *versión* de
+una grabación (remaster, live, remix, mono, deluxe, etc., con o sin año
+alrededor) y toma la primera que sí puede ser un artista. Los casos de dos
+partes se comportan exactamente igual que antes.
+
+Como no podés probar en el celular, saqué esa lógica a un archivo aparte
+(mismo criterio que `extension_guesser.dart` y `lyrics_parsing.dart`) y le
+puse **11 tests**, incluyendo los dos casos reales de arriba, el año adelante
+y atrás, y uno que verifica que un artista con número en el nombre ("Blink
+182") no se confunda con un calificador de versión.
+
+### Coherencia en el nombre de la app
+
+`lib/main.dart` declaraba el título como `'Cacocapp'` mientras que el nombre
+debajo del ícono y el encabezado dentro de la app dicen `CACOCAPP`. Ese título
+es el que Android muestra en la pantalla de apps recientes, así que se veía
+escrito distinto según dónde miraras. Unificado.
+
+### Lo que revisé y estaba bien
+
+- **AndroidManifest.xml**: los permisos son los justos, el servicio de
+  reproducción en segundo plano está declarado con su tipo correcto
+  (`mediaPlayback`) y el receptor de los botones del auricular también. Nada
+  que sacar ni que agregar.
+- **Ícono adaptativo**: estuve por "corregir" el fondo azul `#2E4265` por no
+  coincidir con la paleta ámbar/negra de la app, hasta que leí el comentario:
+  está tomado de tu propia ilustración (los dos gatos con la nota musical). Es
+  correcto, no lo toqué.
+- **CI de GitHub Actions**: corre análisis, formato y tests en cada push.
+  Verifiqué los tres localmente con los mismos comandos exactos que usa
+  (incluido `dart format` sobre **todo** el repo, no solo `lib/`) y pasan.
+- **Alcance de pantallas**: comprobé que las 8 pantallas de la app sean
+  alcanzables desde la interfaz. Ninguna quedó huérfana.
+- `transiciones.dart`, `app_logger.dart`, `tarjeta_presionable.dart`,
+  `indicador_sonando.dart` y los dos carruseles: todos en uso, sin nada que
+  señalar.
+
+### Dos cosas que NO toqué a propósito
+
+1. **`applicationId = "com.example.musicapp"`** en `android/app/build.gradle.kts`
+   sigue siendo el valor de ejemplo que pone Flutter al crear un proyecto.
+   Cambiarlo tiene una consecuencia seria: Android identifica las apps por ese
+   id, así que la versión nueva se instalaría **como una app aparte** y toda tu
+   configuración guardada (playlists, favoritos, descargas) parecería
+   desaparecer. Es algo a decidir, no a cambiar en silencio.
+2. **`assets/icon/splash.png` pesa 0 bytes**, y `pubspec.yaml` tiene la
+   configuración de la pantalla de arranque apuntando justo a ese archivo
+   vacío. Por eso la app abre con un destello blanco. Se arregla rápido, pero
+   cambia lo primero que se ve al abrir la app, así que prefiero que lo puedas
+   mirar antes.
+
+`flutter analyze`, `flutter test` (**59**, subieron de 48), el chequeo de
+formato de todo el repo y `flutter build apk --release` salieron limpios.

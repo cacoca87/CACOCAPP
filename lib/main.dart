@@ -238,7 +238,10 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
         ChangeNotifierProvider.value(value: _audioEffectsProvider),
       ],
       child: MaterialApp(
-        title: 'Cacocapp',
+        // Mismo nombre que el de abajo del ícono (android:label) y que
+        // el encabezado dentro de la app. Este es el que se ve en la
+        // pantalla de apps recientes de Android.
+        title: 'CACOCAPP',
         debugShowCheckedModeBanner: false,
         scaffoldMessengerKey: _scaffoldMessengerKey,
         theme: AppTheme.themeData,

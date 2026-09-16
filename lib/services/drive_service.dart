@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/song.dart';
 import '../utils/app_logger.dart';
+import '../utils/nombre_archivo_parser.dart';
 
 class DriveService {
   final String baseUrl = 'https://pub-700eb414537341c79d5046ada835aea7.r2.dev';
@@ -78,25 +79,14 @@ class DriveService {
           .replaceAll(RegExp(r'\.mp3$', caseSensitive: false), '')
           .trim();
 
-      String artist = "Artista Desconocido";
-      String title = nombreLimpio;
-
-      if (nombreLimpio.contains(' - ')) {
-        List<String> partes = nombreLimpio.split(' - ');
-        final posiblePrimeraParte = partes[0].trim();
-
-        final esArtistaPrimero = _artistasQueVanPrimero.any(
-          (a) => posiblePrimeraParte.toLowerCase() == a.toLowerCase(),
-        );
-
-        if (esArtistaPrimero) {
-          artist = posiblePrimeraParte;
-          title = partes.sublist(1).join(' - ').trim();
-        } else {
-          title = posiblePrimeraParte;
-          artist = partes[1].trim();
-        }
-      }
+      // La deducción vive en `utils/nombre_archivo_parser.dart` para
+      // poder probarla con tests sin salir a la red.
+      final deducido = deducirTituloYArtista(
+        nombreLimpio,
+        artistasQueVanPrimero: _artistasQueVanPrimero,
+      );
+      final String title = deducido.titulo;
+      final String artist = deducido.artista;
 
       String urlStreamingDirecto =
           '$baseUrl/${Uri.encodeComponent(archivoCompleto)}';
