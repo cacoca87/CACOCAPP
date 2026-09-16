@@ -128,8 +128,28 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   // ========== RECOMENDACIONES ==========
-  List<Song> getRecommendations(List<Song> allSongs) =>
-      calcularRecomendaciones(allSongs, _historial);
+
+  // Las recomendaciones se barajan al azar, y se piden desde el `build`
+  // de dos pantallas. Sin guardar el resultado, cada refresco --y hay
+  // muchos: uno por cada latido del reproductor-- devolvía un orden
+  // distinto, así que el carrusel de "Recomendado para ti" se
+  // reacomodaba solo delante de los ojos del usuario.
+  //
+  // Se recalcula únicamente cuando cambia algo que de verdad importa:
+  // la cantidad de canciones o el historial de escucha.
+  List<Song>? _recomendacionesGuardadas;
+  String? _claveRecomendaciones;
+
+  List<Song> getRecommendations(List<Song> allSongs) {
+    final clave = '${allSongs.length}|${_historial.join(',')}';
+    final guardadas = _recomendacionesGuardadas;
+    if (guardadas != null && _claveRecomendaciones == clave) return guardadas;
+
+    final nuevas = calcularRecomendaciones(allSongs, _historial);
+    _claveRecomendaciones = clave;
+    _recomendacionesGuardadas = nuevas;
+    return nuevas;
+  }
 
   // ========== HISTORIAL ==========
   static const String _historialKey = 'player_history_v1';
@@ -358,7 +378,6 @@ class PlayerProvider extends ChangeNotifier {
               album: s.album,
               url: _urlParaReproducir(s),
               coverUrl: s.coverUrl,
-              playlists: s.playlists,
             ))
         .toList();
 

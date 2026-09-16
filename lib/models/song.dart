@@ -5,7 +5,6 @@ class Song {
   String album; // mutable: se actualiza cuando llega el tag ID3 real (TALB)
   final String url;
   final String coverUrl;
-  List<String> playlists;
 
   Song({
     required this.id,
@@ -14,6 +13,5 @@ class Song {
     required this.album,
     required this.url,
     required this.coverUrl,
-    List<String>? playlists,
-  }) : playlists = playlists ?? [];
+  });
 }

@@ -141,12 +141,10 @@ class Id3CoverService {
       if (mp3.parseTagsSync()) {
         final tags = mp3.getMetaTags();
 
-        // De paso, ya que parseamos los tags, guardamos álbum Y artista
-        // en caché de memoria también — así getEmbeddedAlbum()/
-        // getEmbeddedArtist() para esta misma canción no necesitan una
-        // segunda petición de red.
-        _cacheAlbum[url] = _extraerAlbum(tags);
-        _cacheArtista[url] = _extraerArtista(tags);
+        // Ya que se parsearon los tags, se guardan álbum y artista
+        // (memoria y disco) para que pedirlos después no vuelva a bajar
+        // el archivo.
+        _recordarAlbumYArtista(url, tags);
 
         final apic = tags?['APIC'];
         final base64Str = apic is Map ? apic['base64'] as String? : null;
@@ -202,6 +200,34 @@ class Id3CoverService {
     } catch (_) {}
   }
 
+  /// Guarda álbum Y artista de un mismo parseo de tags, en memoria y en
+  /// disco.
+  ///
+  /// Existe porque los tres caminos que leen tags (carátula, álbum y
+  /// artista) salen del MISMO archivo descargado, pero cada uno guardaba
+  /// solo lo suyo. Resultado: escanear la biblioteca pedía el álbum de
+  /// una canción (512 KB por red), y enseguida el artista de la misma
+  /// canción, bajando otros 512 KB para releer exactamente los mismos
+  /// bytes. Con cientos de canciones eso es el doble de datos móviles en
+  /// el primer escaneo, y encima la carátula los guardaba solo en
+  /// memoria, así que al reabrir la app se volvían a bajar.
+  void _recordarAlbumYArtista(String url, Map<String, dynamic>? tags) {
+    final album = _extraerAlbum(tags);
+    _cacheAlbum[url] = album;
+    if (album != null) {
+      _guardarAlbumEnDisco(url, album);
+    } else {
+      _marcarSinAlbum(url);
+    }
+
+    final artista = _extraerArtista(tags);
+    _cacheArtista[url] = artista;
+    if (artista != null) {
+      _guardarArtistaEnDisco(url, artista);
+    } else {
+      _marcarSinArtista(url);
+    }
+  }
   // ========== ÁLBUM REAL (TALB) ==========
 
   String? _extraerAlbum(Map<String, dynamic>? tags) =>
@@ -245,13 +271,8 @@ class Id3CoverService {
 
       final mp3 = MP3Instance(bytes);
       if (mp3.parseTagsSync()) {
-        final tags = mp3.getMetaTags();
-        final album = _extraerAlbum(tags);
-        _cacheAlbum[url] = album;
-        if (album != null) {
-          _guardarAlbumEnDisco(url, album); // no esperamos, no bloquea la UI
-          return album;
-        }
+        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        return _cacheAlbum[url];
       }
     } catch (_) {
       // El archivo no trae el tag, no hay red/archivo, o el servidor
@@ -327,14 +348,8 @@ class Id3CoverService {
 
       final mp3 = MP3Instance(bytes);
       if (mp3.parseTagsSync()) {
-        final tags = mp3.getMetaTags();
-        final artista = _extraerArtista(tags);
-        _cacheArtista[url] = artista;
-        if (artista != null) {
-          _guardarArtistaEnDisco(
-              url, artista); // no esperamos, no bloquea la UI
-          return artista;
-        }
+        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        return _cacheArtista[url];
       }
     } catch (_) {
       // El archivo no trae el tag, no hay red/archivo, o el servidor

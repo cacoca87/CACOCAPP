@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
+import '../utils/plural.dart';
 import '../models/song.dart';
 import '../providers/online_video_provider.dart';
 import '../providers/player_provider.dart';
@@ -24,7 +25,7 @@ import 'descubrir_screen.dart';
 import 'downloaded_songs_view.dart';
 import 'juegos_screen.dart';
 import 'noticias_screen.dart';
-import 'dual_search_screen.dart'; // <--- IMPORTACIÓN DE TU BUSCADOR ONLINE
+import 'dual_search_screen.dart';
 import 'pantalla_principal_desktop.dart';
 
 class PantallaPrincipal extends StatefulWidget {
@@ -99,7 +100,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Biblioteca actualizada: ${list.length} canciones"),
+          content:
+              Text("Biblioteca actualizada: ${contarCanciones(list.length)}"),
           backgroundColor: AppTheme.primary,
           duration: const Duration(seconds: 2),
         ),
@@ -352,7 +354,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         title: Text("¿Eliminar playlist?",
             style: AppTheme.subheading.copyWith(fontSize: 17)),
         content: Text(
-          'Se eliminará "$nombre" con sus ${playlistAEliminar.songs.length} canciones. Las canciones en sí no se borran, solo esta playlist.',
+          'Se eliminará "$nombre" con sus ${contarCanciones(playlistAEliminar.songs.length)}. Las canciones en sí no se borran, solo esta playlist.',
           style: AppTheme.body,
         ),
         actions: [
@@ -478,8 +480,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     } else if (seccionActiva == "Descubrir") {
       widgetCentral = DescubrirScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Buscador Online") {
-      widgetCentral = DualSearchScreen(
-          onVolver: _volverAInicio); // <--- PASANDO LA FUNCIÓN DE RETORNO
+      widgetCentral = DualSearchScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Música Descargada") {
       widgetCentral = DownloadedSongsView(onVolver: _volverAInicio);
     } else if (seccionActiva == "Juegos") {

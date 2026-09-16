@@ -63,8 +63,7 @@ class BarraLateral extends StatelessWidget {
           _buildItemMenu(Icons.newspaper_rounded, "Noticias"),
           _buildItemMenu(Icons.auto_awesome_rounded, "Recomendaciones"),
           _buildItemMenu(Icons.travel_explore_rounded, "Descubrir"),
-          _buildItemMenu(Icons.cloud_queue_rounded,
-              "Buscador Online"), // <--- NUEVA OPCIÓN AÑADIDA
+          _buildItemMenu(Icons.cloud_queue_rounded, "Buscador Online"),
           _buildItemMenu(Icons.download_done_rounded, "Música Descargada"),
           const Divider(color: AppTheme.hairline, height: 32),
           Text("Crear biblioteca",

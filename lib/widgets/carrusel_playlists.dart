@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/playlist.dart';
+import '../utils/plural.dart';
 import '../styles/app_theme.dart';
 import 'tarjeta_presionable.dart';
 
@@ -90,7 +91,7 @@ class CarruselPlaylists extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text("${playlist.songs.length} canciones",
+                          Text(contarCanciones(playlist.songs.length),
                               style: AppTheme.small),
                         ],
                       ),

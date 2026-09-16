@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/playlist.dart';
+import '../utils/plural.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
@@ -109,7 +110,8 @@ class InicioTab extends StatelessWidget {
                               fontSize: 15),
                         ),
                         const SizedBox(height: 2),
-                        Text("$totalCanciones canciones en tu biblioteca",
+                        Text(
+                            "${contarCanciones(totalCanciones)} en tu biblioteca",
                             style: AppTheme.small),
                       ],
                     ),

@@ -2228,3 +2228,81 @@ Ahora dice exactamente qué compila, qué se probó y qué no.
 
 `flutter analyze`, `flutter test` (142) y las **tres** compilaciones -- Android,
 Windows y web -- salieron limpias.
+
+## 80. Lectura archivo por archivo: el escaneo de la biblioteca gastaba el doble de datos
+
+Pediste que revisara todo y no por sectores. Esta vuelta fue con el inventario
+completo en la mano: **62 archivos Dart en `lib/` (11.726 líneas)**, más los
+tests, la configuración y los nativos de Android y Windows. Estos son los
+hallazgos.
+
+### Bug importante: el primer escaneo de la biblioteca bajaba el doble
+
+**Archivo:** `lib/services/id3_cover_service.dart`
+
+Para leer los tags de un MP3 hay que bajar sus primeros 512 KB. Los tres caminos
+que los leen -- carátula, álbum y artista -- salen del **mismo archivo**, pero
+cada uno guardaba solo lo suyo:
+
+- Pedir el álbum de una canción bajaba 512 KB y guardaba solo el álbum.
+- Pedir el artista de **esa misma canción** bajaba otros 512 KB para releer
+  exactamente los mismos bytes.
+
+Y el escaneo de la biblioteca (`_resolverMetadataReal`) pide justamente los dos,
+uno tras otro, para cada canción. Con tus 338 canciones eso son unos **170 MB de
+datos móviles en el primer arranque, cuando alcanzaba con la mitad**.
+
+Había un tercer caso: la carátula sí guardaba álbum y artista, pero **solo en
+memoria**. Al cerrar la app se perdían y se volvían a bajar la próxima vez.
+
+Ahora los tres usan un mismo lugar que guarda álbum y artista juntos, en memoria
+y en disco, del único parseo que ya se hizo.
+
+### Las recomendaciones se reordenaban solas
+
+**Archivo:** `lib/providers/player_provider.dart`
+
+"Recomendado para ti" se arma barajando al azar, y se pedía **dentro del
+`build`** de dos pantallas. Como el reproductor avisa de cambios constantemente,
+cada aviso devolvía un orden distinto: el carrusel se reacomodaba solo delante
+de los ojos. Ahora el resultado se guarda y solo se recalcula cuando cambia algo
+real -- la cantidad de canciones o el historial de escucha.
+
+### "1 canciones"
+
+**Archivo nuevo:** `lib/utils/plural.dart` (con 3 tests)
+
+Cuatro lugares distintos escribían `"$cantidad canciones"` a mano, y los cuatro
+decían "1 canciones" con una sola. El caso más probable justo en una playlist
+recién creada. Ahora hay una función para eso y la usan los cuatro.
+
+### Un campo del modelo que no servía para nada
+
+`Song.playlists` existía, se copiaba de una canción a otra al rearmar la cola...
+y no lo leía nadie. Las playlists las maneja `PlaylistProvider` por completo.
+Dejarlo invita a creer que una canción sabe a qué playlists pertenece, que es
+falso, y tarde o temprano alguien escribe código apoyado en eso. Borrado, junto
+con sus dos tests.
+
+### Tres comentarios de borrador que quedaron en el código
+
+`// <--- IMPORTACIÓN DE TU BUSCADOR ONLINE`, `// <--- PASANDO LA FUNCIÓN DE
+RETORNO` y `// <--- NUEVA OPCIÓN AÑADIDA`. Son marcas de cuando se escribió el
+código, no explicaciones: no dicen por qué algo es así, solo que en su momento
+era nuevo. Borradas.
+
+### Lo que se leyó entero y estaba bien
+
+- `recommendation_engine.dart`, `song.dart`, `playlist.dart`,
+  `indicador_sonando.dart`, `artwork_service.dart`, `audio_effects_service.dart`,
+  `carrusel_canciones.dart`, `carrusel_playlists.dart`, `barra_lateral.dart`.
+- **`MainActivity.kt`** (el puente nativo del ecualizador): cada llamada al
+  sistema está envuelta en su propio `try`, que es lo correcto porque varios
+  fabricantes restringen estos efectos; libera todo al cerrarse y no vuelve a
+  engancharse si la sesión de audio no cambió.
+- Los carruseles usan alto fijo, que era sospechoso por el patrón que ya dio
+  problemas, pero sus textos tienen `maxLines` con recorte y entran holgados aun
+  con la letra al máximo.
+
+`flutter analyze`, `flutter test` (**143**) y `flutter build apk --release`
+salieron limpios.
