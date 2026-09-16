@@ -1599,3 +1599,69 @@ que el auto ocupe tantos casilleros como su silueta, no uno solo.
 
 `flutter analyze`, `flutter test` (**85**, subieron de 81), el chequeo de formato
 de todo el repo y `flutter build apk --release` salieron limpios.
+
+## 69. Dos juegos más: Serpiente y Disparos
+
+De la lista de siete clásicos del "brick game", se agregaron los dos que mejor
+encajan sobre lo ya construido: usan la misma cuadrícula, los mismos botones y
+la misma forma de testear. Quedan cuatro juegos en total.
+
+**Archivos nuevos:** `lib/utils/snake_logica.dart`,
+`lib/utils/disparos_logica.dart`, sus dos archivos de tests (**29 tests**),
+`lib/screens/snake_screen.dart` y `lib/screens/disparos_screen.dart`.
+
+### Serpiente
+
+Comer hace crecer y acelerar; chocar contra una pared o contra uno mismo
+termina el juego.
+
+Dos detalles que parecen chicos y son los que hacen que se sienta bien:
+
+- **El giro se guarda y se aplica en el próximo paso.** Sin eso, dos toques
+  rápidos dentro del mismo paso -- por ejemplo "arriba" y enseguida "izquierda"
+  yendo a la derecha -- dejarían a la serpiente dada vuelta, comiéndose su
+  propio cuello. Además se ignora cualquier giro hacia atrás: dar media vuelta
+  sobre el propio cuello no es un movimiento, es un choque.
+- **La última celda del cuerpo no cuenta como choque cuando no se come**,
+  porque en ese mismo paso la cola se corre y deja el lugar libre. Sin esa
+  salvedad, ir en línea recta chocaría contra la propia cola.
+
+Se usa `Point<int>` de `dart:math` en vez de inventar una clase de coordenadas:
+ya viene con comparación por valor, que es exactamente lo que hace falta para
+preguntar "¿la cabeza está sobre la comida?".
+
+### Disparos
+
+Un cañón abajo, bloques que bajan, y hay que destruirlos antes de que lleguen.
+Hasta tres balas en el aire a la vez, para que mantener apretado el botón no
+vuelva el juego trivial. Las balas suben en cada paso y los bloques bajan cada
+seis: si bajaran igual de rápido no habría tiempo de acertarles.
+
+**Bug encontrado y arreglado mientras se armaba:** una bala disparada contra un
+bloque pegado al cañón lo atravesaba. La bala nacía justo sobre ese bloque, pero
+el impacto solo se revisaba después de que subiera un casillero, así que nunca
+se lo comparaba con el lugar donde había nacido. Ahora se resuelve el impacto al
+disparar, y hay un test que lo cubre.
+
+### Por qué estos dos y no los otros
+
+- **Tank** es el más trabajoso de los siete: necesita dirección del tanque,
+  balas en cuatro sentidos, muros y enemigos que se muevan y disparen solos.
+- **Supplement Shooting** es el más difícil de explicar y de que se entienda
+  jugándolo.
+- **Brick Breaker** es el que peor encaja: la pelota necesita moverse en
+  fracciones de casillero para que los rebotes se sientan bien. Forzada a la
+  cuadrícula queda dura, y hacerla bien significa no reutilizar nada de lo ya
+  hecho.
+
+### Repaso de arriba abajo
+
+- Ningún archivo quedó huérfano.
+- Las cuatro pantallas de juego cancelan su temporizador, sueltan el observador
+  del ciclo de vida y comprueban `mounted` después de leer el récord del disco.
+- Los nombres de sección siguen coincidiendo en los tres lugares donde se usan.
+- No quedaron marcadores de posición ni notas pendientes en el código.
+- `README.md` actualizado: decía "dos juegos".
+
+`flutter analyze`, `flutter test` (**114**, subieron de 85), el chequeo de
+formato de todo el repo y `flutter build apk --release` salieron limpios.

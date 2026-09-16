@@ -33,8 +33,8 @@ YouTube reproducidos en un reproductor flotante.
 - Vistas por artista y por álbum.
 - Letras sincronizadas con el tiempo de la canción (formato LRC, vía lrclib).
 - Estadísticas de escucha y recomendaciones según lo que más escuchás.
-- Dos juegos (Bloques y Carrera) para jugar mientras suena la música, sin que
-  se corte.
+- Cuatro juegos clásicos (Bloques, Carrera, Serpiente y Disparos) para jugar
+  mientras suena la música, sin que se corte.
 - Compartir al selector nativo de Android (WhatsApp, X, Instagram, etc.).
 
 ## Cómo correrlo
@@ -89,8 +89,8 @@ Los tres pasos corren automáticamente en GitHub Actions ante cada push
 Las pruebas cubren lógica pura y servicios con HTTP simulado: parseo de letras,
 deducción de título y artista desde el nombre del archivo, adivinación de
 extensiones, motor de recomendaciones, cliente de Jamendo, la persistencia de
-playlists y favoritos, y las reglas de los dos juegos (choques, rotación,
-líneas completas, puntaje). **No hay pruebas de interfaz**, así que
+playlists y favoritos, y las reglas de los cuatro juegos (choques,
+rotación, líneas completas, puntaje). **No hay pruebas de interfaz**, así que
 los cambios visuales o de interacción se verifican probando la app en un
 dispositivo real.
 

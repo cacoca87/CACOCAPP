@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
 import 'carrera_screen.dart';
+import 'disparos_screen.dart';
+import 'snake_screen.dart';
 import 'tetris_screen.dart';
 
 /// Menú de los juegos. Los dos se abren con `Navigator.push` (a
@@ -61,6 +63,38 @@ class JuegosScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => CarreraScreen(
+                  onVolver: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _TarjetaJuego(
+            icono: Icons.moving_rounded,
+            titulo: 'Serpiente',
+            descripcion:
+                'Comé sin chocarte contra las paredes ni contra vos mismo. '
+                'Cada bocado te hace más largo y más rápido.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SnakeScreen(
+                  onVolver: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _TarjetaJuego(
+            icono: Icons.arrow_upward_rounded,
+            titulo: 'Disparos',
+            descripcion:
+                'Destruí los bloques que bajan antes de que lleguen al cañón. '
+                'Podés tener hasta tres balas en el aire.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DisparosScreen(
                   onVolver: () => Navigator.pop(context),
                 ),
               ),
