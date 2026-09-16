@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../styles/app_theme.dart';
+import '../utils/plural.dart';
 
 /// Botón redondo de los controles de los juegos. Es grande a propósito:
 /// se juega con el pulgar y en movimiento, así que un botón chico se
@@ -117,15 +118,21 @@ class MarcadorJuego extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _Dato(etiqueta: 'PUNTAJE', valor: '$puntaje', destacado: true),
-        _Dato(etiqueta: 'NIVEL', valor: '$nivel'),
-        if (etiquetaExtra.isNotEmpty)
-          _Dato(etiqueta: etiquetaExtra, valor: '$valorExtra'),
-        _Dato(etiqueta: 'RÉCORD', valor: '$record'),
-      ],
+    // FittedBox para que, con la letra del sistema agrandada, las
+    // cuatro columnas se achiquen en vez de desbordarse fuera de la
+    // pantalla.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _Dato(etiqueta: 'PUNTAJE', valor: '$puntaje', destacado: true),
+          _Dato(etiqueta: 'NIVEL', valor: '$nivel'),
+          if (etiquetaExtra.isNotEmpty)
+            _Dato(etiqueta: etiquetaExtra, valor: '$valorExtra'),
+          _Dato(etiqueta: 'RÉCORD', valor: '$record'),
+        ],
+      ),
     );
   }
 }
@@ -190,7 +197,7 @@ class CartelFinDeJuego extends StatelessWidget {
             style: AppTheme.heading.copyWith(fontSize: 24),
           ),
           const SizedBox(height: 8),
-          Text('$puntaje puntos', style: AppTheme.body),
+          Text(contar(puntaje, 'punto', 'puntos'), style: AppTheme.body),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             style: AppTheme.primaryButton,

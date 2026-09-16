@@ -114,10 +114,31 @@ class _AppBootstrapState extends State<AppBootstrap> {
           body: Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(
-                'Error iniciando el reproductor:\n$_error',
-                style: const TextStyle(color: AppTheme.danger, fontSize: 13),
-                textAlign: TextAlign.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded,
+                      size: 56, color: AppTheme.danger),
+                  const SizedBox(height: 14),
+                  Text(
+                    'No se pudo iniciar el reproductor.\n$_error',
+                    style:
+                        const TextStyle(color: AppTheme.danger, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 18),
+                  // Sin esto habia que cerrar la app a la fuerza: la
+                  // pantalla de error no ofrecia ninguna salida.
+                  ElevatedButton.icon(
+                    style: AppTheme.primaryButton,
+                    onPressed: () {
+                      setState(() => _error = null);
+                      _init();
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Reintentar'),
+                  ),
+                ],
               ),
             ),
           ),
@@ -197,9 +218,10 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
   /// mismo la primera vez que se abre.
   Future<void> _pedirPermisosDeFondo() async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
-    if (await Permission.notification.isDenied) {
-      await Permission.notification.request();
-    }
+    // El de notificaciones ya se pidio en `_AppBootstrapState._init()`,
+    // antes de arrancar el servicio de audio. Pedirlo de nuevo aca
+    // abria un segundo cartel del sistema pegado al primero la primera
+    // vez que se abre la app.
     if (await Permission.ignoreBatteryOptimizations.isDenied) {
       await Permission.ignoreBatteryOptimizations.request();
     }

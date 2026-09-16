@@ -8,8 +8,43 @@ import '../widgets/song_cover.dart';
 /// Muestra la cola de reproducción actual (la playlist que se está
 /// escuchando ahora, no una playlist guardada) con la canción en
 /// curso resaltada, y deja saltar a cualquier otra con un toque.
-class QueueScreen extends StatelessWidget {
+class QueueScreen extends StatefulWidget {
   const QueueScreen({super.key});
+
+  @override
+  State<QueueScreen> createState() => _QueueScreenState();
+}
+
+class _QueueScreenState extends State<QueueScreen> {
+  final ScrollController _scroll = ScrollController();
+
+  /// Alto aproximado de cada fila. No hace falta que sea exacto: solo
+  /// sirve para dejar la canción en curso a la vista al abrir.
+  static const double _altoAproximadoDeFila = 72;
+
+  @override
+  void initState() {
+    super.initState();
+    // La cola puede tener cientos de canciones. Sin esto, abrir "Cola
+    // de reproducción" mientras suena la número 200 mostraba el
+    // principio de la lista y había que buscarla a mano.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _irALaActual());
+  }
+
+  void _irALaActual() {
+    if (!mounted || !_scroll.hasClients) return;
+    final indice = context.read<PlayerProvider>().currentIndex;
+    if (indice <= 2) return;
+    // Se deja un par de filas arriba para que se vea de dónde viene.
+    final destino = (indice - 2) * _altoAproximadoDeFila;
+    _scroll.jumpTo(destino.clamp(0.0, _scroll.position.maxScrollExtent));
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +67,7 @@ class QueueScreen extends StatelessWidget {
                   "y acá vas a ver qué sigue después.",
             )
           : ListView.builder(
+              controller: _scroll,
               itemCount: cola.length,
               itemBuilder: (context, index) {
                 final cancion = cola[index];
