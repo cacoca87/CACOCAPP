@@ -1,11 +1,11 @@
 {
-    "name": "musicapp",
-    "short_name": "musicapp",
+    "name": "CACOCAPP",
+    "short_name": "CACOCAPP",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#2E4265",
-    "theme_color": "#2E4265",
-    "description": "A new Flutter project.",
+    "background_color": "#14100E",
+    "theme_color": "#14100E",
+    "description": "Reproductor de música con biblioteca propia, búsqueda online, letras y noticias.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
