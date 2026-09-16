@@ -326,6 +326,13 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<bool> downloadSong(Song song, {String? extensionForzada}) async {
+    // Las canciones de la Búsqueda Online no se descargan, y no es un
+    // olvido: lo que la app tiene de ellas es un enlace prestado de
+    // YouTube que caduca en unas horas. Escucharlas es una cosa;
+    // guardarse el archivo de audio es otra distinta, y esa no la hace
+    // esta app. El menú ya no ofrece la opción; esto es el cerrojo, por
+    // si algún día alguien llama a este método desde otro lado.
+    if (song.id.startsWith('yt_')) return false;
     if (_rutasDescargadas.containsKey(song.id)) return true;
     if (_descargando.contains(song.id)) return false;
 

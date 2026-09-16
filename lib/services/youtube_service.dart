@@ -87,4 +87,57 @@ class YoutubeService {
       );
     }
   }
+
+  /// Devuelve la URL del AUDIO suelto de un video, para reproducirlo
+  /// con el motor de audio de la app en vez del reproductor embebido.
+  ///
+  /// Por qué hace falta: el reproductor embebido de YouTube es una
+  /// vista web, y Android la congela al bloquear la pantalla. Por eso
+  /// el video se callaba. El audio suelto, en cambio, entra por el
+  /// mismo camino que las canciones del Drive -- `just_audio` +
+  /// `audio_service` -- que ya corre como servicio en primer plano y
+  /// sigue sonando con la pantalla apagada, con su notificación y sus
+  /// controles en la pantalla de bloqueo.
+  ///
+  /// Dos cosas para tener presentes:
+  ///
+  /// * La URL que devuelve YouTube CADUCA (unas horas) y está atada al
+  ///   aparato que la pidió. Por eso se resuelve justo antes de
+  ///   reproducir, cada vez, y no se guarda en ningún lado.
+  /// * Esto depende de cómo YouTube arma sus enlaces hoy, que es algo
+  ///   que ellos cambian sin avisar. Está probado y funcionando, pero
+  ///   si algún día deja de andar, el diagnóstico está en
+  ///   `tool/probar_audio_youtube.dart`: dice en dos minutos si el
+  ///   problema es este o es otra cosa.
+  Future<String> obtenerUrlDeAudio(String videoId) async {
+    try {
+      final manifiesto = await _yt.videos.streamsClient.getManifest(videoId);
+      final soloAudio = manifiesto.audioOnly;
+      if (soloAudio.isEmpty) {
+        throw const ErrorBusquedaYoutube(
+          'Este video no tiene una pista de audio que se pueda escuchar '
+          'aparte. Probá con otro resultado.',
+        );
+      }
+
+      // Se prefiere mp4/m4a (AAC) sobre webm/opus: los dos andan en
+      // Android, pero el primero lo soporta absolutamente todo.
+      final enMp4 = soloAudio
+          .where((s) => s.codec.mimeType.contains('mp4'))
+          .toList(growable: false);
+      final elegida = enMp4.isNotEmpty
+          ? enMp4.reduce((a, b) =>
+              a.bitrate.bitsPerSecond >= b.bitrate.bitsPerSecond ? a : b)
+          : soloAudio.withHighestBitrate();
+
+      return elegida.url.toString();
+    } on ErrorBusquedaYoutube {
+      rethrow;
+    } catch (_) {
+      throw const ErrorBusquedaYoutube(
+        'No se pudo preparar el audio de este video. Puede ser la conexión, '
+        'o que YouTube no lo permita. Probá con otro resultado.',
+      );
+    }
+  }
 }
