@@ -49,10 +49,20 @@ class _LyricsScreenState extends State<LyricsScreen> {
     return indice;
   }
 
+  /// Cuándo fue la última vez que la persona movió la letra con el
+  /// dedo. Ver la nota del `NotificationListener` más abajo.
+  DateTime? _ultimoArrastre;
+  static const Duration _pausaTrasArrastre = Duration(seconds: 6);
+
   void _scrollALinea(int indice) {
     if (indice < 0 || indice == _ultimaLineaResaltada) return;
     _ultimaLineaResaltada = indice;
     if (!_scrollController.hasClients) return;
+    final arrastre = _ultimoArrastre;
+    if (arrastre != null &&
+        DateTime.now().difference(arrastre) < _pausaTrasArrastre) {
+      return;
+    }
     final offset = (indice * _alturaPorLinea) - 180;
     _scrollController.animateTo(
       offset.clamp(0, _scrollController.position.maxScrollExtent),
@@ -145,29 +155,46 @@ class _LyricsScreenState extends State<LyricsScreen> {
         WidgetsBinding.instance
             .addPostFrameCallback((_) => _scrollALinea(indiceActual));
 
-        return ListView.builder(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 140, horizontal: 28),
-          itemCount: lineas.length,
-          itemBuilder: (context, index) {
-            final activa = index == indiceActual;
-            return GestureDetector(
-              onTap: () => audioHandler.seek(lineas[index].tiempo),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 200),
-                  style: TextStyle(
-                    color: activa ? AppTheme.paper : AppTheme.faintInk,
-                    fontSize: activa ? 22 : 18,
-                    fontWeight: activa ? FontWeight.bold : FontWeight.normal,
-                    height: 1.4,
-                  ),
-                  child: Text(lineas[index].texto),
-                ),
-              ),
-            );
+        return NotificationListener<ScrollNotification>(
+          // Mientras la persona arrastra la letra con el dedo, el
+          // desplazamiento automático se toma unos segundos de descanso.
+          // Sin esto, querer leer más adelante era imposible: al cambiar
+          // de línea la pantalla te devolvía de un tirón al renglón que
+          // sonaba.
+          onNotification: (aviso) {
+            if (aviso is ScrollStartNotification && aviso.dragDetails != null) {
+              _ultimoArrastre = DateTime.now();
+            }
+            return false;
           },
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(vertical: 140, horizontal: 28),
+            itemCount: lineas.length,
+            itemBuilder: (context, index) {
+              final activa = index == indiceActual;
+              return GestureDetector(
+                // `opaque` para que se pueda tocar todo el renglón, no
+                // solo las letras: en las líneas cortas había que
+                // apuntarle justo al texto.
+                behavior: HitTestBehavior.opaque,
+                onTap: () => audioHandler.seek(lineas[index].tiempo),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      color: activa ? AppTheme.paper : AppTheme.faintInk,
+                      fontSize: activa ? 22 : 18,
+                      fontWeight: activa ? FontWeight.bold : FontWeight.normal,
+                      height: 1.4,
+                    ),
+                    child: Text(lineas[index].texto),
+                  ),
+                ),
+              );
+            },
+          ),
         );
       },
     );

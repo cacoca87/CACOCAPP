@@ -366,6 +366,18 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
+              // Pasar al siguiente resultado sin tener que achicar el
+              // video, volver a la busqueda y tocar otro. El avance
+              // automatico al terminar ya existia; lo que faltaba era
+              // poder pedirlo a mano. Va aca arriba, al lado del
+              // titulo, y NO encima del video (ver la regla 3).
+              IconButton(
+                icon: const Icon(Icons.skip_next_rounded,
+                    color: AppTheme.paper, size: 24),
+                tooltip: "Siguiente video",
+                onPressed:
+                    provider.haySiguiente ? () => provider.siguiente() : null,
+              ),
               IconButton(
                 icon: const Icon(Icons.share_rounded,
                     color: AppTheme.paper, size: 20),
