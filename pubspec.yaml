@@ -20,6 +20,11 @@ dependencies:
   id3: ^1.0.1
   path_provider: ^2.1.2
   youtube_explode_dart: ^2.3.9
+  # Ya venian de rebote con el reproductor de YouTube; se declaran
+  # porque ahora la app las usa directo, para abrir youtube.com en
+  # version de escritorio (ver youtube_escritorio_screen.dart).
+  webview_flutter: ^4.14.1
+  webview_flutter_android: ^4.14.1
   fl_chart: ^0.68.0
   palette_generator: ^0.3.3+3
   google_fonts: ^6.2.1
