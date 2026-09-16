@@ -24,8 +24,20 @@ import '../utils/id3_tags.dart';
 /// re-descargar/re-leer el ID3 de cada canción otra vez. Ahora la
 /// primera vez cuesta red; las siguientes son instantáneas.
 class Id3CoverService {
-  Id3CoverService._();
+  // Mismo patrón que el resto de los servicios: el cliente HTTP entra
+  // por el constructor privado para poder probar esta clase sin red
+  // real. Sin esto no habia forma de escribir un test para el fallo de
+  // cache que dejaba toda la biblioteca en "Artista Desconocido".
+  Id3CoverService._({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Instancia real que usa el resto de la app.
   static final Id3CoverService instance = Id3CoverService._();
+
+  /// SOLO PARA TESTS: permite inyectar un cliente falso.
+  factory Id3CoverService.testable(http.Client client) =>
+      Id3CoverService._(client: client);
+
+  final http.Client _client;
 
   final Map<String, Uint8List?> _cacheCaratula = {};
   final Map<String, String?> _cacheAlbum = {};
@@ -97,7 +109,7 @@ class Id3CoverService {
         return (bytes: await archivoLocal.readAsBytes(), seLeyo: true);
       }
 
-      final response = await http.get(Uri.parse(url), headers: {
+      final response = await _client.get(Uri.parse(url), headers: {
         'Range': 'bytes=0-524287'
       }).timeout(const Duration(seconds: 8));
 

@@ -53,6 +53,12 @@ dev_dependencies:
   flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.1
+  # Solo para los tests de `Id3CoverService`: permite reemplazar la
+  # carpeta de cache real de Android por una temporal, y asi comprobar
+  # de verdad que un fallo de red NO deja una marca de "sin caratula"
+  # escrita en disco.
+  path_provider_platform_interface: ^2.1.0
+  plugin_platform_interface: ^2.1.0
 
 flutter:
   uses-material-design: true
