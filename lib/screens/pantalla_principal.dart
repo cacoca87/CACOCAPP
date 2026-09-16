@@ -28,6 +28,18 @@ import 'noticias_screen.dart';
 import 'dual_search_screen.dart';
 import 'pantalla_principal_desktop.dart';
 
+/// Los nombres que la app usa para sus propias vistas de la barra
+/// lateral. Ninguna playlist puede llamarse asi: las bibliotecas se
+/// buscan por nombre, asi que una playlist llamada "Recientes" quedaba
+/// tapada por la vista del mismo nombre y era imposible de abrir.
+/// Antes la validacion solo cubria las dos primeras.
+const List<String> nombresReservadosDeBiblioteca = [
+  "Principal (Drive)",
+  "Favoritos",
+  "Recientes",
+  "Más Escuchadas",
+];
+
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
 
@@ -98,12 +110,20 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           .loadFromPrefs([...list, ...player.downloadedSongs]);
       _resolverMetadataReal(list);
       if (!mounted) return;
+      // `refrescarCanciones` nunca falla hacia afuera: cuando el
+      // servidor no contesta devuelve la lista de respaldo que viaja
+      // dentro de la app. Antes el cartel decia "Biblioteca
+      // actualizada" igual, asi que no habia forma de darse cuenta de
+      // que el servidor estaba caido.
+      final vinoDelServidor = _driveService.listaVieneDelWorker;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text("Biblioteca actualizada: ${contarCanciones(list.length)}"),
-          backgroundColor: AppTheme.primary,
-          duration: const Duration(seconds: 2),
+          content: Text(vinoDelServidor
+              ? "Biblioteca actualizada: ${contarCanciones(list.length)}"
+              : "No se pudo consultar el servidor. Se muestra la lista "
+                  "guardada: ${contarCanciones(list.length)}"),
+          backgroundColor: vinoDelServidor ? AppTheme.primary : AppTheme.danger,
+          duration: const Duration(seconds: 3),
         ),
       );
     } catch (e) {
@@ -190,7 +210,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
     // Antes estos dos casos hacían `return` en silencio: tocabas
     // "crear", no pasaba nada, y no había forma de saber por qué.
-    if (nombre == "Principal (Drive)" || nombre == "Favoritos") {
+    if (nombresReservadosDeBiblioteca.contains(nombre)) {
       _avisar('"$nombre" es un nombre reservado de la app. Probá con otro.');
       return;
     }
@@ -312,7 +332,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // es una vista propia de la app) o al nombre de otra que ya existía,
     // y como las bibliotecas se buscan por nombre, la segunda quedaba
     // inalcanzable.
-    if (nuevoNombre == "Principal (Drive)" || nuevoNombre == "Favoritos") {
+    if (nombresReservadosDeBiblioteca.contains(nuevoNombre)) {
       _avisar(
           '"$nuevoNombre" es un nombre reservado de la app. Probá con otro.');
       return;
@@ -426,10 +446,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     final esPantallaPequena = anchoPantalla < 800;
 
     final List<String> nombresBibliotecas = [
-      "Principal (Drive)",
-      "Favoritos",
-      "Recientes",
-      "Más Escuchadas",
+      ...nombresReservadosDeBiblioteca,
       ...playlistProvider.playlists.map((p) => p.name),
     ];
 
@@ -519,10 +536,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       final esVistaDeFavoritos = nombreVistaActual == "Favoritos";
       Playlist? playlistDeVistaActual;
       if (nombreVistaActual != null &&
-          nombreVistaActual != "Principal (Drive)" &&
-          nombreVistaActual != "Favoritos" &&
-          nombreVistaActual != "Recientes" &&
-          nombreVistaActual != "Más Escuchadas") {
+          !nombresReservadosDeBiblioteca.contains(nombreVistaActual)) {
         for (final p in playlistProvider.playlists) {
           if (p.name == nombreVistaActual) {
             playlistDeVistaActual = p;
@@ -690,11 +704,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   controller: _buscadorController,
                   style: AppTheme.body
                       .copyWith(color: AppTheme.paper, fontSize: 14),
+                  textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
                     hintText: "¿Qué te apetece reproducir?",
                     hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),
                     prefixIcon:
                         const Icon(Icons.search, color: AppTheme.faintInk),
+                    // El mismo boton de borrar que ya tenia el buscador
+                    // de Descubrir: sin esto habia que borrar el texto
+                    // letra por letra.
+                    suffixIcon: _buscadorController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: "Borrar búsqueda",
+                            icon: const Icon(Icons.close,
+                                color: AppTheme.faintInk, size: 18),
+                            onPressed: () => _buscadorController.clear(),
+                          ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                         vertical: 12, horizontal: 16),
@@ -704,7 +730,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             if (cancionesFiltradas.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
-                child: Row(
+                // Wrap y no Row: con la letra del sistema agrandada los
+                // dos botones no entraban en el ancho de un celular y se
+                // desbordaban. Asi el segundo baja solo cuando hace
+                // falta.
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
                   children: [
                     ElevatedButton.icon(
                       onPressed: () => player.playSong(
@@ -716,7 +748,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       label: const Text("Reproducir"),
                       style: AppTheme.primaryButton,
                     ),
-                    const SizedBox(width: 12),
                     OutlinedButton.icon(
                       onPressed: () {
                         final lista = List<Song>.from(cancionesFiltradas)
@@ -815,6 +846,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               ),
                               title: Text(
                                 cancion.title,
+                                // Sin limite de renglones, un titulo
+                                // largo partia la fila en dos y la lista
+                                // quedaba despareja.
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: estaSonando
                                       ? AppTheme.amber
@@ -827,6 +863,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               ),
                               subtitle: Text(
                                 "${cancion.artist} • ${cancion.album}",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: AppTheme.small.copyWith(
                                     fontSize: esPantallaPequena ? 11 : 12),
                               ),
@@ -856,12 +894,38 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                             onDismissed: (_) {
                               HapticFeedback.mediumImpact();
                               final provider = context.read<PlaylistProvider>();
+                              final playlistDeEsteSwipe = playlistDeVistaActual;
                               if (esVistaDeFavoritos) {
                                 provider.toggleFavorite(cancion.id);
-                              } else if (playlistDeVistaActual != null) {
+                              } else if (playlistDeEsteSwipe != null) {
                                 provider.removeSongFromPlaylist(
-                                    playlistDeVistaActual.id, cancion.id);
+                                    playlistDeEsteSwipe.id, cancion.id);
                               }
+                              // Un deslizamiento sin querer borraba la
+                              // cancion de la playlist sin aviso ni forma
+                              // de volver atras.
+                              ScaffoldMessenger.of(context)
+                                ..hideCurrentSnackBar()
+                                ..showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        '"${cancion.title}" se quitó de la lista'),
+                                    duration: const Duration(seconds: 4),
+                                    action: SnackBarAction(
+                                      label: "Deshacer",
+                                      textColor: AppTheme.amber,
+                                      onPressed: () {
+                                        if (esVistaDeFavoritos) {
+                                          provider.toggleFavorite(cancion.id);
+                                        } else if (playlistDeEsteSwipe !=
+                                            null) {
+                                          provider.addSongToPlaylist(
+                                              playlistDeEsteSwipe.id, cancion);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                );
                             },
                             child: fila,
                           );
@@ -913,8 +977,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // caía directo sobre esta pantalla (la raíz) y la cerraba. Ahora,
     // si no estamos ya en el home real, "atrás" navega un nivel para
     // adentro en vez de salir de la app.
-    final enHome =
-        seccionActiva == "Tu Biblioteca" && subFiltroSeleccionado == null;
+    // Se exige tambien estar en la biblioteca principal: si estabas
+    // mirando "Favoritos" o una playlist, "atras" cerraba la app en vez
+    // de volver a la biblioteca.
+    final enHome = seccionActiva == "Tu Biblioteca" &&
+        subFiltroSeleccionado == null &&
+        bibliotecaSeleccionada == "Principal (Drive)";
     // Si el video de YouTube está en pantalla completa, "atrás" lo
     // minimiza en vez de navegar -- así nunca se pierde por accidente
     // al tocar atrás, tal como pasaba antes de este overlay.

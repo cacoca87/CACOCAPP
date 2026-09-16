@@ -10,6 +10,17 @@ class DriveService {
 
   static List<Song>? _cache;
 
+  // Si la ultima carga real vino del Worker o del respaldo fijo. Hace
+  // falta porque `_cargar()` nunca falla hacia afuera: cuando el
+  // servidor no responde devuelve la lista fija y todo sigue andando.
+  // Sin esta bandera, el boton "Actualizar" avisaba "Biblioteca
+  // actualizada" aunque no hubiera podido hablar con el servidor.
+  static bool _ultimaCargaFueDelWorker = false;
+
+  /// `true` si la biblioteca que se esta mostrando vino del servidor, y
+  /// `false` si es la lista de respaldo que viaja dentro de la app.
+  bool get listaVieneDelWorker => _ultimaCargaFueDelWorker;
+
   static const List<String> _artistasQueVanPrimero = [
     'Bruce Springsteen',
     'Dire Straits',
@@ -34,6 +45,7 @@ class DriveService {
       final nombresArchivos = await _obtenerListaDesdeWorker();
       final canciones = _construirCanciones(nombresArchivos);
       if (canciones.isNotEmpty) {
+        _ultimaCargaFueDelWorker = true;
         _cache = canciones;
         return canciones;
       }
@@ -49,6 +61,7 @@ class DriveService {
     // nada", que era inalcanzable y además mentía: devolvía una
     // canción titulada "Sweet Child O Mine" de "Guns N Roses" cuya URL
     // apuntaba a un MP3 de demostración genérico de otro sitio.
+    _ultimaCargaFueDelWorker = false;
     final cancionesFijas = _construirCanciones(_nombresArchivosFijos);
     _cache = cancionesFijas;
     return cancionesFijas;
