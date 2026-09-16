@@ -7,38 +7,47 @@ import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 
 /// Muestra el video de YouTube que esté sonando (si hay uno), en
-/// pantalla completa o como burbuja flotante arrastrable -- según
-/// `OnlineVideoProvider.minimizado`. Se coloca directo en el `Stack`
-/// de `PantallaPrincipal`, NO como una ruta de `Navigator`: así el
-/// video sigue sonando sin importar qué sección esté mirando el
-/// usuario, en vez de destruirse apenas se toca "atrás".
+/// pantalla completa o achicado en una barra fija abajo -- según
+/// `OnlineVideoProvider.minimizado`. Se coloca directo en el `Stack` de
+/// `PantallaPrincipal`, NO como una ruta de `Navigator`: así el video
+/// sigue sonando sin importar qué sección esté mirando el usuario, en
+/// vez de destruirse apenas se toca "atrás".
 ///
-/// IMPORTANTE (bug real arreglado acá): la primera versión de esto
-/// usaba DOS widgets `YoutubePlayer` distintos -- uno para pantalla
-/// completa, otro para la burbuja -- y mostraba uno u otro según el
-/// estado. Para Flutter eso son dos elementos totalmente distintos del
-/// árbol: al minimizar, destruía el WebView de pantalla completa y
-/// creaba uno nuevo para la burbuja (y viceversa al expandir),
-/// perdiendo la reproducción en el camino -- exactamente el bug
-/// reportado ("se achica pero no suena", "al volver se corta"). Ahora
-/// hay un SOLO `YoutubePlayer`, siempre montado, y lo que cambia es
-/// solo su posición/tamaño -- el WebView nunca se destruye, así que la
-/// reproducción nunca se corta.
+/// Hay un SOLO `YoutubePlayer`, siempre montado, y lo único que cambia
+/// entre un modo y el otro es su posición y tamaño. Usar dos widgets
+/// distintos (uno por modo) fue el bug original: Flutter los trata como
+/// elementos distintos del árbol, así que al minimizar destruía el
+/// WebView y creaba otro, perdiendo la reproducción.
 ///
 /// Tener un solo widget NO alcanza por sí solo: Flutter también tiene
-/// que poder reconocerlo como "el mismo" entre un estado y el otro. Si
-/// cambia de tipo o de índice dentro del `Stack`, lo destruye igual
-/// aunque el código lo escriba una sola vez. Por eso, al tocar este
-/// archivo hay tres reglas que no se pueden romper:
-///   1. El reproductor siempre lleva `_claveReproductor`.
-///   2. El reproductor siempre es un `AnimatedPositioned` (nunca se
-///      alterna con `Positioned`).
-///   3. Los gestos de la burbuja van ENCIMA del reproductor, dentro de
-///      su propio `Stack`. El reproductor es una vista nativa de
-///      Android y recibe los toques por su cuenta, así que un
-///      `GestureDetector` puesto alrededor (o un `IgnorePointer`) no
-///      sirve: los toques nunca llegan.
-/// Romper cualquiera de las tres hace volver un bug ya arreglado.
+/// que reconocerlo como "el mismo" entre un estado y el otro. Por eso,
+/// al tocar este archivo hay tres reglas que no se pueden romper:
+///
+///   1. El reproductor siempre lleva `_claveReproductor`. Sin clave,
+///      Flutter empareja los hijos del `Stack` por su posición en la
+///      lista -- y el reproductor cambia de índice entre un modo y el
+///      otro -- así que lo destruiría y volvería a crear.
+///   2. El reproductor siempre es un `AnimatedPositioned`; nunca se
+///      alterna con `Positioned`. Son tipos distintos, y cambiar de
+///      tipo también lo destruye.
+///   3. Ningún control de la app se dibuja ENCIMA del reproductor. El
+///      reproductor es un WebView, o sea una vista nativa de Android
+///      que recibe los toques por su cuenta. Se probó en el celular que
+///      NO alcanzan: ni un `IgnorePointer` alrededor, ni un
+///      `GestureDetector` alrededor, ni una capa transparente por
+///      encima. En los tres casos el WebView se quedaba con el toque y
+///      los botones de la app no respondían. Por eso, en el modo chico
+///      los controles van AL LADO del video, como hermanos suyos dentro
+///      del `Stack` de afuera, donde sí funcionan siempre.
+///
+/// Además, el paquete trae dos comportamientos propios que compiten con
+/// los de la app y hay que dejar apagados: su botón de pantalla
+/// completa (`showFullscreenButton`, apagado en
+/// `online_video_provider.dart`) y su pantalla completa por gesto
+/// vertical (`enableFullScreenOnVerticalDrag`, apagado más abajo). Con
+/// el segundo prendido, deslizar hacia arriba sobre el video abría una
+/// pantalla completa SUYA -- sin el encabezado ni la letra de la app --
+/// y encima se quedaba con todos los gestos verticales.
 class OnlineVideoOverlay extends StatefulWidget {
   const OnlineVideoOverlay({super.key});
 
@@ -47,34 +56,15 @@ class OnlineVideoOverlay extends StatefulWidget {
 }
 
 class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
-  // Un poco más grande que antes (eran 160x96): a ese tamaño la X de
-  // cerrar quedaba muy chica para acertarle con el dedo.
-  static const double _anchoBurbuja = 200;
-  static const double _altoBurbuja = 112;
-  static const double _margenBurbuja = 12;
-  static const double _margenSobreMiniPlayer = 96;
+  // Medidas de la barra chica de abajo.
+  static const double _altoBarra = 64;
+  static const double _altoVideoChico = 48;
+  static const double _anchoVideoChico = _altoVideoChico * 16 / 9;
+  static const double _margenLateral = 8;
+  // Alto del mini reproductor (65) más su línea de progreso (2).
+  static const double _altoMiniPlayer = 67;
 
-  // Posición de la burbuja cuando está minimizada -- null hasta que el
-  // usuario la arrastra por primera vez, ahí se usa la esquina
-  // inferior derecha por defecto.
-  Offset? _posicionBurbuja;
-
-  // Mientras se está arrastrando activamente, la posición se aplica sin
-  // animación -- si se anima también durante el arrastre, cada
-  // micro-movimiento del dedo dispara una animación de 260ms detrás de
-  // la anterior y la burbuja se siente "pegajosa"/con retraso en vez de
-  // seguir al dedo. Solo se anima la transición deliberada entre
-  // burbuja y pantalla completa.
-  bool _arrastrando = false;
-
-  // Identifica al reproductor dentro del `Stack` de abajo. Es
-  // OBLIGATORIA, no un detalle: ese Stack tiene 4 hijos en pantalla
-  // completa (fondo, encabezado, reproductor, instrucciones) y 1 solo
-  // al minimizar, así que el reproductor cambia de índice. Sin una
-  // clave, Flutter empareja los hijos por posición en la lista, ve un
-  // tipo distinto en el índice 0 y destruye/recrea el reproductor --
-  // lo que mata el WebView de Android y deja el video congelado y sin
-  // sonido. Con la clave lo reconoce y lo reutiliza aunque se mueva.
+  // Ver la regla 1 del comentario de arriba.
   static const _claveReproductor = ValueKey('reproductor-youtube');
 
   // La letra del video que se está mirando. Se guarda el Future (en vez
@@ -105,20 +95,37 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
     if (controller == null) return const SizedBox.shrink();
 
     final minimizado = provider.minimizado;
+    final padding = MediaQuery.of(context).padding;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final anchoPantalla = constraints.maxWidth;
         final altoPantalla = constraints.maxHeight;
 
-        final rectBurbuja = _calcularRectBurbuja(anchoPantalla, altoPantalla);
-        // Pantalla completa: usa buena parte de la altura disponible
-        // (no solo el ancho a 16:9, que en un celular alto dejaba un
-        // hueco negro grande abajo y daban ganas de rotar el celular
-        // para verlo más grande -- rotar rompía todo, ver más abajo).
-        final altoHeader = 64.0 + MediaQuery.of(context).padding.top;
-        final altoDisponible =
-            altoPantalla - altoHeader - 90; // deja lugar para el texto de abajo
+        // Modo chico: barra fija justo arriba del mini reproductor, con
+        // el video a la izquierda y los controles a la derecha.
+        final topBarra = altoPantalla -
+            padding.bottom -
+            _altoMiniPlayer -
+            _margenLateral -
+            _altoBarra;
+        final rectBarra = Rect.fromLTWH(
+          _margenLateral,
+          topBarra.clamp(0.0, altoPantalla),
+          (anchoPantalla - _margenLateral * 2).clamp(0.0, anchoPantalla),
+          _altoBarra,
+        );
+        final rectVideoChico = Rect.fromLTWH(
+          rectBarra.left + 8,
+          rectBarra.top + (_altoBarra - _altoVideoChico) / 2,
+          _anchoVideoChico,
+          _altoVideoChico,
+        );
+
+        // Pantalla completa: el video ocupa buena parte del alto y
+        // debajo va la letra.
+        final altoHeader = 64.0 + padding.top;
+        final altoDisponible = altoPantalla - altoHeader - 90;
         var altoVideoCompleto = altoDisponible.clamp(0.0, altoPantalla * 0.55);
         var anchoVideoCompleto = altoVideoCompleto * 16 / 9;
         if (anchoVideoCompleto > anchoPantalla) {
@@ -132,131 +139,40 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
           altoVideoCompleto,
         );
 
-        final rectActual = minimizado ? rectBurbuja : rectCompleto;
+        final rectActual = minimizado ? rectVideoChico : rectCompleto;
 
-        // El orden de este Stack es lo que hace que la burbuja responda.
-        //
-        // El reproductor de YouTube es una vista NATIVA de Android (un
-        // WebView), no un widget de Flutter. Envolverlo en un
-        // `IgnorePointer`, como se hacía antes, no le saca los toques:
-        // Android se los entrega directo. Por eso, estando la burbuja
-        // chica, tocarla pausaba el video en vez de agrandarla, y
-        // arrastrarla no hacía nada -- los gestos nunca llegaban al
-        // código de la app.
-        //
-        // La solución es poner los gestos ENCIMA del WebView, como una
-        // capa transparente de Flutter, en vez de debajo.
-        final reproductor = Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: minimizado
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppTheme.amber.withValues(alpha: 0.5)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                )
-              : const BoxDecoration(),
-          child: Stack(
-            children: [
-              StreamBuilder<YoutubePlayerValue>(
-                stream: controller.stream,
-                builder: (context, snapshot) {
-                  final valor = snapshot.data;
-                  if (!minimizado && valor != null && valor.hasError) {
-                    return Container(
-                      color: AppTheme.ink,
-                      padding: const EdgeInsets.all(24),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'YouTube no dejó reproducir este video acá '
-                        '(código ${valor.error}). Probá con otro resultado.',
-                        textAlign: TextAlign.center,
-                        style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
-                      ),
-                    );
-                  }
-                  return YoutubePlayer(controller: controller);
-                },
-              ),
-
-              // Capa de gestos: solo existe con la burbuja chica. Tapa
-              // los controles de YouTube a propósito -- son demasiado
-              // pequeños para acertarles a ese tamaño, y es preferible
-              // que toda la superficie sirva para agrandar y arrastrar.
-              // En pantalla completa esta capa no está, así que ahí los
-              // controles funcionan con normalidad.
-              if (minimizado)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => provider.expandir(),
-                    onPanStart: (_) => setState(() => _arrastrando = true),
-                    onPanEnd: (_) => setState(() => _arrastrando = false),
-                    onPanUpdate: (details) => setState(() {
-                      final base = _posicionBurbuja ??
-                          Offset(rectBurbuja.left, rectBurbuja.top);
-                      final nueva = base + details.delta;
-                      _posicionBurbuja = Offset(
-                        nueva.dx.clamp(
-                            0.0,
-                            (anchoPantalla - _anchoBurbuja)
-                                .clamp(0.0, double.infinity)),
-                        nueva.dy.clamp(
-                            0.0,
-                            (altoPantalla - _altoBurbuja)
-                                .clamp(0.0, double.infinity)),
-                      );
-                    }),
+        // El reproductor, solo. Sin nada encima (ver regla 3).
+        final reproductor = ClipRRect(
+          borderRadius: BorderRadius.circular(minimizado ? 6 : 0),
+          child: StreamBuilder<YoutubePlayerValue>(
+            stream: controller.stream,
+            builder: (context, snapshot) {
+              final valor = snapshot.data;
+              if (!minimizado && valor != null && valor.hasError) {
+                return Container(
+                  color: AppTheme.ink,
+                  padding: const EdgeInsets.all(24),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'YouTube no dejó reproducir este video acá '
+                    '(código ${valor.error}). Probá con otro resultado.',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
                   ),
-                ),
-
-              // La X va DESPUÉS de la capa de gestos para quedar por
-              // encima de ella; si no, el tap de "agrandar" se comería
-              // el de "cerrar". Es grande a propósito: la anterior era
-              // de 16px y resultaba imposible de acertar.
-              if (minimizado)
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => provider.cerrar(),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
-                ),
-            ],
+                );
+              }
+              return YoutubePlayer(
+                controller: controller,
+                enableFullScreenOnVerticalDrag: false,
+                autoFullScreen: false,
+              );
+            },
           ),
         );
 
-        // Mientras se arrastra, la duración baja a cero: la posición se
-        // aplica al instante y la burbuja sigue al dedo 1 a 1. El resto
-        // del tiempo (incluida la transición burbuja <-> pantalla
-        // completa) se anima suave.
-        //
-        // OJO: tiene que seguir siendo SIEMPRE un `AnimatedPositioned`.
-        // Antes se alternaba entre `Positioned` (arrastrando) y
-        // `AnimatedPositioned` (resto) -- como son tipos distintos,
-        // Flutter destruía y recreaba todo lo de adentro al empezar a
-        // arrastrar, matando el WebView y cortando el video. Cambiar
-        // solo la duración logra lo mismo sin tocar el tipo.
         final posicionado = AnimatedPositioned(
           key: _claveReproductor,
-          duration:
-              _arrastrando ? Duration.zero : const Duration(milliseconds: 260),
+          duration: const Duration(milliseconds: 260),
           curve: Curves.easeOut,
           left: rectActual.left,
           top: rectActual.top,
@@ -265,35 +181,65 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
           child: reproductor,
         );
 
-        // Envuelto en Material (transparente, sin pintar nada por su
-        // cuenta) para que el título/subtítulo/instrucciones tengan un
-        // estilo de texto real del que heredar -- sin esto, Flutter les
-        // aplica su estilo de emergencia (amarillo subrayado, bien
-        // visible a propósito) porque quedan sin ningún ancestro
-        // `Material`/`DefaultTextStyle` real. Eso era justo el
-        // recuadro amarillo feo reportado.
         return Material(
           type: MaterialType.transparency,
           child: Stack(
             children: [
-              // Fondo oscuro de pantalla completa -- SOLO cuando no
-              // está minimizado, para no bloquear toques al resto de
-              // la app mientras está en la burbuja.
+              // Fondo oscuro de pantalla completa -- SOLO cuando no está
+              // minimizado, para no bloquear toques al resto de la app.
               if (!minimizado)
                 Positioned.fill(child: Container(color: AppTheme.ink)),
               if (!minimizado) _Header(provider: provider),
+
+              // Fondo de la barra chica. Va ANTES del reproductor para
+              // quedar por debajo de él. Tocarlo también agranda.
+              if (minimizado)
+                Positioned.fromRect(
+                  rect: rectBarra,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => provider.expandir(),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceRaised,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: AppTheme.amber.withValues(alpha: 0.45)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               posicionado,
-              // Debajo del video quedaba un hueco negro enorme. Ahora se
-              // llena con la letra de la canción, si se encuentra.
+
+              // Título y botones: arrancan DESPUÉS del video, así que
+              // nunca se superponen con él (ver regla 3).
+              if (minimizado)
+                Positioned(
+                  left: rectVideoChico.right + 10,
+                  right: _margenLateral + 8,
+                  top: rectBarra.top,
+                  height: _altoBarra,
+                  child: _ControlesBarra(provider: provider),
+                ),
+
+              // Debajo del video, en pantalla completa, quedaba un hueco
+              // negro enorme. Ahora se llena con la letra, si se
+              // encuentra.
               if (!minimizado)
                 Positioned(
                   left: 0,
                   right: 0,
                   top: rectCompleto.bottom + 12,
                   bottom: 0,
-                  child: _PanelLetra(
-                    futuro: _letraDe(provider),
-                  ),
+                  child: _PanelLetra(futuro: _letraDe(provider)),
                 ),
             ],
           ),
@@ -301,18 +247,63 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
       },
     );
   }
+}
 
-  Rect _calcularRectBurbuja(double anchoPantalla, double altoPantalla) {
-    final maxX = (anchoPantalla - _anchoBurbuja).clamp(0.0, double.infinity);
-    final maxY = (altoPantalla - _altoBurbuja).clamp(0.0, double.infinity);
-    final base = _posicionBurbuja ??
-        Offset(anchoPantalla - _anchoBurbuja - _margenBurbuja,
-            altoPantalla - _altoBurbuja - _margenSobreMiniPlayer);
-    return Rect.fromLTWH(
-      base.dx.clamp(0.0, maxX),
-      base.dy.clamp(0.0, maxY),
-      _anchoBurbuja,
-      _altoBurbuja,
+/// Título, autor y botones de la barra chica. Son widgets normales de
+/// Flutter ubicados AL LADO del video, nunca encima: es la única forma
+/// comprobada de que los toques no se los quede el WebView.
+class _ControlesBarra extends StatelessWidget {
+  final OnlineVideoProvider provider;
+  const _ControlesBarra({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => provider.expandir(),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  provider.titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.body.copyWith(
+                    color: AppTheme.paper,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  provider.autor,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.small.copyWith(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.open_in_full_rounded,
+              color: AppTheme.paper, size: 20),
+          tooltip: "Agrandar",
+          visualDensity: VisualDensity.compact,
+          onPressed: () => provider.expandir(),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded,
+              color: AppTheme.mutedInk, size: 22),
+          tooltip: "Cerrar",
+          visualDensity: VisualDensity.compact,
+          onPressed: () => provider.cerrar(),
+        ),
+      ],
     );
   }
 }
@@ -389,7 +380,8 @@ class _Header extends StatelessWidget {
 }
 
 /// Panel debajo del video en pantalla completa. Muestra la letra si se
-/// encuentra; si no, un texto breve explicando cómo funciona la burbuja.
+/// encuentra; si no, un texto breve explicando cómo funciona el modo
+/// chico.
 ///
 /// La letra va sin sincronizar (no resaltada línea por línea) a
 /// propósito: el reproductor de YouTube es una vista nativa y la app no

@@ -1354,3 +1354,62 @@ dedo, que es parte de por qué no la encontrabas.
 
 `flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
 limpios.
+
+## 65. Plan B: los controles al lado del video, no encima. Y el gesto vertical era del paquete
+
+Probaste la versión correcta esta vez (se veían las letras) y seguía sin andar:
+sin X visible, sin poder arrastrar, y el gesto hacia arriba abría un video a
+pantalla completa **sin encabezado ni letra**. Esa última pista fue la que faltaba.
+
+### Causa 1: la pantalla completa que se abría no era la de la app
+
+El paquete `youtube_player_iframe` trae `enableFullScreenOnVerticalDrag`, que
+viene en **`true` por defecto**. Con eso prendido, deslizar hacia arriba sobre el
+video abre una pantalla completa **propia del paquete** -- por eso no tenía ni el
+encabezado ni la letra: no era la nuestra. Y de paso el paquete se quedaba con
+todos los gestos verticales, que son justo los que necesitaba el arrastre.
+
+Ya se había apagado su botón de pantalla completa (sección 51) sin notar que
+existía este segundo camino. Ahora van apagados los dos:
+`enableFullScreenOnVerticalDrag: false` y `autoFullScreen: false`.
+
+### Causa 2: sobre el reproductor no se puede poner nada. Punto.
+
+Tres intentos, tres formas distintas, todas fallidas:
+
+1. `IgnorePointer` alrededor del reproductor (sección 50).
+2. `GestureDetector` alrededor con `HitTestBehavior.opaque` (sección 62).
+3. Capa transparente de gestos **por encima**, dentro del mismo `Stack`
+   (sección 64).
+
+En los tres casos el WebView se quedó con el toque. Es una vista nativa de
+Android y los recibe por su cuenta; el sistema se los entrega antes de que
+Flutter pueda decidir. La conclusión, después de comprobarlo en el celular, es
+que **sobre ese reproductor no se puede poner ningún control de la app**.
+
+### El rediseño
+
+En vez de seguir peleando por el mismo espacio, el modo chico dejó de ser una
+burbuja flotante con botones encima y pasó a ser una **barra fija arriba del
+mini reproductor**, al estilo de YouTube Music:
+
+- A la izquierda, el video (85×48).
+- En el medio, el título y el canal. Tocar ahí agranda.
+- A la derecha, **dos botones de verdad**: agrandar y cerrar.
+
+Los botones y el título son widgets de Flutter comunes, ubicados **al lado** del
+video, nunca encima. Son hermanos suyos dentro del `Stack`, así que el WebView no
+tiene forma de quitarles el toque. Es la única disposición que no depende de
+ganarle una pelea al sistema.
+
+**Se quitó el arrastre.** Nunca llegó a funcionar en ninguna de las cuatro
+vueltas, y en una barra fija no hace falta: ocupa siempre el mismo lugar, arriba
+del mini reproductor, en vez de taparte resultados de la lista. Prefiero sacar
+una función que no anda antes que dejarla ahí simulando existir.
+
+Se agregó la tercera regla al encabezado del archivo, con el detalle de los tres
+intentos fallidos, para que nadie vuelva a intentar poner controles encima del
+reproductor pensando que es cuestión de encontrar el widget correcto.
+
+`flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
+limpios.
