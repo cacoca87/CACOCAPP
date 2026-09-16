@@ -1413,3 +1413,70 @@ reproductor pensando que es cuestión de encontrar el widget correcto.
 
 `flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
 limpios.
+
+## 66. Dos juegos: Bloques (Tetris) y Carrera
+
+Pediste los dos juegos del "brick game" clásico. Están hechos con el mismo
+criterio que venimos usando: **la lógica separada de la pantalla y cubierta por
+tests**, que es lo único que puedo verificar sin tu celular.
+
+**Archivos nuevos:**
+- `lib/utils/tetris_logica.dart` y `lib/utils/carrera_logica.dart` -- las reglas,
+  sin una sola línea de Flutter adentro.
+- `test/utils/tetris_logica_test.dart` y `test/utils/carrera_logica_test.dart` --
+  **22 tests nuevos**.
+- `lib/widgets/tablero_juego.dart` -- dibuja la cuadrícula de los dos.
+- `lib/widgets/controles_juego.dart` -- botones, marcador y cartel de fin.
+- `lib/screens/juegos_screen.dart`, `tetris_screen.dart`, `carrera_screen.dart`.
+
+**Modificados:** `pantalla_principal.dart`, `barra_lateral.dart`,
+`inicio_tab.dart` (la sección nueva), y `README.md`.
+
+### Lo que hace cada uno
+
+**Bloques**: las siete piezas clásicas, rotación, líneas completas, puntaje que
+premia hacer varias líneas de una (cuatro juntas rinden más del doble que cuatro
+de a una), y velocidad que sube cada 10 líneas.
+
+**Carrera**: tres carriles, esquivar los autos que bajan, puntaje por cada uno
+esquivado y aceleración progresiva.
+
+Los dos guardan su récord y lo muestran en el marcador.
+
+### Detalles que no se ven pero importan
+
+- **La música no se corta.** Los juegos no tocan el motor de audio. Es, de paso,
+  la mejor demostración de que la reproducción en segundo plano de la app
+  funciona de verdad.
+- **Se pausan solos si salís de la app** (`didChangeAppLifecycleState`). Volver y
+  encontrarte con que perdiste mientras no mirabas sería desagradable.
+- **El temporizador se cancela al salir de la pantalla.** Sin eso el juego
+  seguiría corriendo y gastando batería en segundo plano.
+- **El tablero se pinta con `CustomPaint`, no con widgets.** Un tablero de Tetris
+  son 200 celdas; rehacer 200 widgets varias veces por segundo da tirones.
+- **La rotación prueba correrse hasta dos lugares** si queda pisando una pared.
+  Sin eso, rotar pegado al borde no funciona nunca y se siente roto.
+- **La carrera nunca genera una fila con los tres carriles ocupados**, o sea que
+  siempre hay por dónde pasar. Hay un test que lo verifica con 25 semillas
+  distintas y 60 avances cada una.
+
+### Sobre el nombre
+
+El juego se llama **"Bloques"**, no "Tetris". Tetris es marca registrada y The
+Tetris Company hace bajar apps de las tiendas por usar el nombre. Para un
+trabajo de clase daba igual, pero ya que cambiamos el `applicationId` pensando
+en una posible publicación (sección 61), no tiene sentido dejar puesto justo lo
+que la bloquearía.
+
+### Un test mío que estaba mal
+
+El test de "el juego termina cuando la pila llega arriba" falló la primera vez.
+No era la lógica: yo llenaba **filas enteras** del tablero, y las filas enteras
+se eliminan solas por estar completas, así que el tablero quedaba vacío y la
+pieza entraba sin problema. Se corrigió llenando casi todo pero dejando una
+columna libre.
+
+`flutter analyze`, `flutter test` (**81**, subieron de 59), el chequeo de formato
+de todo el repo y `flutter build apk --release` salieron limpios. También se
+verificó que el nombre de la sección "Juegos" coincida en los tres lugares donde
+se usa (barra lateral, grilla Explorar y el despacho de secciones).

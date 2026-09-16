@@ -295,6 +295,11 @@ class InicioTab extends StatelessWidget {
                 etiqueta: "Estadísticas",
                 onTap: () => onIrASeccion("Estadísticas"),
               ),
+              _AccesoRapido(
+                icono: Icons.videogame_asset_rounded,
+                etiqueta: "Juegos",
+                onTap: () => onIrASeccion("Juegos"),
+              ),
             ],
           ),
           const SizedBox(height: 24),

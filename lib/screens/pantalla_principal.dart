@@ -21,6 +21,7 @@ import 'statistics_screen.dart';
 import 'recommendations_screen.dart';
 import 'descubrir_screen.dart';
 import 'downloaded_songs_view.dart';
+import 'juegos_screen.dart';
 import 'dual_search_screen.dart'; // <--- IMPORTACIÓN DE TU BUSCADOR ONLINE
 import 'pantalla_principal_desktop.dart';
 
@@ -454,6 +455,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           onVolver: _volverAInicio); // <--- PASANDO LA FUNCIÓN DE RETORNO
     } else if (seccionActiva == "Música Descargada") {
       widgetCentral = DownloadedSongsView(onVolver: _volverAInicio);
+    } else if (seccionActiva == "Juegos") {
+      widgetCentral = JuegosScreen(onVolver: _volverAInicio);
     } else {
       final mostrarInicio = seccionActiva == "Tu Biblioteca" &&
           bibliotecaSeleccionada == "Principal (Drive)" &&

@@ -1,0 +1,217 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../styles/app_theme.dart';
+import '../utils/tetris_logica.dart';
+import '../widgets/controles_juego.dart';
+import '../widgets/tablero_juego.dart';
+
+/// Tetris. Toda la lógica vive en `utils/tetris_logica.dart` y está
+/// cubierta por tests; acá solo se dibuja y se recogen los toques.
+///
+/// La música sigue sonando mientras jugás: el juego no toca el motor de
+/// audio, y el mini reproductor queda visible abajo porque esta pantalla
+/// se inserta dentro de `PantallaPrincipal` como una sección más.
+class TetrisScreen extends StatefulWidget {
+  final VoidCallback? onVolver;
+  const TetrisScreen({super.key, this.onVolver});
+
+  @override
+  State<TetrisScreen> createState() => _TetrisScreenState();
+}
+
+class _TetrisScreenState extends State<TetrisScreen>
+    with WidgetsBindingObserver {
+  static const _claveRecord = 'tetris_record_v1';
+
+  final JuegoTetris _juego = JuegoTetris();
+  Timer? _reloj;
+  int _record = 0;
+  bool _enPausa = false;
+  int _nivelDelReloj = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _cargarRecord();
+    _programarReloj();
+  }
+
+  @override
+  void dispose() {
+    // Sin esto el juego seguiría corriendo (y gastando batería) después
+    // de salir de la pantalla.
+    _reloj?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Si te vas de la app, el juego se pausa solo: volver y encontrarte
+    // con que perdiste mientras no mirabas sería desagradable.
+    if (state != AppLifecycleState.resumed && !_enPausa) {
+      setState(() => _enPausa = true);
+    }
+  }
+
+  Future<void> _cargarRecord() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() => _record = prefs.getInt(_claveRecord) ?? 0);
+    } catch (_) {
+      // Sin récord guardado se juega igual.
+    }
+  }
+
+  Future<void> _guardarRecord(int puntaje) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_claveRecord, puntaje);
+    } catch (_) {}
+  }
+
+  void _programarReloj() {
+    _reloj?.cancel();
+    _nivelDelReloj = _juego.nivel;
+    _reloj = Timer.periodic(_juego.intervalo, (_) => _tic());
+  }
+
+  void _tic() {
+    if (_enPausa || _juego.terminado) return;
+    setState(_juego.bajar);
+    _revisarFinYVelocidad();
+  }
+
+  void _revisarFinYVelocidad() {
+    if (_juego.terminado) {
+      _reloj?.cancel();
+      if (_juego.puntaje > _record) {
+        setState(() => _record = _juego.puntaje);
+        _guardarRecord(_juego.puntaje);
+      }
+      return;
+    }
+    // El intervalo depende del nivel, así que hay que rehacer el reloj
+    // cuando el nivel cambia.
+    if (_juego.nivel != _nivelDelReloj) _programarReloj();
+  }
+
+  void _accion(void Function() f) {
+    if (_enPausa || _juego.terminado) return;
+    setState(f);
+    _revisarFinYVelocidad();
+  }
+
+  void _reiniciar() {
+    setState(() {
+      _juego.reiniciar();
+      _enPausa = false;
+    });
+    _programarReloj();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.ink,
+      appBar: AppBar(
+        backgroundColor: AppTheme.ink,
+        title:
+            Text('Bloques', style: AppTheme.subheading.copyWith(fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
+          tooltip: 'Volver',
+          onPressed: widget.onVolver,
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _enPausa ? Icons.play_arrow_rounded : Icons.pause_rounded,
+              color: AppTheme.paper,
+            ),
+            tooltip: _enPausa ? 'Continuar' : 'Pausar',
+            onPressed: _juego.terminado
+                ? null
+                : () => setState(() => _enPausa = !_enPausa),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppTheme.paper),
+            tooltip: 'Reiniciar',
+            onPressed: _reiniciar,
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: MarcadorJuego(
+                puntaje: _juego.puntaje,
+                nivel: _juego.nivel,
+                record: _record,
+                etiquetaExtra: 'LÍNEAS',
+                valorExtra: _juego.lineasHechas,
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Stack(
+                  children: [
+                    TableroJuego(celdas: _juego.vista),
+                    if (_juego.terminado)
+                      CartelFinDeJuego(
+                        puntaje: _juego.puntaje,
+                        esRecord:
+                            _juego.puntaje >= _record && _juego.puntaje > 0,
+                        onReiniciar: _reiniciar,
+                      )
+                    else if (_enPausa)
+                      Container(
+                        color: AppTheme.ink.withValues(alpha: 0.85),
+                        alignment: Alignment.center,
+                        child: Text('En pausa',
+                            style: AppTheme.heading.copyWith(fontSize: 22)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  BotonJuego(
+                    icono: Icons.chevron_left_rounded,
+                    tooltip: 'Izquierda',
+                    onTap: () => _accion(_juego.moverIzquierda),
+                  ),
+                  BotonJuego(
+                    icono: Icons.rotate_right_rounded,
+                    tooltip: 'Rotar',
+                    onTap: () => _accion(_juego.rotar),
+                  ),
+                  BotonJuego(
+                    icono: Icons.keyboard_double_arrow_down_rounded,
+                    tooltip: 'Bajar del todo',
+                    onTap: () => _accion(_juego.caidaRapida),
+                  ),
+                  BotonJuego(
+                    icono: Icons.chevron_right_rounded,
+                    tooltip: 'Derecha',
+                    onTap: () => _accion(_juego.moverDerecha),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
