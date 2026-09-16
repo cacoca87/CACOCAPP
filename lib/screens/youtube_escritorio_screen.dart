@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -46,7 +47,8 @@ class YoutubeEscritorioScreen extends StatefulWidget {
       _YoutubeEscritorioScreenState();
 }
 
-class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
+class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen>
+    with WidgetsBindingObserver {
   /// Lo que la app dice ser. Esta línea es la que hace que YouTube
   /// mande la página de escritorio en vez de la de celular.
   static const String _navegadorDeEscritorio =
@@ -56,9 +58,76 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
   late final WebViewController _controlador;
   bool _cargando = true;
 
+  /// Lo que se le inyecta a la página apenas termina de cargar.
+  ///
+  /// Esta es la pieza clave, y es la razón por la que este modo existe
+  /// aparte: acá la página es NUESTRA (la cargamos nosotros), así que
+  /// podemos ejecutarle JavaScript. Con el reproductor embebido de la
+  /// otra pantalla es imposible, porque el video vive dentro de un
+  /// marco de otro dominio y el navegador lo prohíbe.
+  ///
+  /// Qué hace: le miente a YouTube sobre si la página está a la vista.
+  /// YouTube se pausa solo cuando detecta que quedó oculta; si nunca se
+  /// entera, no se pausa. Además tapa el aviso de "cambió la
+  /// visibilidad" antes de que su código lo reciba.
+  static const String _mentirleSobreLaVisibilidad = '''
+(function () {
+  try {
+    Object.defineProperty(document, 'hidden',
+        { get: function () { return false; }, configurable: true });
+    Object.defineProperty(document, 'visibilityState',
+        { get: function () { return 'visible'; }, configurable: true });
+    Object.defineProperty(document, 'webkitHidden',
+        { get: function () { return false; }, configurable: true });
+    var tapar = function (e) {
+      e.stopImmediatePropagation();
+    };
+    document.addEventListener('visibilitychange', tapar, true);
+    document.addEventListener('webkitvisibilitychange', tapar, true);
+    window.addEventListener('pagehide', tapar, true);
+    window.addEventListener('blur', tapar, true);
+  } catch (e) {}
+})();
+''';
+
+  /// Se le da "play" al video de la página directamente, sin pasar por
+  /// YouTube. Si algo lo pausó, vuelve.
+  static const String _volverADarlePlay = '''
+(function () {
+  try {
+    var v = document.querySelector('video');
+    if (v && v.paused) { v.play(); }
+  } catch (e) {}
+})();
+''';
+
+  Timer? _insistir;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState estado) {
+    if (estado == AppLifecycleState.resumed) {
+      _insistir?.cancel();
+      _insistir = null;
+      return;
+    }
+    // Pantalla bloqueada o app atrás: se le insiste al video para que
+    // siga. Con la mentira de arriba puesta, esto casi nunca hace
+    // falta -- pero si algo igual lo pausa, lo levanta.
+    _insistir?.cancel();
+    var intentos = 0;
+    _insistir = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (intentos++ > 240) {
+        t.cancel();
+        return;
+      }
+      _controlador.runJavaScript(_volverADarlePlay);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Le pedimos a `audio_service` que muestre una sesión de medios por
     // este video. No es cosmético: eso levanta el servicio en primer
@@ -76,7 +145,8 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
       ..setBackgroundColor(AppTheme.ink)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageFinished: (_) {
+          onPageFinished: (_) async {
+            await _controlador.runJavaScript(_mentirleSobreLaVisibilidad);
             if (mounted) setState(() => _cargando = false);
           },
         ),
@@ -97,6 +167,8 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
 
   @override
   void dispose() {
+    _insistir?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     // Se saca la notificación al salir de esta pantalla: si quedara,
     // Android seguiría creyendo que la app está reproduciendo algo.
     audioHandler.terminarSesionDeVideo();
