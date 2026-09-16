@@ -38,6 +38,18 @@ class YoutubeVideoResult {
   }
 }
 
+/// Se lanza cuando la busqueda no se pudo hacer: sin internet, o
+/// YouTube cambio algo y el paquete no pudo leer la respuesta. Es
+/// distinto de "busque bien y no hay resultados", que antes se
+/// mostraba con el mismo mensaje que "todavia no buscaste nada".
+class ErrorBusquedaYoutube implements Exception {
+  final String mensaje;
+  const ErrorBusquedaYoutube(this.mensaje);
+
+  @override
+  String toString() => mensaje;
+}
+
 /// Busca videos en YouTube. Solo BUSCA: la reproducción la hace el
 /// reproductor oficial embebido (`OnlineVideoProvider` +
 /// `online_video_overlay.dart`), no esta clase.
@@ -70,7 +82,9 @@ class YoutubeService {
       // recital, un álbum completo en un video) sin motivo.
       return resultados.map(YoutubeVideoResult.fromVideo).toList();
     } catch (_) {
-      return [];
+      throw const ErrorBusquedaYoutube(
+        'No se pudo buscar en YouTube. Revisá tu conexión e intentá de nuevo.',
+      );
     }
   }
 }
