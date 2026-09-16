@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/online_video_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
+import 'diagnostico_youtube_screen.dart';
 import 'youtube_escritorio_screen.dart';
 import '../widgets/estado_vacio.dart';
 
@@ -153,9 +154,26 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
               onPressed: _volver,
             ),
             const SizedBox(width: 8),
-            Text(
-              "Búsqueda Online",
-              style: AppTheme.heading.copyWith(fontSize: 20),
+            Expanded(
+              child: Text(
+                "Búsqueda Online",
+                style: AppTheme.heading.copyWith(fontSize: 20),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Comprueba desde ESTE celular si YouTube deja bajar una
+            // cancion entera. Sirve para no discutir de memoria.
+            IconButton(
+              icon: const Icon(Icons.troubleshoot_rounded,
+                  color: AppTheme.mutedInk, size: 20),
+              tooltip: 'Probar si YouTube deja bajar el audio',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DiagnosticoYoutubeScreen(),
+                ),
+              ),
             ),
           ],
         ),
