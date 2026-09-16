@@ -56,11 +56,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   Future<void> _cargarCanciones() async {
     final list = await _driveService.obtenerCanciones();
+    // La comprobación va ANTES del `setState`, no después: si la pantalla
+    // se desmontó mientras la biblioteca venía de la red, actualizar el
+    // estado de un widget que ya no existe es un error en tiempo de
+    // ejecución. Estaba al revés.
+    if (!mounted) return;
     setState(() {
       canciones = list;
       cargando = false;
     });
-    if (!mounted) return;
     final player = context.read<PlayerProvider>();
     await player.restoreSession(list);
     if (!mounted) return;

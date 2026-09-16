@@ -2038,3 +2038,55 @@ tooltip, solo que declarado más abajo de donde miraba mi búsqueda.)
 
 `flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 77. Vuelta completa sobre toda la app: dos hallazgos
+
+### La comprobación de `mounted` estaba del lado equivocado
+
+**Archivo:** `lib/screens/pantalla_principal.dart`
+
+En el arranque de la app, `_cargarCanciones()` pide la biblioteca a la red y
+después llama a `setState()` -- pero la comprobación de `mounted` estaba
+**después** del `setState`, no antes. Si la pantalla se desmontaba mientras la
+biblioteca venía en camino, se actualizaba el estado de un widget que ya no
+existe, que es un error en tiempo de ejecución.
+
+Lo curioso es que la función de al lado, `_actualizarCanciones()`, lo hace bien:
+espera, comprueba, y recién ahí actualiza. Era la única de las dos que estaba al
+revés.
+
+Se revisó después **todo el proyecto** buscando el mismo patrón -- un `setState`
+a menos de seis líneas de un `await` sin comprobación en el medio -- y no
+aparece en ningún otro lado.
+
+### El registro de errores se filtraba en la versión final
+
+**Archivos:** `lib/providers/player_provider.dart`,
+`lib/providers/playlist_provider.dart`, `lib/services/my_audio_handler.dart`
+
+`AppLogger` existe desde hace tiempo y su propio comentario explica para qué:
+para que en la versión de release **no se filtre nada** a los registros del
+sistema -- rutas de archivos, URLs internas del Worker, trazas de error --
+porque cualquiera con el celular conectado puede leerlos con `adb logcat`.
+
+Pero siete llamadas en tres archivos lo salteaban y usaban `debugPrint`
+directamente. Y `debugPrint`, a pesar del nombre, **sí imprime en release**:
+Flutter no lo elimina. Así que la protección existía y estaba sin usar en la
+mitad de los lugares que más importaban (errores de descarga, de guardado de
+playlists y del motor de audio).
+
+Las siete pasan ahora por `AppLogger`, que solo escribe en modo depuración.
+Ahora no queda ni un `print` ni un `debugPrint` suelto en toda la app.
+
+### Lo que se revisó y estaba bien
+
+- `tarjeta_presionable.dart` y `app_logger.dart`, leídos por primera vez de
+  punta a punta: los dos limpios.
+- El orden de arranque completo: biblioteca, restauración de sesión, espera a
+  que terminen de leerse las descargas, carga de playlists y resolución de
+  metadata real. Cada paso comprueba que la pantalla siga viva antes de seguir.
+- Los cuatro providers viven lo que dura la app, así que no se pierden
+  suscripciones al no desecharlos.
+
+`flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

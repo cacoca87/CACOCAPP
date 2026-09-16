@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audio_service/audio_service.dart';
 import '../models/song.dart';
 import '../services/my_audio_handler.dart';
+import '../utils/app_logger.dart';
 import '../utils/extension_guesser.dart';
 import 'recommendation_engine.dart';
 
@@ -301,7 +302,7 @@ class PlayerProvider extends ChangeNotifier {
         exito = true;
       }
     } catch (e) {
-      debugPrint('Error descargando ${song.title}: $e');
+      AppLogger.e('Error descargando ${song.title}', error: e);
     } finally {
       _descargando.remove(song.id);
       notifyListeners();
@@ -376,7 +377,7 @@ class PlayerProvider extends ChangeNotifier {
       // llamó a setQueue -- el estado de _currentSong/_queue queda tal
       // como se pidió (es lo que muestra el mini player) aunque el
       // audio en sí no haya podido cargar.
-      debugPrint('setQueue: no se pudo cargar el audio: $e');
+      AppLogger.e('setQueue: no se pudo cargar el audio', error: e);
       exito = false;
     }
     notifyListeners();
@@ -464,7 +465,7 @@ class PlayerProvider extends ChangeNotifier {
       };
       await prefs.setString(_stateKey, jsonEncode(state));
     } catch (e) {
-      debugPrint('Error guardando estado: $e');
+      AppLogger.e('Error guardando estado', error: e);
     }
   }
 
@@ -495,7 +496,7 @@ class PlayerProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      debugPrint('Error restaurando sesión: $e');
+      AppLogger.e('Error restaurando sesión', error: e);
     }
   }
 

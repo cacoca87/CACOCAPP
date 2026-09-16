@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/playlist.dart';
 import '../models/song.dart';
+import '../utils/app_logger.dart';
 
 class PlaylistProvider extends ChangeNotifier {
   final List<Playlist> _playlists = [];
@@ -102,7 +103,7 @@ class PlaylistProvider extends ChangeNotifier {
       await prefs.setString(_kPlaylistsKey, jsonEncode(playlistsJson));
       await prefs.setStringList(_kFavoritesKey, _favoriteIds.toList());
     } catch (e) {
-      debugPrint('No se pudieron guardar playlists/favoritos: $e');
+      AppLogger.e('No se pudieron guardar playlists/favoritos', error: e);
     }
   }
 
@@ -146,7 +147,7 @@ class PlaylistProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      debugPrint('No se pudieron restaurar playlists/favoritos: $e');
+      AppLogger.e('No se pudieron restaurar playlists/favoritos', error: e);
     }
   }
 }

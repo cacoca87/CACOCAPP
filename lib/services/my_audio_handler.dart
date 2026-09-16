@@ -119,7 +119,7 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     player.playbackEventStream.listen(
       (event) => playbackState.add(_transformEvent(event)),
       onError: (Object e, StackTrace st) {
-        debugPrint('AUDIO ERROR: $e');
+        AppLogger.e('Error del motor de audio', error: e);
         final ignoreUntil = _ignoreSourceErrorsUntil;
         if (ignoreUntil != null && DateTime.now().isBefore(ignoreUntil)) return;
         _scheduleRetry();
