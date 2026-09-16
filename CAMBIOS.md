@@ -1852,3 +1852,57 @@ varias pasadas en vez de una.
 
 `flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 73. Cinco pasadas más: un bug real en el avance automático
+
+Pediste seguir hasta no encontrar nada. Estas son las pasadas 6 a 10, cada una
+con un criterio distinto.
+
+### Pasada 6: accesos forzados (`!`)
+
+Se revisaron los 16 lugares donde el código afirma que algo no es nulo. **Los 16
+tienen su comprobación previa**: dentro de un `if (x != null)`, después de un
+`return` temprano, o detrás de un getter que ya verificó. Sin hallazgos.
+
+### Pasada 7: claves de guardado y doble toque
+
+Las 19 claves de `SharedPreferences` son únicas, sin colisiones entre sí. Y la
+descarga de canciones está protegida contra el doble toque: lleva un registro de
+lo que está bajando y lo limpia en un `finally`. Sin hallazgos.
+
+### Pasada 8: suscripciones y divisiones
+
+Las cuatro suscripciones a streams que viven en objetos con ciclo de vida propio
+se cancelan (`main.dart`, `audio_effects_provider`, `online_video_provider`, y
+los temporizadores de los juegos). Las dos de `player_provider` no se cancelan,
+pero ese objeto vive lo que dura la app, así que no es una fuga.
+
+Las cuatro divisiones que podrían ser por cero están todas protegidas antes.
+Sin hallazgos.
+
+### Pasada 9: BUG REAL -- el avance automático te sacaba de donde estabas
+
+**Archivo:** `lib/providers/online_video_provider.dart`
+
+El avance automático al terminar un video reutilizaba `reproducir()`, que pone
+el video en pantalla completa -- porque eso es lo correcto cuando **vos** elegís
+un video de la lista. Pero cuando lo dispara el final de una canción, no:
+
+Estabas navegando tu biblioteca con el video sonando en la barra chica,
+terminaba, y la app **te saltaba a pantalla completa sola**. Interrumpiendo lo
+que estuvieras haciendo.
+
+Ahora el avance automático conserva el modo en el que estabas. Si lo pedís vos a
+mano, se expande como siempre.
+
+### Pasada 10: la documentación también puede mentir
+
+`README.md` decía que `utils/` incluye "la lógica de los **dos** juegos". Son
+cuatro desde hace dos vueltas, y la frase la escribí yo. También faltaba
+mencionar las noticias en la lista de lo que cubren las pruebas. Corregido.
+
+Un README desactualizado es una incoherencia como cualquier otra, y encima es lo
+primero que lee quien abre el repo.
+
+`flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

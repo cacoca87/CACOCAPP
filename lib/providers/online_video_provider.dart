@@ -130,13 +130,20 @@ class OnlineVideoProvider extends ChangeNotifier {
       // saltearse varios videos de un tirón.
       if (_videoYaTerminado == _videoId) return;
       _videoYaTerminado = _videoId;
-      siguiente();
+      siguiente(conservarTamano: true);
     });
   }
 
   /// Pasa al siguiente video de la lista de resultados, si hay.
-  void siguiente() {
+  ///
+  /// [conservarTamano] mantiene el modo en el que estabas. Lo usa el
+  /// avance automático al terminar un video: si estabas mirando la barra
+  /// chica mientras navegabas la app, que el siguiente te saltara a
+  /// pantalla completa solo sería molesto. En cambio, si lo pedís vos a
+  /// mano, se expande como cualquier video que elegís.
+  void siguiente({bool conservarTamano = false}) {
     if (!haySiguiente) return;
+    final estabaMinimizado = _minimizado;
     final proximo = _cola[_indiceEnCola + 1];
     reproducir(
       videoId: proximo.videoId,
@@ -145,6 +152,10 @@ class OnlineVideoProvider extends ChangeNotifier {
       cola: _cola,
       indice: _indiceEnCola + 1,
     );
+    if (conservarTamano && estabaMinimizado) {
+      _minimizado = true;
+      notifyListeners();
+    }
   }
 
   /// Achica el video a la barra de abajo -- sigue sonando.

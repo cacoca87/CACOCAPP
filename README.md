@@ -73,7 +73,8 @@ lib/
     lyrics_service           letras sincronizadas
     noticias_service         noticias por categoría (RSS de Google Noticias)
   utils/                    funciones puras (parseo, ayudantes)
-                            incluye la lógica de los dos juegos
+                            incluye la lógica de los cuatro juegos y el
+                            parseo de los feeds de noticias
   styles/app_theme.dart     identidad visual
 test/                       pruebas unitarias
 ```
@@ -92,8 +93,10 @@ Los tres pasos corren automáticamente en GitHub Actions ante cada push
 Las pruebas cubren lógica pura y servicios con HTTP simulado: parseo de letras,
 deducción de título y artista desde el nombre del archivo, adivinación de
 extensiones, motor de recomendaciones, cliente de Jamendo, la persistencia de
-playlists y favoritos, y las reglas de los cuatro juegos (choques,
-rotación, líneas completas, puntaje). **No hay pruebas de interfaz**, así que
+playlists y favoritos, el parseo y la descarga de las noticias, y las reglas de
+los cuatro juegos (choques, rotación, líneas completas, puntaje).
+
+**No hay pruebas de interfaz**, así que
 los cambios visuales o de interacción se verifican probando la app en un
 dispositivo real.
 
