@@ -41,13 +41,16 @@ class DriveService {
           'No se pudo cargar la lista dinámica, usando respaldo fijo: $e');
     }
 
+    // Respaldo: si el Worker no responde, se arma la biblioteca con la
+    // lista fija de nombres de más abajo. Es una constante de 160
+    // entradas, así que esto nunca queda vacío -- antes había acá un
+    // tercer respaldo para el caso "ni siquiera la lista fija dio
+    // nada", que era inalcanzable y además mentía: devolvía una
+    // canción titulada "Sweet Child O Mine" de "Guns N Roses" cuya URL
+    // apuntaba a un MP3 de demostración genérico de otro sitio.
     final cancionesFijas = _construirCanciones(_nombresArchivosFijos);
-    if (cancionesFijas.isNotEmpty) {
-      _cache = cancionesFijas;
-      return cancionesFijas;
-    }
-
-    return _obtenerCancionesRespaldo();
+    _cache = cancionesFijas;
+    return cancionesFijas;
   }
 
   Future<List<String>> _obtenerListaDesdeWorker() async {
@@ -276,19 +279,4 @@ class DriveService {
     "Ziggy Stardust - 2012 Remaster.mp3",
     "Zombie Zoo.mp3"
   ];
-
-  List<Song> _obtenerCancionesRespaldo() {
-    return [
-      Song(
-        id: 'respaldo_0',
-        title: 'Sweet Child O Mine',
-        artist: 'Guns N Roses',
-        album: 'Guns N Roses',
-        coverUrl: '',
-        url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-      ),
-    ];
-  }
-
-  List<Song> get canciones => _cache ?? [];
 }

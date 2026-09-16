@@ -973,3 +973,34 @@ Las carátulas leídas de los MP3 se guardaban en disco (bien) **y además se qu
 - `playlist_provider.dart`: se borró el getter `favoriteIds`, que no usaba nadie y además exponía el conjunto interno para que cualquiera lo modificara salteando el guardado.
 
 `flutter analyze`, `flutter test` (**48**, subieron de 45) y `flutter build apk --release` salieron limpios.
+
+## 58. Cierre de la auditoría: el 24% del código que faltaba revisar
+
+Las dos auditorías anteriores habían dejado ~2.070 líneas en 11 archivos sin leer en detalle. Esta vuelta los revisé todos. Encontré bastante menos que en las anteriores, lo cual es buena señal: esa parte del código estaba sana.
+
+### Lo único importante: un respaldo inalcanzable que además mentía
+
+**Archivo:** `lib/services/drive_service.dart`
+
+La carga de tu biblioteca tiene tres niveles de respaldo: primero pregunta al Worker de Cloudflare, si falla usa una lista fija de 160 nombres escrita en el código, y si eso también fallara usaba un tercer respaldo.
+
+Ese tercer nivel **no se podía alcanzar nunca**: la lista fija es una constante de 160 entradas, así que el paso anterior jamás devuelve una lista vacía. Y si por algún motivo se hubiera ejecutado, hacía algo peor que fallar: devolvía una canción titulada **"Sweet Child O Mine" de "Guns N Roses"** cuya URL apuntaba a `SoundHelix-Song-1.mp3`, un archivo de demostración genérico de otro sitio. O sea, habría mostrado un nombre real reproduciendo música completamente distinta. Se borró.
+
+También se borró el getter `canciones`, que no usaba nadie.
+
+### Lo que revisé y estaba bien
+
+Lo anoto para que quede constancia de qué se miró, no solo de qué se arregló:
+
+- `jamendo_service.dart`: tiempos de espera, códigos de respuesta y valores nulos, todos contemplados.
+- `lyrics_service.dart`: igual, con `timeout` de 8 segundos en cada pedido y salida limpia ante cualquier error.
+- `song_cover.dart`: guarda el `Future` de la carátula en `initState` (no en `build`), justamente para que un refresco del provider no provoque parpadeo en listas largas, y lo recalcula solo si la tarjeta pasó a representar otra canción.
+- `lyrics_screen.dart`: el auto-scroll consulta `hasClients` antes de tocar la posición del scroll, que es la forma correcta de no reventar cuando la lista todavía no se dibujó.
+- `audio_effects_provider.dart`: guarda la suscripción al cambio de sesión de audio y la cancela en `dispose`.
+- `mini_player.dart`, `queue_screen.dart`, `inicio_tab.dart`, `artwork_service.dart`: sin nada que señalar.
+
+### Comprobación de coherencia en la navegación
+
+Las secciones se piden por su nombre en texto (`"Álbumes"`, `"Estadísticas"`, etc.), y un solo typo haría que un botón no hiciera nada en silencio. Crucé todos los nombres que piden la pantalla de inicio y la barra lateral contra los que la pantalla principal sabe manejar: **coinciden todos**. La entrada "Inicio" de la barra lateral es solo una etiqueta; por dentro apunta a "Tu Biblioteca", que sí está contemplada.
+
+`flutter analyze`, `flutter test` (48) y `flutter build apk --release` salieron limpios.
