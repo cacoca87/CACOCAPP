@@ -11,8 +11,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// y seguro guardarlo así — a diferencia de las carátulas ID3, que
 /// van a disco por su tamaño.
 class ArtworkService {
-  ArtworkService._();
+  // Mismo patrón que `JamendoService`, `LyricsService` y
+  // `NoticiasService`: el cliente HTTP entra por el constructor privado
+  // para poder probar esta clase sin red real. Era la única de las
+  // cuatro que no lo tenía, y justamente por eso su fallo de caché
+  // (marcar toda la biblioteca como "sin carátula" tras una apertura
+  // sin internet) no lo agarró ningún test.
+  ArtworkService._({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Instancia real que usa el resto de la app.
   static final ArtworkService instance = ArtworkService._();
+
+  /// SOLO PARA TESTS: permite inyectar un cliente falso.
+  factory ArtworkService.testable(http.Client client) =>
+      ArtworkService._(client: client);
+
+  final http.Client _client;
 
   final Map<String, String?> _cache = {};
 
@@ -51,7 +65,8 @@ class ArtworkService {
       final url = Uri.parse(
         'https://itunes.apple.com/search?term=$term&entity=song&limit=1',
       );
-      final response = await http.get(url).timeout(const Duration(seconds: 6));
+      final response =
+          await _client.get(url).timeout(const Duration(seconds: 6));
 
       if (response.statusCode == 200) {
         respuestaValida = true;

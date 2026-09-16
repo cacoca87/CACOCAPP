@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -122,6 +123,69 @@ void main() {
           title: 'Cancion Inexistente', artist: 'Nadie', urlCancion: '');
 
       expect(letra.hayAlgo, isFalse);
+    });
+
+    test('un "no hay letra" por falta de red NO se guarda en el disco',
+        () async {
+      // Este era el fallo: una sola consulta hecha sin internet dejaba
+      // la canción marcada como "sin letra" para siempre, incluso con
+      // la conexión ya funcionando.
+      final sinRed = LyricsService.testable(
+        MockClient((_) async => throw const SocketException('sin red')),
+      );
+      expect(
+        (await sinRed.getLyrics(
+                title: 'Roxanne', artist: 'The Police', urlCancion: ''))
+            .hayAlgo,
+        isFalse,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Sesión nueva (caché de memoria vacía) y con la red andando: la
+      // letra tiene que aparecer.
+      final conRed = LyricsService.testable(MockClient((request) async {
+        if (request.url.host != 'lrclib.net') {
+          return http.Response('Not Found', 404);
+        }
+        return http.Response(
+          jsonEncode([
+            {'syncedLyrics': null, 'plainLyrics': 'Roxanne...'}
+          ]),
+          200,
+        );
+      }));
+      final letra = await conRed.getLyrics(
+          title: 'Roxanne', artist: 'The Police', urlCancion: '');
+      expect(letra.textoPlano, 'Roxanne...');
+    });
+
+    test('una letra encontrada SÍ se guarda y sobrevive a reabrir la app',
+        () async {
+      final conRed = LyricsService.testable(MockClient((request) async {
+        if (request.url.host != 'lrclib.net') {
+          return http.Response('Not Found', 404);
+        }
+        return http.Response(
+          jsonEncode([
+            {'syncedLyrics': null, 'plainLyrics': 'Guardada'}
+          ]),
+          200,
+        );
+      }));
+      await conRed.getLyrics(
+          title: 'Cancion', artist: 'Artista', urlCancion: '');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Sesión nueva y sin red: tiene que salir del disco igual.
+      var pidioRed = false;
+      final sinRed = LyricsService.testable(MockClient((_) async {
+        pidioRed = true;
+        return http.Response('Not Found', 404);
+      }));
+      final letra = await sinRed.getLyrics(
+          title: 'Cancion', artist: 'Artista', urlCancion: '');
+      expect(letra.textoPlano, 'Guardada');
+      expect(pidioRed, isFalse);
     });
   });
 }
