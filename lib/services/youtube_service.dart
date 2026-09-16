@@ -54,15 +54,38 @@ class ErrorBusquedaYoutube implements Exception {
 /// reproductor oficial embebido (`OnlineVideoProvider` +
 /// `online_video_overlay.dart`), no esta clase.
 ///
-/// Este archivo tenía además toda una cadena para extraer la URL del
-/// audio y reproducirlo con el motor propio de la app, encadenando tres
-/// métodos (resolución directa en el celular, un servidor proxy propio
-/// en Render, e instancias públicas de Invidious). Se borró entera
-/// porque quedó inalcanzable: desde que la Búsqueda Online reproduce en
-/// el reproductor embebido, ya no se crea ninguna canción con id `yt_`,
-/// que era la única forma de entrar a ese camino. Además nunca iba a
-/// volver a funcionar de forma confiable -- el motivo de fondo (los PO
-/// Tokens de YouTube) está explicado en CAMBIOS.md.
+/// POR QUÉ NO SE SACA EL AUDIO SUELTO
+///
+/// Es la pregunta que más veces volvió en este proyecto, porque de eso
+/// depende que la Búsqueda Online siga sonando con la pantalla
+/// bloqueada: el reproductor embebido es una vista web y Android la
+/// congela al apagar la pantalla. Sacar el audio y mandarlo al motor
+/// propio de la app lo resolvería de una.
+///
+/// Se intentó y no se puede. Medido contra YouTube, no supuesto:
+///
+/// * Conseguir la URL del audio FUNCIONA. Eso confunde: parece que
+///   está todo bien.
+/// * Pedir el primer pedazo del archivo también funciona (206).
+/// * Pedir CUALQUIER otro pedazo da 403. Da igual la cabecera `Range`
+///   o el parámetro `range=` en la URL; da igual pedir el archivo
+///   entero de una; da igual sacar una URL nueva para cada pedazo; da
+///   igual la versión de la librería (probado con 2.5.3 y con 3.1.0,
+///   idéntico).
+///
+/// O sea: YouTube entrega el primer megabyte y corta. La canción nunca
+/// se completa, y el reproductor falla con "no se pudo cargar el
+/// audio". Actualizar la librería no lo arregla porque la librería no
+/// es el problema.
+///
+/// Si algún día esto cambia, `tool/probar_audio_youtube.dart` lo dice
+/// en dos minutos: pide el SEGUNDO pedazo, que es el que decide. Una
+/// prueba que solo pida los primeros kilobytes va a dar bien igual y
+/// es exactamente el error que ya se cometió una vez acá.
+///
+/// Mientras tanto, lo que sí suena con la pantalla bloqueada es todo lo
+/// que pasa por `MyAudioHandler`: la biblioteca propia y Descubrir
+/// (Jamendo), que son archivos de audio de verdad y no una página web.
 class YoutubeService {
   static final YoutubeService instance = YoutubeService._internal();
   YoutubeService._internal();
@@ -84,59 +107,6 @@ class YoutubeService {
     } catch (_) {
       throw const ErrorBusquedaYoutube(
         'No se pudo buscar en YouTube. Revisá tu conexión e intentá de nuevo.',
-      );
-    }
-  }
-
-  /// Devuelve la URL del AUDIO suelto de un video, para reproducirlo
-  /// con el motor de audio de la app en vez del reproductor embebido.
-  ///
-  /// Por qué hace falta: el reproductor embebido de YouTube es una
-  /// vista web, y Android la congela al bloquear la pantalla. Por eso
-  /// el video se callaba. El audio suelto, en cambio, entra por el
-  /// mismo camino que las canciones del Drive -- `just_audio` +
-  /// `audio_service` -- que ya corre como servicio en primer plano y
-  /// sigue sonando con la pantalla apagada, con su notificación y sus
-  /// controles en la pantalla de bloqueo.
-  ///
-  /// Dos cosas para tener presentes:
-  ///
-  /// * La URL que devuelve YouTube CADUCA (unas horas) y está atada al
-  ///   aparato que la pidió. Por eso se resuelve justo antes de
-  ///   reproducir, cada vez, y no se guarda en ningún lado.
-  /// * Esto depende de cómo YouTube arma sus enlaces hoy, que es algo
-  ///   que ellos cambian sin avisar. Está probado y funcionando, pero
-  ///   si algún día deja de andar, el diagnóstico está en
-  ///   `tool/probar_audio_youtube.dart`: dice en dos minutos si el
-  ///   problema es este o es otra cosa.
-  Future<String> obtenerUrlDeAudio(String videoId) async {
-    try {
-      final manifiesto = await _yt.videos.streamsClient.getManifest(videoId);
-      final soloAudio = manifiesto.audioOnly;
-      if (soloAudio.isEmpty) {
-        throw const ErrorBusquedaYoutube(
-          'Este video no tiene una pista de audio que se pueda escuchar '
-          'aparte. Probá con otro resultado.',
-        );
-      }
-
-      // Se prefiere mp4/m4a (AAC) sobre webm/opus: los dos andan en
-      // Android, pero el primero lo soporta absolutamente todo.
-      final enMp4 = soloAudio
-          .where((s) => s.codec.mimeType.contains('mp4'))
-          .toList(growable: false);
-      final elegida = enMp4.isNotEmpty
-          ? enMp4.reduce((a, b) =>
-              a.bitrate.bitsPerSecond >= b.bitrate.bitsPerSecond ? a : b)
-          : soloAudio.withHighestBitrate();
-
-      return elegida.url.toString();
-    } on ErrorBusquedaYoutube {
-      rethrow;
-    } catch (_) {
-      throw const ErrorBusquedaYoutube(
-        'No se pudo preparar el audio de este video. Puede ser la conexión, '
-        'o que YouTube no lo permita. Probá con otro resultado.',
       );
     }
   }

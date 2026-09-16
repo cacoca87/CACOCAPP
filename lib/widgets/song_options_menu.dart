@@ -31,7 +31,6 @@ class SongOptionsMenu extends StatelessWidget {
     final esFavorita = playlistProvider.isFavorite(cancion.id);
     final playerProvider = context.watch<PlayerProvider>();
     final estaDescargada = playerProvider.isDownloaded(cancion.id);
-    final esDeYoutube = cancion.id.startsWith("yt_");
 
     Playlist? playlistActual;
     // Los cuatro nombres reservados vienen de un solo lugar: antes acá
@@ -103,12 +102,7 @@ class SongOptionsMenu extends StatelessWidget {
                 ],
               ),
             )
-          // Las canciones que vienen de la Búsqueda Online no se pueden
-          // descargar, y es a propósito: lo que la app tiene de ellas es
-          // un enlace prestado que caduca en unas horas. Escucharlas es
-          // una cosa; guardarse el archivo es otra muy distinta, y esa
-          // no la hace esta app.
-          else if (!esDeYoutube)
+          else
             PopupMenuItem(
               value: "descargar",
               child: Row(

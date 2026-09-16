@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/online_video_provider.dart';
-import '../models/song.dart';
-import '../providers/player_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/estado_vacio.dart';
@@ -49,63 +47,11 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
   bool _yaBusco = false;
   String? _error;
 
-  /// El video cuyo audio se está preparando ahora, para mostrar que
-  /// está trabajando en vez de que parezca que el toque no hizo nada.
-  String? _preparandoAudioDe;
-
   @override
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
-  }
-
-  /// Manda SOLO el audio del video al reproductor de la app.
-  ///
-  /// Esta es la diferencia entre que la música se corte al bloquear la
-  /// pantalla y que siga sonando. El reproductor embebido de YouTube es
-  /// una vista web, y Android congela las vistas web cuando la pantalla
-  /// se apaga: por eso el video se callaba. El audio suelto entra por
-  /// el mismo camino que las canciones del Drive (`just_audio` +
-  /// `audio_service`), que ya corre como servicio en primer plano, con
-  /// su notificación y sus controles en la pantalla de bloqueo.
-  Future<void> _escucharSoloAudio(YoutubeVideoResult video) async {
-    FocusScope.of(context).unfocus();
-    final mensajero = ScaffoldMessenger.of(context);
-    final player = context.read<PlayerProvider>();
-    final videoOnline = context.read<OnlineVideoProvider>();
-
-    setState(() => _preparandoAudioDe = video.videoId);
-    try {
-      // La URL se pide JUSTO ahora, cada vez: las de YouTube caducan a
-      // las pocas horas y están atadas al aparato que las pidió, así
-      // que guardarlas no serviría de nada.
-      final url = await YoutubeService.instance.obtenerUrlDeAudio(
-        video.videoId,
-      );
-      if (!mounted) return;
-
-      // Si había un video mirándose, se cierra: ahora suena el audio.
-      videoOnline.cerrar();
-
-      final cancion = Song(
-        // El prefijo `yt_` lo mira el resto de la app para saber que
-        // esta canción es un enlace prestado que caduca -- por eso no
-        // se ofrece descargarla.
-        id: 'yt_${video.videoId}',
-        title: video.title,
-        artist: video.author,
-        album: 'YouTube',
-        url: url,
-        coverUrl: video.thumbnailUrl,
-      );
-      player.playSong(cancion, [cancion], 0);
-    } on ErrorBusquedaYoutube catch (e) {
-      if (!mounted) return;
-      mensajero.showSnackBar(SnackBar(content: Text(e.mensaje)));
-    } finally {
-      if (mounted) setState(() => _preparandoAudioDe = null);
-    }
   }
 
   void _onSearchChanged(String query) {
@@ -350,46 +296,10 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                                 // que rompía la reproducción antes de pasar al
                                 // WebView -- ofrecerlo era prometer algo que
                                 // fallaba seguido.
-                                // Dos formas de escuchar el mismo
-                                // resultado, y la diferencia importa:
-                                //
-                                // * Los auriculares mandan SOLO el audio
-                                //   al reproductor de la app, que corre
-                                //   como servicio del sistema y sigue
-                                //   sonando con la pantalla bloqueada.
-                                // * El triángulo abre el video, que se
-                                //   ve, pero se calla al bloquear: el
-                                //   reproductor embebido de YouTube es
-                                //   una vista web y Android la congela.
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_preparandoAudioDe == video.videoId)
-                                      const Padding(
-                                        padding: EdgeInsets.all(12),
-                                        child: SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: AppTheme.amber),
-                                        ),
-                                      )
-                                    else
-                                      IconButton(
-                                        icon: const Icon(
-                                            Icons.headphones_rounded,
-                                            color: AppTheme.paper,
-                                            size: 24),
-                                        tooltip: 'Escuchar con la pantalla '
-                                            'bloqueada (solo audio)',
-                                        onPressed: () =>
-                                            _escucharSoloAudio(video),
-                                      ),
-                                    const Icon(Icons.play_circle_fill_rounded,
-                                        color: AppTheme.amber, size: 28),
-                                  ],
-                                ),
+                                trailing: const Icon(
+                                    Icons.play_circle_fill_rounded,
+                                    color: AppTheme.amber,
+                                    size: 28),
                                 // El video se pone a sonar en el overlay persistente
                                 // (OnlineVideoProvider) -- NO se navega a una pantalla
                                 // nueva, así el video sobrevive si después tocás
