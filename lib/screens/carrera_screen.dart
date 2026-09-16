@@ -105,6 +105,26 @@ class _CarreraScreenState extends State<CarreraScreen>
     _revisarFinYVelocidad();
   }
 
+  /// Cuánto hay que arrastrar para cambiar de carril. Lo suficiente
+  /// como para que un roce no mueva el auto sin querer.
+  static const double _pixelesPorCarril = 42;
+  double _arrastreAcumulado = 0;
+
+  void _arrastrar(DragUpdateDetails detalle) {
+    if (_enPausa || _juego.terminado) return;
+    _arrastreAcumulado += detalle.delta.dx;
+    while (_arrastreAcumulado.abs() >= _pixelesPorCarril) {
+      if (_arrastreAcumulado > 0) {
+        _arrastreAcumulado -= _pixelesPorCarril;
+        _accion(_juego.moverDerecha);
+      } else {
+        _arrastreAcumulado += _pixelesPorCarril;
+        _accion(_juego.moverIzquierda);
+      }
+      if (_juego.terminado) break;
+    }
+  }
+
   void _reiniciar() {
     setState(() {
       _juego.reiniciar();
@@ -164,12 +184,22 @@ class _CarreraScreenState extends State<CarreraScreen>
             ),
             Expanded(
               child: Padding(
-                // Menos margen que antes: la pista pasó de 3 casilleros
-                // de ancho a 9, y ahora sí aprovecha la pantalla.
+                // La pista dejó de ser de 3 casilleros de ancho: ahora
+                // son cuatro carriles de tres casilleros cada uno.
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Stack(
                   children: [
-                    TableroJuego(celdas: _vista),
+                    // Además de los botones, se puede arrastrar el dedo
+                    // sobre la pista para cambiar de carril. Los que la
+                    // probaron decían que "solo se puede hacer un
+                    // movimiento": con el arrastre, cruzar dos carriles
+                    // es un solo gesto en vez de dos toques justos.
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragUpdate: _arrastrar,
+                      onHorizontalDragEnd: (_) => _arrastreAcumulado = 0,
+                      child: TableroJuego(celdas: _vista),
+                    ),
                     if (_juego.terminado)
                       CartelFinDeJuego(
                         puntaje: _juego.puntaje,

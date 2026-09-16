@@ -6,6 +6,7 @@ import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/estado_vacio.dart';
+import '../widgets/letra_sincronizada.dart';
 
 class LyricsScreen extends StatefulWidget {
   const LyricsScreen({super.key});
@@ -17,10 +18,6 @@ class LyricsScreen extends StatefulWidget {
 class _LyricsScreenState extends State<LyricsScreen> {
   Future<Lyrics>? _future;
   String? _songIdCargado;
-  final ScrollController _scrollController = ScrollController();
-  int _ultimaLineaResaltada = -1;
-
-  static const double _alturaPorLinea = 56.0;
 
   /// Si la canción actual cambió desde la última vez, dispara una
   /// nueva búsqueda. Se llama desde build() — al mutar los campos acá
@@ -29,52 +26,15 @@ class _LyricsScreenState extends State<LyricsScreen> {
   void _asegurarCargaParaCancion(Song? song) {
     if (song == null || _songIdCargado == song.id) return;
     _songIdCargado = song.id;
-    _ultimaLineaResaltada = -1;
     _future = LyricsService.instance.getLyrics(
       title: song.title,
       artist: song.artist,
       urlCancion: song.url,
+      // La duración real es lo que separa esta canción de otra que se
+      // llama igual. Sin esto, la app llegó a mostrar una letra en
+      // inglés de 2:47 para una canción en español de 4:13.
+      duracion: audioHandler.player.duration,
     );
-  }
-
-  int _indiceLineaActual(List<LineaLetra> lineas, Duration posicion) {
-    var indice = -1;
-    for (var i = 0; i < lineas.length; i++) {
-      if (lineas[i].tiempo <= posicion) {
-        indice = i;
-      } else {
-        break;
-      }
-    }
-    return indice;
-  }
-
-  /// Cuándo fue la última vez que la persona movió la letra con el
-  /// dedo. Ver la nota del `NotificationListener` más abajo.
-  DateTime? _ultimoArrastre;
-  static const Duration _pausaTrasArrastre = Duration(seconds: 6);
-
-  void _scrollALinea(int indice) {
-    if (indice < 0 || indice == _ultimaLineaResaltada) return;
-    _ultimaLineaResaltada = indice;
-    if (!_scrollController.hasClients) return;
-    final arrastre = _ultimoArrastre;
-    if (arrastre != null &&
-        DateTime.now().difference(arrastre) < _pausaTrasArrastre) {
-      return;
-    }
-    final offset = (indice * _alturaPorLinea) - 180;
-    _scrollController.animateTo(
-      offset.clamp(0, _scrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
   }
 
   @override
@@ -127,7 +87,19 @@ class _LyricsScreenState extends State<LyricsScreen> {
                 }
 
                 if (letra.estaSincronizada) {
-                  return _construirLetraSincronizada(letra.lineas!);
+                  // El resaltado y el desplazamiento viven en
+                  // `LetraSincronizada`, compartido con el panel de
+                  // abajo del video de YouTube para que las dos
+                  // pantallas se comporten igual.
+                  return LetraSincronizada(
+                    lineas: letra.lineas!,
+                    // positionStream (just_audio) da actualizaciones
+                    // fluidas, a diferencia de playbackState que solo
+                    // cambia en eventos puntuales — necesario para que
+                    // el resaltado se sienta en vivo.
+                    posicion: audioHandler.player.positionStream,
+                    onTocarLinea: audioHandler.seek,
+                  );
                 }
 
                 return SingleChildScrollView(
@@ -139,64 +111,6 @@ class _LyricsScreenState extends State<LyricsScreen> {
                 );
               },
             ),
-    );
-  }
-
-  Widget _construirLetraSincronizada(List<LineaLetra> lineas) {
-    return StreamBuilder<Duration>(
-      // player.positionStream (just_audio) da actualizaciones fluidas,
-      // a diferencia de playbackState que solo cambia en eventos
-      // puntuales — necesario para que el resaltado se sienta en vivo.
-      stream: audioHandler.player.positionStream,
-      builder: (context, snapshot) {
-        final posicion = snapshot.data ?? Duration.zero;
-        final indiceActual = _indiceLineaActual(lineas, posicion);
-
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _scrollALinea(indiceActual));
-
-        return NotificationListener<ScrollNotification>(
-          // Mientras la persona arrastra la letra con el dedo, el
-          // desplazamiento automático se toma unos segundos de descanso.
-          // Sin esto, querer leer más adelante era imposible: al cambiar
-          // de línea la pantalla te devolvía de un tirón al renglón que
-          // sonaba.
-          onNotification: (aviso) {
-            if (aviso is ScrollStartNotification && aviso.dragDetails != null) {
-              _ultimoArrastre = DateTime.now();
-            }
-            return false;
-          },
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(vertical: 140, horizontal: 28),
-            itemCount: lineas.length,
-            itemBuilder: (context, index) {
-              final activa = index == indiceActual;
-              return GestureDetector(
-                // `opaque` para que se pueda tocar todo el renglón, no
-                // solo las letras: en las líneas cortas había que
-                // apuntarle justo al texto.
-                behavior: HitTestBehavior.opaque,
-                onTap: () => audioHandler.seek(lineas[index].tiempo),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      color: activa ? AppTheme.paper : AppTheme.faintInk,
-                      fontSize: activa ? 22 : 18,
-                      fontWeight: activa ? FontWeight.bold : FontWeight.normal,
-                      height: 1.4,
-                    ),
-                    child: Text(lineas[index].texto),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
     );
   }
 }

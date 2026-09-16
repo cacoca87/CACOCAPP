@@ -6,6 +6,7 @@ import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
+import 'letra_sincronizada.dart';
 import 'mini_player.dart';
 
 /// Muestra el video de YouTube que esté sonando (si hay uno), en
@@ -83,6 +84,9 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
         title: p.titulo,
         artist: p.autor,
         urlCancion: '',
+        // Lo que dura el video descarta las letras de otras canciones
+        // que se llaman igual -- ver `utils/eleccion_letra.dart`.
+        duracion: p.duracion,
       );
     }
     return _futuroLetra!;
@@ -251,7 +255,10 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
                   right: 0,
                   top: rectCompleto.bottom + 12,
                   bottom: 0,
-                  child: _PanelLetra(futuro: _letraDe(provider)),
+                  child: _PanelLetra(
+                    futuro: _letraDe(provider),
+                    controller: controller,
+                  ),
                 ),
             ],
           ),
@@ -407,13 +414,16 @@ class _Header extends StatelessWidget {
 /// encuentra; si no, un texto breve explicando cómo funciona el modo
 /// chico.
 ///
-/// La letra va sin sincronizar (no resaltada línea por línea) a
-/// propósito: el reproductor de YouTube es una vista nativa y la app no
-/// tiene acceso confiable a su posición de reproducción, así que
-/// resaltar la línea actual sería adivinar.
+/// Cuando la letra viene con tiempos, se va resaltando al ritmo del
+/// video, igual que en la pantalla de Letra de la biblioteca. Acá había
+/// un comentario diciendo que eso no se podía hacer "porque la app no
+/// tiene acceso confiable a la posición del reproductor de YouTube":
+/// era falso. El paquete expone `videoStateStream`, que emite la
+/// posición del video, y es exactamente lo que hacía falta.
 class _PanelLetra extends StatelessWidget {
   final Future<Lyrics> futuro;
-  const _PanelLetra({required this.futuro});
+  final YoutubePlayerController controller;
+  const _PanelLetra({required this.futuro, required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -445,9 +455,19 @@ class _PanelLetra extends StatelessWidget {
           );
         }
 
-        final texto = letra.estaSincronizada
-            ? letra.lineas!.map((l) => l.texto).join('\n')
-            : (letra.textoPlano ?? '');
+        if (letra.estaSincronizada) {
+          return LetraSincronizada(
+            lineas: letra.lineas!,
+            posicion: controller.videoStateStream.map((e) => e.position),
+            onTocarLinea: (tiempo) => controller.seekTo(
+              seconds: tiempo.inMilliseconds / 1000,
+              allowSeekAhead: true,
+            ),
+            // Menos aire arriba que en la pantalla de Letra: acá el
+            // panel es la mitad de alto porque arriba está el video.
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 80),
+          );
+        }
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
@@ -462,7 +482,7 @@ class _PanelLetra extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              texto,
+              letra.textoPlano ?? '',
               style:
                   AppTheme.body.copyWith(color: AppTheme.mutedInk, height: 1.6),
             ),

@@ -320,11 +320,14 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                                         videoId: video.videoId,
                                         titulo: video.title,
                                         autor: video.author,
+                                        duracionSegundos: video.lengthInSeconds,
                                         cola: _resultados
                                             .map((r) => VideoEnCola(
                                                   videoId: r.videoId,
                                                   titulo: r.title,
                                                   autor: r.author,
+                                                  duracionSegundos:
+                                                      r.lengthInSeconds,
                                                 ))
                                             .toList(),
                                         indice: index,

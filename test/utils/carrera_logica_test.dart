@@ -3,9 +3,9 @@ import 'package:CACOCAPP/utils/carrera_logica.dart';
 
 void main() {
   group('JuegoCarrera', () {
-    test('arranca en el carril del medio, sin rivales y sin puntaje', () {
+    test('arranca en un carril del medio, sin rivales y sin puntaje', () {
       final j = JuegoCarrera(semilla: 1);
-      expect(j.carrilJugador, 1);
+      expect(j.carrilJugador, JuegoCarrera.carriles ~/ 2);
       expect(j.puntaje, 0);
       expect(j.terminado, isFalse);
       expect(j.rivales, isEmpty);
@@ -88,8 +88,9 @@ void main() {
       expect(casillerosDelJugador, greaterThan(1));
     });
 
-    test('el juego sigue siendo ganable: nunca se tapan los tres carriles', () {
-      // Con un solo rival por tanda siempre quedan dos carriles libres.
+    test('el juego sigue siendo ganable: nunca se tapan todos los carriles',
+        () {
+      // Con un solo rival por tanda siempre quedan carriles libres.
       for (var semilla = 0; semilla < 25; semilla++) {
         final j = JuegoCarrera(semilla: semilla);
         for (var i = 0; i < 120; i++) {
@@ -103,6 +104,53 @@ void main() {
               .toSet();
           expect(carrilesOcupados.length, lessThan(JuegoCarrera.carriles),
               reason: 'no quedó ningún carril libre');
+        }
+      }
+    });
+
+    test('hay lugar para cruzar: más de tres carriles', () {
+      // La pista de tres carriles era el problema que reportaron: desde
+      // un costado solo se alcanzaba el del medio, y si el rival estaba
+      // ahí no había forma de pasar al otro lado.
+      expect(JuegoCarrera.carriles, greaterThan(3));
+    });
+
+    test('entre un rival y el siguiente queda un respiro', () {
+      // Un rival tarda 7 avances en cruzar la zona donde puede chocarte.
+      // Si entrara uno nuevo cada 7, apenas se va uno ya está el otro
+      // encima y no hay un solo avance de descanso.
+      const avancesDentroDeLaZonaDeChoque = 7;
+      expect(JuegoCarrera.avancesEntreRivales,
+          greaterThan(avancesDentroDeLaZonaDeChoque));
+    });
+
+    test('dos rivales seguidos nunca vienen por el mismo carril', () {
+      for (var semilla = 0; semilla < 40; semilla++) {
+        final j = JuegoCarrera(semilla: semilla);
+        final carrilesEnOrden = <int>[];
+        for (var i = 0; i < 200; i++) {
+          final antes = j.rivales.length;
+          j.avanzar();
+          if (j.rivales.length > antes) {
+            carrilesEnOrden.add(j.rivales.last.carril);
+          }
+        }
+        for (var i = 1; i < carrilesEnOrden.length; i++) {
+          expect(carrilesEnOrden[i], isNot(carrilesEnOrden[i - 1]),
+              reason:
+                  'dos autos seguidos por el mismo lado (semilla $semilla)');
+        }
+      }
+    });
+
+    test('el carril sorteado siempre es uno válido', () {
+      for (var semilla = 0; semilla < 40; semilla++) {
+        final j = JuegoCarrera(semilla: semilla);
+        for (var i = 0; i < 200; i++) {
+          j.avanzar();
+          for (final r in j.rivales) {
+            expect(r.carril, inInclusiveRange(0, JuegoCarrera.carriles - 1));
+          }
         }
       }
     });
@@ -133,7 +181,7 @@ void main() {
       j.reiniciar();
       expect(j.terminado, isFalse);
       expect(j.puntaje, 0);
-      expect(j.carrilJugador, 1);
+      expect(j.carrilJugador, JuegoCarrera.carriles ~/ 2);
       expect(j.rivales, isEmpty);
     });
   });

@@ -9,10 +9,16 @@ class VideoEnCola {
   final String titulo;
   final String autor;
 
+  /// Cuánto dura el video. Se usa para pedir la letra correcta: sin
+  /// este dato, buscar por nombre puede devolver la letra de otra
+  /// canción que se llama igual.
+  final int duracionSegundos;
+
   const VideoEnCola({
     required this.videoId,
     required this.titulo,
     required this.autor,
+    this.duracionSegundos = 0,
   });
 }
 
@@ -47,6 +53,12 @@ class OnlineVideoProvider extends ChangeNotifier {
   bool get minimizado => _minimizado;
   bool get hayVideo => _controller != null;
 
+  /// Cuánto dura el video que está sonando. Lo usa la búsqueda de la
+  /// letra para no traer la de otra canción que se llama igual.
+  int _duracionSegundos = 0;
+  Duration? get duracion =>
+      _duracionSegundos > 0 ? Duration(seconds: _duracionSegundos) : null;
+
   /// ¿Se puede reproducir video embebido en esta plataforma?
   ///
   /// El reproductor de YouTube es un WebView, y no todas las
@@ -71,6 +83,7 @@ class OnlineVideoProvider extends ChangeNotifier {
     required String videoId,
     required String titulo,
     required String autor,
+    int duracionSegundos = 0,
     List<VideoEnCola> cola = const [],
     int indice = -1,
   }) {
@@ -78,6 +91,7 @@ class OnlineVideoProvider extends ChangeNotifier {
     _cola = cola;
     _indiceEnCola = indice;
     _videoYaTerminado = null;
+    _duracionSegundos = duracionSegundos;
 
     if (_controller != null) {
       if (_videoId == videoId) {
@@ -163,6 +177,7 @@ class OnlineVideoProvider extends ChangeNotifier {
       videoId: proximo.videoId,
       titulo: proximo.titulo,
       autor: proximo.autor,
+      duracionSegundos: proximo.duracionSegundos,
       cola: _cola,
       indice: _indiceEnCola + 1,
     );

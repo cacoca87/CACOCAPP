@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:id3/id3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/eleccion_letra.dart';
 import '../utils/lyrics_parsing.dart';
 
 export '../utils/lyrics_parsing.dart' show LineaLetra;
@@ -44,10 +45,15 @@ class LyricsService {
       '${title.toLowerCase()}|${artist.toLowerCase()}';
   String _prefKey(String clave) => 'lyrics_cache_v1_$clave';
 
+  /// [duracion] es cuánto dura de verdad la canción o el video que está
+  /// sonando. Sirve para descartar resultados que son otra canción con
+  /// el mismo nombre -- ver `utils/eleccion_letra.dart`. Es opcional:
+  /// si no se sabe, la búsqueda funciona como antes.
   Future<Lyrics> getLyrics({
     required String title,
     required String artist,
     required String urlCancion,
+    Duration? duracion,
   }) async {
     final clave = _clave(title, artist);
     if (_cache.containsKey(clave)) return _cache[clave]!;
@@ -65,7 +71,8 @@ class LyricsService {
     final tituloLimpio = limpiarTituloParaBuscarLetra(title);
 
     // Intento 1: título + artista tal cual vienen.
-    Lyrics? letra = await _buscarEnLrclib(tituloLimpio, artist);
+    Lyrics? letra =
+        await _buscarEnLrclib(tituloLimpio, artist, duracion: duracion);
 
     // Intento 2: muchos resultados de "Búsqueda Online" (YouTube) traen
     // el nombre del CANAL como "artista" (ej. "Dj Montro Live" subiendo
@@ -80,7 +87,8 @@ class LyricsService {
       final artistaDelTitulo = partes.first.trim();
       final tituloSinArtista = partes.sublist(1).join(' - ').trim();
       if (artistaDelTitulo.isNotEmpty && tituloSinArtista.isNotEmpty) {
-        letra = await _buscarEnLrclib(tituloSinArtista, artistaDelTitulo);
+        letra = await _buscarEnLrclib(tituloSinArtista, artistaDelTitulo,
+            duracion: duracion);
       }
     }
 
@@ -89,7 +97,7 @@ class LyricsService {
     // catalogada la canción en lrclib, pero el título sí es único
     // como para encontrarla igual.
     if (letra == null || !letra.hayAlgo) {
-      letra = await _buscarEnLrclib(tituloLimpio, null);
+      letra = await _buscarEnLrclib(tituloLimpio, null, duracion: duracion);
     }
 
     // Intento 4: tags ID3 embebidas en el propio archivo de audio (si
@@ -148,7 +156,11 @@ class LyricsService {
     }
   }
 
-  Future<Lyrics?> _buscarEnLrclib(String title, String? artist) async {
+  Future<Lyrics?> _buscarEnLrclib(
+    String title,
+    String? artist, {
+    Duration? duracion,
+  }) async {
     try {
       final query = StringBuffer('track_name=${Uri.encodeComponent(title)}');
       if (artist != null && artist.trim().isNotEmpty) {
@@ -160,9 +172,16 @@ class LyricsService {
       if (response.statusCode != 200) return null;
 
       final resultados = jsonDecode(response.body) as List;
-      if (resultados.isEmpty) return null;
+      // Antes se tomaba `resultados.first` a ciegas. Ver la explicación
+      // en `utils/eleccion_letra.dart`: así la app mostraba la letra de
+      // una canción completamente distinta con total seguridad.
+      final primero = elegirLetraDeLrclib(
+        resultados,
+        duracion: duracion,
+        artistaBuscado: artist,
+      );
+      if (primero == null) return null;
 
-      final primero = resultados.first as Map<String, dynamic>;
       final synced = primero['syncedLyrics'] as String?;
       final plano = primero['plainLyrics'] as String?;
 

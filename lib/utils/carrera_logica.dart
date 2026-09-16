@@ -5,9 +5,9 @@ import 'dart:math';
 ///
 /// A diferencia de la primera versión, donde cada auto era un solo
 /// cuadrito, acá los autos se dibujan con la forma del juego original:
-/// una figura de 4×3 casilleros. Por eso la pista tiene tres carriles de
-/// **tres casilleros de ancho cada uno** (9 en total) en vez de tres
-/// casilleros pelados, y además aprovecha mucho mejor la pantalla.
+/// una figura de 4×3 casilleros. Por eso la pista tiene carriles de
+/// **tres casilleros de ancho cada uno**, y aprovecha mucho mejor la
+/// pantalla que la versión de un casillero por carril.
 
 /// La silueta del auto, igual que en el aparatito: techo, capó ancho,
 /// cuerpo y ruedas traseras.
@@ -27,15 +27,26 @@ class AutoRival {
 }
 
 class JuegoCarrera {
-  static const int carriles = 3;
+  /// Cuatro carriles y no tres.
+  ///
+  /// Con tres, la pista quedaba tan angosta que cuando un rival venía
+  /// cerca no había a dónde ir: desde el carril de un costado solo se
+  /// alcanza el del medio, y si el rival estaba ahí, no se podía cruzar
+  /// al otro lado. Con cuatro hay lugar de verdad para moverse, y de
+  /// paso la pista aprovecha mejor el ancho de la pantalla.
+  static const int carriles = 4;
   static const int anchoCarril = 3;
   static const int columnas = carriles * anchoCarril;
   static const int filas = 20;
   static const int altoAuto = 4;
 
-  /// Cada cuántos avances entra un auto rival nuevo. Tiene que dejar
-  /// lugar suficiente entre uno y otro como para poder esquivarlos.
-  static const int avancesEntreRivales = 7;
+  /// Cada cuántos avances entra un auto rival nuevo.
+  ///
+  /// Tiene que ser MAYOR que los avances que un rival pasa dentro de la
+  /// zona donde puede chocarte (7): si fueran iguales, apenas se va uno
+  /// ya está el siguiente encima y nunca hay un respiro. Con 9 queda un
+  /// margen real para acomodarse antes del próximo.
+  static const int avancesEntreRivales = 9;
 
   final Random _azar;
 
@@ -102,7 +113,7 @@ class JuegoCarrera {
     _contadorAvances++;
     if (_contadorAvances % avancesEntreRivales == 0) {
       rivales.add(AutoRival(
-        carril: _azar.nextInt(carriles),
+        carril: _carrilParaElProximoRival(),
         // Entra justo arriba del borde, para que aparezca deslizándose
         // en vez de materializarse de golpe en la pista.
         fila: -altoAuto,
@@ -110,6 +121,22 @@ class JuegoCarrera {
     }
 
     _revisarChoque();
+  }
+
+  /// Elige el carril del próximo rival.
+  ///
+  /// No repite el del anterior: al sortear a ciegas salían tandas de
+  /// dos y tres autos seguidos por el mismo lado, y eso se siente
+  /// injusto -- da la sensación de que el juego te persigue, y encima
+  /// deja media pista sin usar.
+  int _carrilParaElProximoRival() {
+    if (rivales.isEmpty) return _azar.nextInt(carriles);
+    final ultimo = rivales.last.carril;
+    // Se sortea entre los otros carriles y se corre el resultado para
+    // saltear el ocupado, que es la forma de elegir "cualquiera menos
+    // ese" sin repetir el sorteo hasta que salga.
+    final elegido = _azar.nextInt(carriles - 1);
+    return elegido >= ultimo ? elegido + 1 : elegido;
   }
 
   /// Hay choque si un rival está en tu carril y sus filas se superponen
