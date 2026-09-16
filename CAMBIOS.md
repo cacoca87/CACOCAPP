@@ -2306,3 +2306,142 @@ era nuevo. Borradas.
 
 `flutter analyze`, `flutter test` (**143**) y `flutter build apk --release`
 salieron limpios.
+
+---
+
+## 81. Vueltas 26 a 33: cosas que la app decía y no eran ciertas
+
+Ocho vueltas más sobre toda la aplicación. Lo que apareció esta vez no son
+fallos que rompan la pantalla: son cosas que la app **afirmaba** y que no eran
+verdad. Ese tipo de error es peor que una pantalla rota, porque no se nota —
+simplemente uno se queda con una idea equivocada de lo que pasó.
+
+### El caso más grave: una sola apertura sin internet arruinaba la biblioteca
+
+La app guarda en el celular lo que averigua de cada canción (carátula, álbum,
+artista, letra) para no volver a pedirlo cada vez. Guardaba también los
+fracasos, y ahí estaba el problema: **no distinguía "pregunté y no hay" de "no
+pude preguntar"**.
+
+Abrir la app una sola vez con mala señal bastaba para que cientos de canciones
+quedaran marcadas en el disco como "sin carátula" y "Artista Desconocido"
+**para siempre**, aunque el MP3 sí trajera esos datos y aunque la conexión
+volviera al minuto siguiente. Lo mismo con las letras: una consulta hecha sin
+internet dejaba esa canción marcada como "no tiene letra" de forma permanente.
+
+Ahora el "no hay" solo baja al disco cuando el servidor contestó de verdad. Si
+falló la red, el resultado queda solo en memoria y se reintenta la próxima vez
+que se abre la app. Afecta a tres servicios: `artwork_service.dart`,
+`id3_cover_service.dart` y `lyrics_service.dart`.
+
+### Las Estadísticas contaban escuchas que nunca ocurrieron
+
+Dos errores sumados, y los dos inflaban los números:
+
+1. **Abrir la app contaba como una reproducción.** Al arrancar se restaura la
+   última sesión en pausa, y eso alcanzaba para que el contador sumara una
+   escucha. Abrir la app diez veces = diez escuchas de la misma canción, que
+   encabezaba "Recientes" sin que nadie la hubiera puesto.
+2. **Cada canción se contaba tres o cuatro veces.** El aviso interno de "cambió
+   la canción" se emite varias veces por canción (al armar la lista, al llegar
+   el índice, al conocerse la duración, al aparecer la carátula) y cada una
+   sumaba.
+
+Encima, el cronómetro del tiempo escuchado se cancelaba y se volvía a crear en
+cada evento del reproductor, así que nunca llegaba a cumplir su primer segundo.
+Ahora la escucha se anota una sola vez, cuando la música de verdad empieza a
+sonar, y el cronómetro no se reinicia si ya está andando.
+
+### "Biblioteca actualizada" con el servidor caído
+
+Cuando el servidor no responde, la app usa la lista de 160 canciones que lleva
+adentro y todo sigue funcionando — eso está bien. Lo que estaba mal es que el
+cartel decía "Biblioteca actualizada" igual, así que no había forma de
+enterarse. Ahora lo dice.
+
+### "Tu dispositivo no soporta ecualizador" cuando sí lo soporta
+
+El panel de Audio se engancha a la canción que está sonando. Si todavía no sonó
+nada, nunca se le preguntó al celular — y el panel mostraba el mensaje de "tu
+dispositivo no soporta ecualizador", que es directamente falso. Ahora distingue
+los dos casos.
+
+### Una canción de más de una hora perdía la hora
+
+El reproductor mostraba `05:30` para una canción de 1 h 05 min 30 s. La causa
+era `inMinutes.remainder(60)`: la hora entera desaparecía sin dejar rastro.
+Pasa con los mixes largos y con varios videos de YouTube.
+
+Había tres formateadores de tiempo escritos a mano en tres archivos distintos y
+dos estaban mal (el otro decía "0 min" para todo lo que durara menos de un
+minuto). Ahora hay uno solo, en `lib/utils/formato_tiempo.dart`, con tests.
+
+### El doble toque para retroceder no hacía nada
+
+En la pantalla del reproductor, tocar dos veces la mitad izquierda de la
+carátula tenía que retroceder 10 segundos. Los dos manejadores del gesto se
+disparaban en el mismo toque: uno retrocedía 10 s y el otro adelantaba 10 s
+siempre, así que se anulaban. Ahora el salto se hace una sola vez.
+
+### La búsqueda de YouTube fallaba en silencio
+
+Cuando la búsqueda no se podía hacer, el servicio devolvía una lista vacía y la
+pantalla mostraba "Escribí el nombre de una canción" — como si no hubieras
+buscado nada. Ahora hay un error propio con mensaje y botón de reintentar, y
+"no encontré nada" también se distingue de "todavía no buscaste".
+
+### Playlists imposibles de abrir
+
+Se podía crear una playlist llamada "Recientes" o "Más Escuchadas". Como las
+bibliotecas se buscan por nombre, esa playlist quedaba tapada por la vista de la
+app con el mismo nombre y no había forma de abrirla nunca más.
+
+Había tres lugares que crean o renombran playlists (la barra lateral, el diálogo
+de renombrar y el "Nueva playlist…" del menú ⋮ de cada canción) y cada uno
+validaba distinto: uno cubría dos nombres, otro ninguno. Las reglas están ahora
+en `lib/utils/bibliotecas_reservadas.dart`, con 6 tests, y las usan los tres.
+
+### Memoria: carátulas de 1,4 MB para dibujar 44 píxeles
+
+Las carátulas vienen a 600x600 o más y se decodificaban a tamaño completo en
+memoria aunque se dibujaran en un cuadradito de 44 px en la lista. Eso es
+~1,4 MB de RAM por fila. Lo mismo con las miniaturas de YouTube, que vienen en
+alta resolución para dibujarse en 75x50. Ahora se decodifican al tamaño real de
+pantalla.
+
+### Pantallas que se desbordaban con la letra grande
+
+- La carátula del reproductor era de 280 px fijos dentro de una columna que no
+  se podía deslizar: en un celular chico, o con la letra del sistema agrandada,
+  los controles quedaban fuera de la pantalla. Ahora la carátula se achica según
+  el espacio real y la pantalla se desliza si aun así no entra.
+- Los botones "Reproducir" y "Aleatorio" se desbordaban con la letra agrandada.
+- El título "REPRODUCIENDO" competía con seis botones en una barra de 393 dp y
+  se mostraba cortado; ahora aparece solo donde entra entero.
+
+### Cosas sin vuelta atrás que ahora la tienen
+
+- Deslizar una canción para quitarla de una playlist no avisaba ni se podía
+  deshacer. Ahora aparece "Deshacer".
+- "Eliminar descarga" borraba el archivo sin preguntar, siendo la única acción
+  destructiva de la app; "Descargar offline", que gasta menos, sí preguntaba.
+
+### Y varias más
+
+- Estando en Favoritos o en una playlist, el botón "atrás" de Android cerraba la
+  app en vez de volver a la biblioteca.
+- Noticias quedaba en blanco, sin explicación, cuando la búsqueda no devolvía
+  resultados.
+- El globo del gráfico de Estadísticas no decía de qué canción era la barra (el
+  comentario del código decía que sí).
+- El fondo del reproductor se quedaba con el color de la canción anterior cuando
+  la nueva no tenía portada.
+- En la primera canción de la cola, "anterior" no hacía nada visible.
+- El buscador de la biblioteca no tenía botón de borrar; el de Descubrir sí.
+- Arrastrar un slider del ecualizador reescribía el archivo de preferencias
+  entero decenas de veces por segundo.
+- Los títulos de la lista de canciones no tenían límite de renglones.
+- Cuatro estados vacíos más pasaron a usar el mismo componente que el resto.
+
+`flutter analyze`, `flutter test` (**156**) y `flutter build apk --release`
+salieron limpios.
