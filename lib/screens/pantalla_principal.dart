@@ -107,10 +107,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       final vinoDelServidor = _driveService.listaVieneDelWorker;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(vinoDelServidor
-              ? "Biblioteca actualizada: ${contarCanciones(list.length)}"
-              : "No se pudo consultar el servidor. Se muestra la lista "
-                  "guardada: ${contarCanciones(list.length)}"),
+          content: Text(
+            vinoDelServidor
+                ? "Biblioteca actualizada: ${contarCanciones(list.length)}"
+                : "No se pudo consultar el servidor. Se muestra la lista "
+                    "guardada: ${contarCanciones(list.length)}",
+            // Crema sobre ambar no se lee al sol; sobre el rojo de error
+            // si. Ver `AppTheme.textoSobreAmbar`.
+            style: vinoDelServidor ? AppTheme.textoSobreAmbar : null,
+          ),
           backgroundColor: vinoDelServidor ? AppTheme.primary : AppTheme.danger,
           duration: const Duration(seconds: 3),
         ),

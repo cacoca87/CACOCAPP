@@ -253,7 +253,7 @@ Future<void> mostrarDialogoNuevaPlaylist(
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text('Agregada a "$nombre"'),
+      content: Text('Agregada a "$nombre"', style: AppTheme.textoSobreAmbar),
       backgroundColor: AppTheme.primary,
       duration: const Duration(seconds: 2),
     ),
@@ -306,7 +306,8 @@ Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      content: Text('Descargando "${cancion.title}"...'),
+      content: Text('Descargando "${cancion.title}"...',
+          style: AppTheme.textoSobreAmbar),
       backgroundColor: AppTheme.primary,
       duration: const Duration(seconds: 2),
     ),
@@ -321,6 +322,9 @@ Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
         exito
             ? '"${cancion.title}" descargada ✓'
             : 'No se pudo descargar "${cancion.title}". Revisa tu conexión.',
+        // Crema sobre ambar no se lee al sol: sobre ambar el texto va
+        // oscuro. Ver `AppTheme.textoSobreAmbar`.
+        style: exito ? AppTheme.textoSobreAmbar : null,
       ),
       backgroundColor: exito ? AppTheme.amber : AppTheme.danger,
       duration: const Duration(seconds: 3),

@@ -234,8 +234,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             Duration(minutes: minutos));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content:
-                                Text("La música se pausará en $minutos min"),
+                            content: Text(
+                                "La música se pausará en $minutos min",
+                                style: AppTheme.textoSobreAmbar),
                             backgroundColor: AppTheme.amber,
                             duration: const Duration(seconds: 2),
                           ),

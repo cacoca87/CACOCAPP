@@ -56,6 +56,15 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Las tipografias de la app (Inter y Zilla Slab) viajan DENTRO del
+  # APK, en la carpeta `google_fonts/` con los nombres que el paquete
+  # `google_fonts` espera. Antes se descargaban de internet la primera
+  # vez que se abria la app: sin conexion en ese primer arranque, toda
+  # la app se dibujaba con la letra por defecto de Android y se perdia
+  # la identidad visual entera. Ademas era un pedido de red mas en el
+  # arranque.
+  assets:
+    - google_fonts/
 
 # OJO: esta sección va SEPARADA de "flutter:", no anidada dentro.
 # flutter_launcher_icons la lee como una clave de nivel raíz.

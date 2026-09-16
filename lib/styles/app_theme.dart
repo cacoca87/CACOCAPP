@@ -130,6 +130,15 @@ class AppTheme {
     ],
   );
 
+  /// Texto para los `SnackBar` de fondo ámbar. El tema global los pinta
+  /// en crema, y crema sobre ámbar da un contraste de ~1.9:1: al sol no
+  /// se lee. Sobre ámbar el texto tiene que ir oscuro (~9,5:1).
+  static TextStyle get textoSobreAmbar => GoogleFonts.inter(
+        color: ink,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      );
+
   static ButtonStyle primaryButton = ElevatedButton.styleFrom(
     backgroundColor: amber,
     foregroundColor: ink,
