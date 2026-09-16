@@ -1,4 +1,4 @@
-package com.example.musicapp
+package com.caco.musicapp
 
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer

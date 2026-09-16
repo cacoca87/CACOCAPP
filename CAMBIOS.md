@@ -1146,3 +1146,63 @@ siendo `com.example.musicapp`. Cambiarlo ahora cuesta perder las playlists,
 favoritos y descargas guardados en tu celular; no cambiarlo y publicar algún día
 en Play Store es imposible, porque Google bloquea ese prefijo y el id no se
 puede cambiar después de publicar.
+
+## 61. Cambio de identidad de la app: de `com.example.musicapp` a `com.caco.musicapp`
+
+Diste el OK para cambiarlo. Es el identificador con el que Android reconoce a la
+app, y seguía siendo el valor de ejemplo que pone Flutter al crear un proyecto.
+Dos motivos para no dejarlo: Google Play **rechaza** cualquier id que empiece con
+`com.example`, y una vez publicada una app ese valor **no se puede cambiar
+nunca más**. Hacerlo ahora costaba perder lo guardado en tu celular; hacerlo
+después habría sido imposible.
+
+Se eligió `com.caco.musicapp` porque es el prefijo que **tu propio código ya
+usaba** para el canal de notificaciones (`com.caco.musicapp.channel.audio`) y
+para el puente del ecualizador (`com.caco.musicapp/audio_effects`). Así que este
+cambio, además, arregló una incoherencia que venía de antes: esos dos canales
+decían `com.caco` mientras la app entera se llamaba `com.example`.
+
+**Archivos modificados:**
+- `android/app/build.gradle.kts`: `namespace` y `applicationId`. Se sacó el
+  `TODO` de Flutter que pedía justamente esto y se dejó en su lugar una nota
+  explicando por qué el valor no se debe volver a tocar.
+- `android/app/src/main/kotlin/.../MainActivity.kt`: se movió de
+  `com/example/musicapp/` a `com/caco/musicapp/` (con `git mv`, para no perder
+  el historial del archivo) y se actualizó su declaración `package`.
+- `windows/runner/Runner.rc`: decía `com.example` como nombre de empresa. Es
+  solo cosmético y de Windows, pero quedaba incoherente.
+
+### Cómo se verificó, ya que un error acá compila igual pero crashea al abrir
+
+El riesgo real de este cambio es que el paquete de Kotlin quede desalineado con
+la configuración: la app compila sin quejarse y después revienta al arrancar con
+un "clase no encontrada". Compilar no alcanza como prueba, así que se revisó el
+APK ya construido:
+
+1. `flutter clean` antes de compilar, para que ningún resto de la compilación
+   anterior tapara un problema.
+2. `aapt2 dump packagename` sobre el APK → devuelve `com.caco.musicapp`.
+3. `aapt2 dump xmltree` del manifiesto dentro del APK → la actividad quedó
+   registrada como `com.caco.musicapp.MainActivity`.
+4. Se descomprimió el APK y se buscó la clase dentro del `classes.dex`:
+   `com/caco/musicapp/MainActivity` **está**, y `com/example/musicapp/MainActivity`
+   **ya no**.
+5. Se confirmó que el nombre del canal nativo del ecualizador sigue siendo
+   idéntico en Kotlin (`MainActivity.kt`) y en Dart (`audio_effects_service.dart`).
+   Si no coincidieran, el panel de Audio dejaría de funcionar en silencio.
+
+`flutter analyze`, `flutter test` (59) y el chequeo de formato de todo el repo
+salieron limpios.
+
+### IMPORTANTE al instalar
+
+Para Android esta es, literalmente, **una app distinta**. Al instalar el APK
+nuevo:
+
+- Si no desinstalás la anterior, vas a terminar con **dos íconos CACOCAPP** en
+  el celular.
+- La versión nueva arranca **sin playlists, sin favoritos y sin descargas**.
+  No se perdieron por un error: están guardadas bajo la identidad vieja, y
+  desaparecen del todo al desinstalarla.
+
+Lo recomendable es desinstalar la versión vieja antes de instalar esta.

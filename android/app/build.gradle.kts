@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.musicapp"
+    namespace = "com.caco.musicapp"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +15,13 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.musicapp"
+        // Identidad permanente de la app en Android. Antes era
+        // "com.example.musicapp", el valor de ejemplo que pone Flutter al
+        // crear un proyecto: Google Play rechaza cualquier id que empiece
+        // con "com.example", y una vez publicada la app este valor NO se
+        // puede cambiar nunca mas. Se usa el mismo prefijo que ya usaban
+        // el canal de notificaciones y el de efectos de audio.
+        applicationId = "com.caco.musicapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
