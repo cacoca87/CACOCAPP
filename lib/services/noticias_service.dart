@@ -66,7 +66,13 @@ class NoticiasService {
     CategoriaNoticias('Música', 'rock clásico música años 70 80'),
   ];
 
+  // Las noticias quedan guardadas por categoría para no volver a pedir
+  // lo mismo al cambiar de pestaña y volver. Con fecha, porque son
+  // NOTICIAS: sin vencimiento, una app abierta desde ayer seguía
+  // mostrando las de ayer y parecía que no pasaba nada en el mundo.
+  static const Duration _duracionCache = Duration(minutes: 30);
   final Map<String, List<Noticia>> _cache = {};
+  final Map<String, DateTime> _cacheFecha = {};
 
   /// [forzar] salta la caché, para el gesto de "deslizar para
   /// actualizar".
@@ -74,8 +80,13 @@ class NoticiasService {
     CategoriaNoticias categoria, {
     bool forzar = false,
   }) async {
-    if (!forzar && _cache.containsKey(categoria.nombre)) {
-      return _cache[categoria.nombre]!;
+    final guardadas = _cache[categoria.nombre];
+    final fecha = _cacheFecha[categoria.nombre];
+    if (!forzar &&
+        guardadas != null &&
+        fecha != null &&
+        DateTime.now().difference(fecha) < _duracionCache) {
+      return guardadas;
     }
 
     final url = Uri.https('news.google.com', '/rss/search', {
@@ -96,13 +107,24 @@ class NoticiasService {
       }
       // `bodyBytes` y no `body`: el feed viene en UTF-8 y leerlo como
       // texto directo rompe los acentos y las eñes.
-      final noticias = parsearRss(utf8Seguro(respuesta.bodyBytes));
-      if (noticias.isEmpty) {
+      final noticias = parsearRssONulo(utf8Seguro(respuesta.bodyBytes));
+      if (noticias == null) {
+        // No era un feed: una página de error devuelta con código 200,
+        // o XML roto. Eso sí es un fallo y hay que decirlo.
         throw const ErrorNoticias(
-          'No se encontraron noticias de esta categoría ahora mismo.',
+          'El servicio de noticias devolvió algo que no se pudo leer. '
+          'Probá de nuevo en un rato.',
         );
       }
-      _cache[categoria.nombre] = noticias;
+      // Una búsqueda sin resultados NO es un error: el servidor
+      // contestó bien, simplemente no hay nada de ese tema ahora. Antes
+      // los dos casos se trataban igual, así que la pantalla no podía
+      // distinguirlos. Tampoco se guarda en caché, para que
+      // "Reintentar" vuelva a consultar de verdad.
+      if (noticias.isNotEmpty) {
+        _cache[categoria.nombre] = noticias;
+        _cacheFecha[categoria.nombre] = DateTime.now();
+      }
       return noticias;
     } on SocketException {
       throw const ErrorNoticias(

@@ -1,20 +1,34 @@
 import 'package:xml/xml.dart';
 import '../models/noticia.dart';
 
-/// Convierte el XML de un feed RSS en una lista de noticias.
+/// Convierte el XML de un feed RSS en una lista de noticias, o
+/// devuelve `null` si lo que llegó NO es un feed.
+///
+/// La diferencia importa: `null` es "el servidor devolvió cualquier
+/// cosa" (XML roto, o una página de error HTML mandada con código 200)
+/// y eso es un error que hay que avisar; una lista vacía es un feed
+/// perfectamente válido que hoy no trae noticias de ese tema, que no
+/// es un error. Antes los dos casos eran la misma lista vacía.
 ///
 /// Vive aparte del servicio, y sin nada de red adentro, para poder
 /// probarlo con XML de ejemplo -- mismo criterio que
 /// `lyrics_parsing.dart` o `nombre_archivo_parser.dart`. Es el pedazo
 /// más frágil de la sección: el día que Google Noticias cambie algo del
 /// formato, los tests de acá son los que lo van a delatar.
-List<Noticia> parsearRss(String xml, {int limite = 30}) {
-  late final XmlDocument documento;
+List<Noticia>? parsearRssONulo(String xml, {int limite = 30}) {
+  final XmlDocument documento;
   try {
     documento = XmlDocument.parse(xml);
   } catch (_) {
-    // XML roto o una página de error devuelta como si fuera el feed.
-    return const [];
+    // XML roto.
+    return null;
+  }
+
+  // Una página de error HTML también es XML válido, así que no alcanza
+  // con que haya parseado: la raíz tiene que ser la de un feed.
+  const raicesDeFeed = {'rss', 'feed', 'rdf'};
+  if (!raicesDeFeed.contains(documento.rootElement.name.local.toLowerCase())) {
+    return null;
   }
 
   final noticias = <Noticia>[];
@@ -33,6 +47,12 @@ List<Noticia> parsearRss(String xml, {int limite = 30}) {
   }
   return noticias;
 }
+
+/// Igual que [parsearRssONulo] pero tratando "no es un feed" como una
+/// lista vacía. Lo usan los tests del parser, a los que solo les
+/// importa qué noticias salen.
+List<Noticia> parsearRss(String xml, {int limite = 30}) =>
+    parsearRssONulo(xml, limite: limite) ?? const [];
 
 String _texto(XmlElement item, String etiqueta) {
   final encontrados = item.findElements(etiqueta);

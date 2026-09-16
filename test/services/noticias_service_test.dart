@@ -99,6 +99,31 @@ void main() {
       );
     });
 
+    test('un feed valido pero sin noticias NO es un error', () async {
+      // Google Noticias contesta un feed bien formado y vacio cuando la
+      // busqueda no encuentra nada. Antes eso se lanzaba como error y
+      // se veia igual que "se cayo el servidor".
+      const vacio = '<rss><channel></channel></rss>';
+      final servicio = NoticiasService.testable(
+        MockClient((_) async => http.Response.bytes(utf8.encode(vacio), 200)),
+      );
+      expect(await servicio.obtener(_categoria), isEmpty);
+    });
+
+    test('un resultado vacio no se guarda en cache', () async {
+      // Si se guardara, "Reintentar" devolveria el vacio guardado sin
+      // volver a preguntar nunca.
+      var llamadas = 0;
+      final servicio = NoticiasService.testable(MockClient((_) async {
+        llamadas++;
+        return http.Response.bytes(
+            utf8.encode('<rss><channel></channel></rss>'), 200);
+      }));
+      await servicio.obtener(_categoria);
+      await servicio.obtener(_categoria);
+      expect(llamadas, 2);
+    });
+
     test('la caché evita volver a pedir lo mismo', () async {
       var llamadas = 0;
       final servicio = NoticiasService.testable(MockClient((_) async {

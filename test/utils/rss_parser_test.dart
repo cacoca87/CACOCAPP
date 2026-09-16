@@ -131,6 +131,23 @@ void main() {
       expect(antiguedadDe(const Duration(days: 1)), 'ayer');
       expect(antiguedadDe(const Duration(days: 4)), contains('días'));
     });
+
+    group('parsearRssONulo distingue "roto" de "vacío"', () {
+      test('una página HTML devuelta como feed da null', () {
+        // Es XML válido, así que parsea igual: lo que la descarta es que
+        // la raíz no sea la de un feed.
+        expect(parsearRssONulo('<html><body>error</body></html>'), isNull);
+      });
+
+      test('XML roto da null', () {
+        expect(parsearRssONulo('<rss><channel>'), isNull);
+      });
+
+      test('un feed válido sin noticias da lista vacía, no null', () {
+        // Este es el caso que antes se confundía con un error.
+        expect(parsearRssONulo('<rss><channel></channel></rss>'), isEmpty);
+      });
+    });
   });
 }
 
