@@ -32,8 +32,22 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // El APK de release se firma con la clave de DEPURACION, que
+            // es la que Flutter deja por defecto. Para lo que hace falta
+            // hoy -- pasar el APK al celular e instalarlo a mano --
+            // funciona perfecto, y no obliga a guardar ninguna clave
+            // secreta en el repositorio.
+            //
+            // Lo unico que hay que saber: esa clave vive en la
+            // computadora donde se compila (~/.android/debug.keystore).
+            // Si algun dia se compila en OTRA computadora, la firma va a
+            // ser distinta y Android se va a negar a actualizar la app ya
+            // instalada ("aplicacion no instalada"): hay que desinstalar
+            // la vieja primero.
+            //
+            // Para publicar en Google Play SI haria falta una clave
+            // propia, generada con `keytool` y guardada FUERA del
+            // repositorio (en un `key.properties` ignorado por git).
             signingConfig = signingConfigs.getByName("debug")
         }
     }

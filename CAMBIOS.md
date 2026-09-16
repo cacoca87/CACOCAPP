@@ -2445,3 +2445,114 @@ pantalla.
 
 `flutter analyze`, `flutter test` (**156**) y `flutter build apk --release`
 salieron limpios.
+
+---
+
+## 82. Vueltas 34 a 39: la app hablando de sí misma
+
+Seis vueltas más. El hilo de esta tanda es el mismo que el de la
+anterior, un escalón más abajo: cosas que la app **decía sobre sí
+misma** y no eran verdad, o que se rompían en el celular de otro.
+
+### La app descargaba sus propias letras de internet al abrirse
+
+Las dos tipografías de Cacocapp (Inter para las listas, Zilla Slab para
+los títulos) no viajaban dentro del APK: el paquete `google_fonts` las
+bajaba de internet la primera vez que se abría la app.
+
+Sin conexión en ese primer arranque —justo el escenario de abrirla por
+primera vez en el colegio— **toda** la app se dibujaba con la letra por
+defecto de Android, y la identidad visual entera (la slab-serif de tapa
+de vinilo que el propio archivo del tema describe) se perdía sin aviso.
+
+Ahora las seis variantes que la app usa de verdad van adentro del APK,
+en `google_fonts/`, y está verificado en el .apk compilado. Pesa 0,7 MB
+más y no hace ningún pedido de red para esto.
+
+### Las Estadísticas y "Recientes" contaban escuchas inventadas
+
+Ya está contado en la sección anterior, pero conviene repetir el
+tamaño: abrir la app contaba una reproducción, y cada canción se
+contaba tres o cuatro veces. Los números que mostraba la sección
+Estadísticas no eran los de nadie.
+
+### Playlists imposibles de abrir, tercera parte
+
+La vuelta anterior tapó dos de los tres agujeros. Faltaba el más
+escondido: **"Nueva playlist…" del menú (⋮) de cada canción**, que era
+el único de los tres lugares que no validaba absolutamente nada. Desde
+ahí se podía crear una playlist llamada "Favoritos" y esquivar las
+reglas de la barra lateral.
+
+Y en la barra lateral, mantener apretado "Recientes" o "Más
+Escuchadas" abría el menú de renombrar/eliminar: sus dos opciones no
+hacían nada, porque esas vistas no son playlists.
+
+### Noticias trataba "no hay nada" como si fuera una caída
+
+Un feed válido pero sin noticias de ese tema se lanzaba como error,
+igual que si se hubiera caído el servidor. Ahora se distinguen tres
+casos: no es un feed (error), el feed vino vacío (estado vacío con
+botón de reintentar) y hay noticias. Además las noticias vencen a la
+media hora: sin eso, la app abierta desde ayer seguía mostrando las de
+ayer.
+
+### La letra no se dejaba leer
+
+En la pantalla de Letra no se podía leer más adelante: al cambiar de
+línea, el desplazamiento automático te devolvía de un tirón al renglón
+que sonaba. Ahora, si movés la letra con el dedo, el automático se toma
+seis segundos de descanso.
+
+### La barra lateral no entraba en la pantalla
+
+Once accesos, el formulario de crear biblioteca y la lista de
+bibliotecas, todo dentro de una columna fija: con la letra del sistema
+agrandada no entraba y se desbordaba. Ahora toda la barra se desliza.
+
+### Avisos que no se leían al sol
+
+Cinco carteles de la app tenían texto crema sobre fondo ámbar: un
+contraste de ~1,9:1, ilegible con el celular al sol. Sobre ámbar el
+texto ahora va oscuro (~9,5:1).
+
+### Y varias más
+
+- La cola de reproducción abría siempre arriba de todo: con una cola de
+  cientos de canciones había que buscar a mano cuál estaba sonando.
+- La pantalla de error de arranque no ofrecía ninguna salida: había que
+  cerrar la app a la fuerza.
+- Al abrir la app por primera vez salían dos carteles del sistema
+  pegados, porque el permiso de notificaciones se pedía dos veces.
+- El video de YouTube en pantalla completa no tenía forma de pasar al
+  siguiente resultado a mano.
+- El marcador de los juegos se desbordaba con la letra agrandada, y el
+  cartel de fin de juego decía "1 puntos".
+- Dos playlists creadas dentro del mismo milisegundo compartían id.
+- `web/` y `pubspec.yaml` seguían diciendo "musicapp" y "A new Flutter
+  project" — el título de la pestaña, el nombre al instalarla como
+  aplicación y el texto de la vista previa al compartir el enlace. Ya no
+  queda ningún resto del nombre de ejemplo en el proyecto.
+
+### Una corrección honesta a la sección 80
+
+Esa sección listaba `artwork_service.dart` y `barra_lateral.dart` entre
+"lo que se leyó entero y estaba bien". No estaban bien: el primero
+tenía el fallo de caché que dejaba la biblioteca sin carátulas para
+siempre, y el segundo el menú que no hacía nada y el desbordamiento con
+la letra grande. Leer un archivo y que el análisis no proteste no es lo
+mismo que entenderlo.
+
+### Una decisión que queda abierta
+
+El APK de release se firma con la clave de **depuración**, que es lo que
+Flutter deja por defecto. Para instalar el APK a mano en un celular
+funciona perfecto y no obliga a guardar ninguna clave secreta en el
+repositorio. Lo único a saber: esa clave vive en la computadora donde se
+compila, así que compilar en otra computadora produce una firma distinta
+y Android se niega a actualizar la app ya instalada (hay que desinstalar
+primero). Para publicar en Google Play haría falta una clave propia.
+Queda documentado en `android/app/build.gradle.kts`, sin cambiarlo.
+
+`flutter analyze`, `flutter test` (**161**) y `flutter build apk
+--release` salieron limpios.
