@@ -71,8 +71,18 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   Future<void> _abrir(Noticia noticia) async {
     HapticFeedback.selectionClick();
     final uri = Uri.tryParse(noticia.enlace);
-    if (uri == null) return;
-    final abrio = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    var abrio = false;
+    try {
+      // `launchUrl` no solo devuelve `false` cuando no puede: también
+      // puede lanzar excepción (por ejemplo si el sistema no tiene
+      // ningún navegador). Sin este `try`, eso quedaría como un error
+      // sin manejar en medio de un toque del usuario.
+      if (uri != null) {
+        abrio = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      abrio = false;
+    }
     if (!abrio && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo abrir la noticia.')),

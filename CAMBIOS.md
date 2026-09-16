@@ -1792,3 +1792,63 @@ anterior y que no usa nadie.
 
 `flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 72. Varias pasadas de repaso: dos errores sin manejar y cinco incoherencias
+
+Pediste revisar varias veces hasta no encontrar nada. Fueron cinco pasadas, cada
+una mirando la app con un criterio distinto en vez de repetir la misma búsqueda.
+
+### Pasada 1: verificar en el APK, no en el código fuente
+
+El arreglo del manifiesto de la vuelta anterior (el permiso para abrir el
+navegador) se comprobó **sobre el APK ya compilado**, no sobre el archivo
+fuente: `aapt2` confirma que la declaración de `VIEW` con esquema `https` quedó
+en el manifiesto final. Que esté escrito en el proyecto no garantiza que
+sobreviva al proceso de compilación.
+
+### Pasada 2: coherencia entre servicios
+
+`NoticiasService` no seguía el mismo patrón que `JamendoService` y
+`LyricsService`. Los dos viejos reciben el cliente HTTP por el constructor
+privado y lo guardan en un campo `final`; el nuevo tenía un campo mutable con
+inicializador propio, así que `NoticiasService.testable()` **creaba un cliente
+de red real y lo descartaba en el acto**. Ahora los tres son idénticos.
+
+De paso se revisaron los permisos del manifiesto contra el código: los seis
+declarados se usan.
+
+### Pasada 3: errores asíncronos sin manejar
+
+Dos, y los dos habrían aparecido justo al tocar un botón:
+
+- **`launchUrl` en Noticias** no estaba dentro de un `try`. Esa función no solo
+  devuelve `false` cuando no puede abrir: también puede lanzar excepción, por
+  ejemplo si el sistema no tiene ningún navegador. Eso quedaría como un error
+  sin manejar en medio de un toque.
+- **Compartir se llamaba sin `await` ni captura**, desde dos lugares. Si el
+  sistema falla al abrir el menú de compartir, el error queda suelto en un
+  `Future` que nadie mira, y Flutter lo reporta como error no manejado. Se
+  resolvió dentro de `ShareService`, que cubre los dos lugares de una vez.
+
+### Pasada 4: leer a fondo pantallas que solo había mirado por encima
+
+En **Recomendaciones** aparecieron dos cosas:
+
+1. El corazón del costado de cada canción **era solo un ícono**: se veía como un
+   botón pero no se podía tocar. Exactamente el mismo problema que ya había
+   encontrado en el panel de escritorio. Ahora es el menú de opciones real, el
+   mismo que usan todas las listas.
+2. Su estado vacío había quedado con texto pelado.
+
+### Pasada 5: los estados vacíos que se me habían escapado
+
+Al unificarlos la primera vez dije que eran cinco. Eran **nueve**. Faltaban los
+de Recomendaciones, Estadísticas, Descubrir, Búsqueda Online y la biblioteca
+principal. Ahora los doce lugares de la app que muestran "acá no hay nada" usan
+el mismo widget y, donde tiene sentido, dicen qué hacer para salir de ahí.
+
+Que se me hayan escapado cuatro de nueve es justamente el argumento para hacer
+varias pasadas en vez de una.
+
+`flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

@@ -15,25 +15,30 @@ class ShareService {
   /// sin querer regalaría copias del archivo a cualquiera que la
   /// reciba -- solo se comparte el texto promocional.
   Future<void> compartirCancion(
-      {required String titulo, required String artista}) {
-    return SharePlus.instance.share(
-      ShareParams(
-        text: '🎵 Estoy escuchando "$titulo" de $artista en Cacocapp',
-      ),
-    );
-  }
+          {required String titulo, required String artista}) =>
+      _compartir('🎵 Estoy escuchando "$titulo" de $artista en Cacocapp');
 
   /// Comparte un video de YouTube que suena en Búsqueda Online. Acá sí
   /// se incluye el link real -- es la misma URL pública de YouTube
   /// (youtu.be/<id>), no algo que la app resuelve, así que no expone
   /// nada que la persona que lo recibe no pudiera buscar por su cuenta.
   Future<void> compartirVideoDeYoutube(
-      {required String titulo, required String videoId}) {
-    return SharePlus.instance.share(
-      ShareParams(
-        text:
-            '🎵 Estoy escuchando "$titulo" en Cacocapp\nhttps://youtu.be/$videoId',
-      ),
-    );
+          {required String titulo, required String videoId}) =>
+      _compartir(
+          '🎵 Estoy escuchando "$titulo" en Cacocapp\nhttps://youtu.be/$videoId');
+
+  /// El error se traga acá a propósito.
+  ///
+  /// Los dos lugares que llaman a esto lo hacen desde un `onPressed`,
+  /// sin `await` -- que es lo natural para un "abrí el menú de
+  /// compartir". El problema es que si el sistema falla al abrirlo (pasa
+  /// en celulares sin ninguna app capaz de recibirlo), el error quedaría
+  /// suelto en un `Future` que nadie está mirando, y Flutter lo reporta
+  /// como error no manejado. No abrirse ya es su propio aviso para el
+  /// usuario: la pantalla simplemente no cambia.
+  Future<void> _compartir(String texto) async {
+    try {
+      await SharePlus.instance.share(ShareParams(text: texto));
+    } catch (_) {}
   }
 }

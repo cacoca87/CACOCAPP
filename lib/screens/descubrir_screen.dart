@@ -6,6 +6,7 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../services/jamendo_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
 
@@ -260,9 +261,12 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
               ),
             )
           else if (_resultados.isEmpty)
-            Expanded(
-              child: Center(
-                  child: Text('Sin resultados para eso', style: AppTheme.body)),
+            const Expanded(
+              child: EstadoVacio(
+                icono: Icons.search_off_rounded,
+                mensaje: 'No se encontró nada con esa búsqueda. Probá con '
+                    'otras palabras o elegí un género de arriba.',
+              ),
             )
           else
             Expanded(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/online_video_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 
 class DualSearchScreen extends StatefulWidget {
   final VoidCallback? onVolver;
@@ -156,23 +157,12 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
         // Listado de resultados
         Expanded(
           child: _resultados.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.video_library_outlined,
-                          size: 64, color: AppTheme.mutedInk),
-                      const SizedBox(height: 12),
-                      Text(
-                        _cargandoResultados
-                            ? "Buscando..."
-                            : "Escribe algo para buscar música online",
-                        style: AppTheme.body
-                            .copyWith(fontSize: 14, color: AppTheme.mutedInk),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+              ? EstadoVacio(
+                  icono: Icons.video_library_outlined,
+                  mensaje: _cargandoResultados
+                      ? 'Buscando...'
+                      : 'Escribí el nombre de una canción o un artista para '
+                          'buscarlo en YouTube.',
                 )
               : ListView.builder(
                   itemCount: _resultados.length,

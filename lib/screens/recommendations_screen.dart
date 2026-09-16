@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
-import '../providers/playlist_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
+import '../widgets/song_options_menu.dart';
 
 class RecommendationsScreen extends StatelessWidget {
   final List<Song> allSongs;
@@ -30,7 +31,6 @@ class RecommendationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
-    final playlistProvider = context.watch<PlaylistProvider>();
     final recommendations = player.getRecommendations(allSongs);
 
     return Scaffold(
@@ -46,21 +46,15 @@ class RecommendationsScreen extends StatelessWidget {
         ),
       ),
       body: recommendations.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  'Escucha más música para obtener recomendaciones',
-                  style: AppTheme.body,
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          ? const EstadoVacio(
+              icono: Icons.auto_awesome_rounded,
+              mensaje: 'Escuchá más música y acá van a aparecer canciones '
+                  'parecidas a las que más ponés.',
             )
           : ListView.builder(
               itemCount: recommendations.length,
               itemBuilder: (context, index) {
                 final song = recommendations[index];
-                final esFavorita = playlistProvider.isFavorite(song.id);
                 return ListTile(
                   leading: SongCover(
                     title: song.title,
@@ -74,9 +68,13 @@ class RecommendationsScreen extends StatelessWidget {
                       style: AppTheme.body.copyWith(
                           color: AppTheme.paper, fontWeight: FontWeight.w600)),
                   subtitle: Text(song.artist, style: AppTheme.small),
-                  trailing: Icon(
-                    esFavorita ? Icons.favorite : Icons.favorite_border,
-                    color: esFavorita ? AppTheme.amber : AppTheme.mutedInk,
+                  // Antes acá había un corazón que era solo un ícono: se
+                  // veía como un botón pero no se podía tocar. Ahora es
+                  // el mismo menú que usan todas las listas de la app,
+                  // desde donde sí se puede marcar como favorita.
+                  trailing: SongOptionsMenu(
+                    cancion: song,
+                    bibliotecaSeleccionada: 'Recomendaciones',
                   ),
                   onTap: () {
                     player.playSong(song, recommendations, index);

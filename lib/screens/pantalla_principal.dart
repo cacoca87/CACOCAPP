@@ -14,6 +14,7 @@ import '../widgets/inicio_tab.dart';
 import '../widgets/indicador_sonando.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/online_video_overlay.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
 import '../widgets/vista_spotify_grid.dart';
@@ -706,30 +707,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             const SizedBox(height: 16),
             Expanded(
               child: cancionesFiltradas.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            textoBusqueda.isNotEmpty
-                                ? Icons.search_off_rounded
-                                : Icons.music_off_rounded,
-                            size: 56,
-                            color: AppTheme.mutedInk,
-                          ),
-                          const SizedBox(height: 12),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(
-                              textoBusqueda.isNotEmpty
-                                  ? 'Sin resultados para "$textoBusqueda"'
-                                  : _mensajeBibliotecaVacia(),
-                              style: AppTheme.body.copyWith(fontSize: 14),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ? EstadoVacio(
+                      icono: textoBusqueda.isNotEmpty
+                          ? Icons.search_off_rounded
+                          : Icons.music_off_rounded,
+                      mensaje: textoBusqueda.isNotEmpty
+                          ? 'Sin resultados para "$textoBusqueda"'
+                          : _mensajeBibliotecaVacia(),
                     )
                   : RefreshIndicator(
                       onRefresh: _actualizarCanciones,

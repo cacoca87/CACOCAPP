@@ -38,14 +38,20 @@ class CategoriaNoticias {
 /// RSS propios de cada diario, que son estables pero hay que elegirlos
 /// uno por uno.
 class NoticiasService {
-  NoticiasService._();
+  // Mismo patrón exacto que `JamendoService` y `LyricsService`: el
+  // cliente entra por el constructor privado para poder inyectar uno
+  // falso en los tests, y queda `final`. Antes acá el campo era mutable
+  // y con inicializador propio, así que `.testable()` creaba un cliente
+  // de red real y lo tiraba al instante.
+  NoticiasService._({http.Client? client}) : _client = client ?? http.Client();
+
   static final NoticiasService instance = NoticiasService._();
 
-  /// Permite inyectar un cliente falso en los tests, igual que hacen
-  /// `JamendoService` y `LyricsService`.
-  NoticiasService.testable(http.Client cliente) : _cliente = cliente;
+  /// Permite inyectar un cliente falso en los tests.
+  factory NoticiasService.testable(http.Client client) =>
+      NoticiasService._(client: client);
 
-  http.Client _cliente = http.Client();
+  final http.Client _client;
 
   /// Las categorías que pidió el profesor, más música de los 60 a los 90
   /// que es lo que escucha el dueño de la app.
@@ -81,7 +87,7 @@ class NoticiasService {
 
     try {
       final respuesta =
-          await _cliente.get(url).timeout(const Duration(seconds: 12));
+          await _client.get(url).timeout(const Duration(seconds: 12));
       if (respuesta.statusCode != 200) {
         throw ErrorNoticias(
           'El servicio de noticias respondió ${respuesta.statusCode}. '

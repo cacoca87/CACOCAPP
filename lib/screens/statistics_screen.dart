@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 
 class StatisticsScreen extends StatelessWidget {
   /// Esta pantalla se inserta directo dentro de PantallaPrincipal (no
@@ -52,15 +53,10 @@ class StatisticsScreen extends StatelessWidget {
         ),
       ),
       body: top.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  'Empieza a reproducir música para ver tus estadísticas de tiempo.',
-                  style: AppTheme.body,
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          ? const EstadoVacio(
+              icono: Icons.bar_chart_rounded,
+              mensaje: 'Empezá a escuchar música y acá vas a ver cuánto tiempo '
+                  'le dedicaste a cada canción.',
             )
           : ListView(
               padding: const EdgeInsets.all(16),
