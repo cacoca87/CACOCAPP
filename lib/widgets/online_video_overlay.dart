@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../providers/online_video_provider.dart';
+import '../services/lyrics_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 
@@ -46,8 +47,10 @@ class OnlineVideoOverlay extends StatefulWidget {
 }
 
 class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
-  static const double _anchoBurbuja = 160;
-  static const double _altoBurbuja = 96;
+  // Un poco más grande que antes (eran 160x96): a ese tamaño la X de
+  // cerrar quedaba muy chica para acertarle con el dedo.
+  static const double _anchoBurbuja = 200;
+  static const double _altoBurbuja = 112;
   static const double _margenBurbuja = 12;
   static const double _margenSobreMiniPlayer = 96;
 
@@ -73,6 +76,27 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
   // lo que mata el WebView de Android y deja el video congelado y sin
   // sonido. Con la clave lo reconoce y lo reutiliza aunque se mueva.
   static const _claveReproductor = ValueKey('reproductor-youtube');
+
+  // La letra del video que se está mirando. Se guarda el Future (en vez
+  // de pedirlo dentro del `build`) para no disparar una búsqueda nueva
+  // en cada refresco del provider, que son muchos: uno por cada cambio
+  // de estado del reproductor.
+  String? _videoIdDeLaLetra;
+  Future<Lyrics>? _futuroLetra;
+
+  Future<Lyrics> _letraDe(OnlineVideoProvider p) {
+    if (_futuroLetra == null || _videoIdDeLaLetra != p.videoId) {
+      _videoIdDeLaLetra = p.videoId;
+      // `urlCancion` va vacío a propósito: sirve para leer la letra
+      // incrustada en un MP3, y acá no hay archivo, es un video.
+      _futuroLetra = LyricsService.instance.getLyrics(
+        title: p.titulo,
+        artist: p.autor,
+        urlCancion: '',
+      );
+    }
+    return _futuroLetra!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -259,20 +283,16 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
                 Positioned.fill(child: Container(color: AppTheme.ink)),
               if (!minimizado) _Header(provider: provider),
               posicionado,
+              // Debajo del video quedaba un hueco negro enorme. Ahora se
+              // llena con la letra de la canción, si se encuentra.
               if (!minimizado)
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: rectCompleto.bottom + 16,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      'Tocá la flecha para minimizar y seguir escuchando mientras '
-                      'usás el resto de la app -- se pausa solo si ponés a sonar '
-                      'otra canción. La burbuja se puede arrastrar.',
-                      textAlign: TextAlign.center,
-                      style: AppTheme.small.copyWith(color: AppTheme.faintInk),
-                    ),
+                  top: rectCompleto.bottom + 12,
+                  bottom: 0,
+                  child: _PanelLetra(
+                    futuro: _letraDe(provider),
                   ),
                 ),
             ],
@@ -364,6 +384,75 @@ class _Header extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Panel debajo del video en pantalla completa. Muestra la letra si se
+/// encuentra; si no, un texto breve explicando cómo funciona la burbuja.
+///
+/// La letra va sin sincronizar (no resaltada línea por línea) a
+/// propósito: el reproductor de YouTube es una vista nativa y la app no
+/// tiene acceso confiable a su posición de reproducción, así que
+/// resaltar la línea actual sería adivinar.
+class _PanelLetra extends StatelessWidget {
+  final Future<Lyrics> futuro;
+  const _PanelLetra({required this.futuro});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Lyrics>(
+      future: futuro,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppTheme.amber),
+            ),
+          );
+        }
+
+        final letra = snapshot.data;
+        if (letra == null || !letra.hayAlgo) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: Text(
+              'Tocá la flecha de arriba para achicar el video y seguir '
+              'escuchándolo mientras usás el resto de la app. Se pausa solo '
+              'si ponés a sonar otra canción.',
+              textAlign: TextAlign.center,
+              style: AppTheme.small.copyWith(color: AppTheme.faintInk),
+            ),
+          );
+        }
+
+        final texto = letra.estaSincronizada
+            ? letra.lineas!.map((l) => l.texto).join('\n')
+            : (letra.textoPlano ?? '');
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 28),
+          children: [
+            Text(
+              'Letra',
+              style: AppTheme.small.copyWith(
+                color: AppTheme.amber,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              texto,
+              style:
+                  AppTheme.body.copyWith(color: AppTheme.mutedInk, height: 1.6),
+            ),
+          ],
+        );
+      },
     );
   }
 }

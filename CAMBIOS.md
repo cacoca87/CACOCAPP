@@ -1311,3 +1311,46 @@ posible paso siguiente, no como algo faltante.
 
 `flutter analyze`, `flutter test` (59), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 64. Letra debajo del video y burbuja más grande
+
+Reportaste que la burbuja seguía sin arrastrarse, sin X visible y solo dando
+pausa/play. **Esos síntomas son de una versión anterior al arreglo de la sección
+62**: el código actual dibuja siempre un círculo negro con una X blanca de 32
+píxeles en la esquina de la burbuja, y en tus capturas la burbuja se ve limpia,
+sin X por ningún lado. Casi seguro instalaste el APK del cambio de
+`applicationId` (sección 61), que es justo el anterior.
+
+Tres señas para reconocer la versión actual de un vistazo:
+1. La burbuja chica tiene una **X negra y blanca bien visible** arriba a la
+   derecha.
+2. En Inicio, **"Explorar" está abajo de todo**, después de los carruseles.
+3. El mini reproductor tiene una **línea ámbar finita** de progreso arriba.
+
+No se tocaron los gestos: reescribirlos a ciegas, sobre síntomas de una versión
+que no los tiene, arriesgaría romper un arreglo que puede estar bien.
+
+### Lo que sí se hizo, que vale en cualquier versión
+
+**Archivo:** `lib/widgets/online_video_overlay.dart`
+
+**La letra llena el hueco negro.** En pantalla completa, debajo del video
+quedaba un espacio negro enorme (se ve clarísimo en tu captura) ocupado solo por
+tres renglones de instrucciones. Ahora se busca la letra de lo que suena, con el
+mismo servicio que ya usa la app para tu biblioteca, y se muestra ahí. Si no se
+encuentra ninguna, queda el texto de ayuda de antes, más corto.
+
+La letra se muestra **sin sincronizar** (sin resaltar la línea actual) a
+propósito: el reproductor de YouTube es una vista nativa y la app no tiene
+acceso confiable a su posición de reproducción, así que resaltar sería adivinar.
+
+La búsqueda se guarda por video y no se repite: si se pidiera dentro del
+`build`, se dispararía una búsqueda nueva en cada refresco del provider, que son
+muchos -- uno por cada cambio de estado del reproductor.
+
+**La burbuja es más grande.** Pasó de 160×112 a 200×112 píxeles (mismo 16:9). A
+la medida anterior la X de cerrar quedaba demasiado chica para acertarle con el
+dedo, que es parte de por qué no la encontrabas.
+
+`flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
+limpios.
