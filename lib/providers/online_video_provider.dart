@@ -153,6 +153,10 @@ class OnlineVideoProvider extends ChangeNotifier {
   void _escucharFinDelVideo() {
     _suscripcion?.cancel();
     _suscripcion = _controller?.stream.listen((valor) {
+      // Se anota el estado para saber, al bloquear la pantalla, si el
+      // video estaba sonando o si lo habías pausado vos.
+      _ultimoEstado = valor.playerState;
+
       if (valor.playerState != PlayerState.ended) return;
       // `ended` puede repetirse; sin esta guarda un solo final podría
       // saltearse varios videos de un tirón.
@@ -160,6 +164,59 @@ class OnlineVideoProvider extends ChangeNotifier {
       _videoYaTerminado = _videoId;
       siguiente(conservarTamano: true);
     });
+  }
+
+  // ===== Seguir sonando con la pantalla bloqueada =====
+  //
+  // El reproductor de YouTube vive dentro de una vista web. Cuando se
+  // bloquea la pantalla, la página queda oculta y el propio reproductor
+  // de YouTube se pausa solo: es una decisión de su código, no de
+  // Android.
+  //
+  // Contra eso sí se puede hacer algo, porque el control del video no
+  // va por dentro de la página: va por la API oficial de YouTube, que
+  // atiende igual aunque la página esté oculta. O sea que se le puede
+  // volver a dar "play".
+  //
+  // Eso es lo que hace esto: mientras la app está en segundo plano y el
+  // video estaba sonando, se le insiste con `playVideo()`. Si YouTube
+  // se pausó por estar oculto, vuelve solo.
+  //
+  // HONESTAMENTE: esto puede no alcanzar. Si Android llega a suspender
+  // la vista web entera (no solo ocultarla), ningún "play" la
+  // despierta. Eso depende del celular y de la versión de Android, y es
+  // algo que solo se sabe probándolo en el aparato.
+
+  Timer? _insistirEnSonar;
+  PlayerState? _ultimoEstado;
+
+  /// Cuántas veces se insiste antes de rendirse. A ~0,9 s cada una, son
+  /// unos tres minutos: si a esa altura no volvió, no va a volver.
+  static const int _maxIntentos = 200;
+
+  /// La app se fue al fondo (pantalla bloqueada, u otra app adelante).
+  void alIrseAlFondo() {
+    if (_controller == null) return;
+    // Si lo habías pausado vos, se respeta: no se pone a sonar solo.
+    if (_ultimoEstado != PlayerState.playing) return;
+
+    _insistirEnSonar?.cancel();
+    var intentos = 0;
+    _insistirEnSonar =
+        Timer.periodic(const Duration(milliseconds: 900), (temporizador) {
+      if (_controller == null || intentos++ >= _maxIntentos) {
+        temporizador.cancel();
+        _insistirEnSonar = null;
+        return;
+      }
+      _controller?.playVideo();
+    });
+  }
+
+  /// La app volvió al frente: ya no hace falta insistir.
+  void alVolverAlFrente() {
+    _insistirEnSonar?.cancel();
+    _insistirEnSonar = null;
   }
 
   /// Pasa al siguiente video de la lista de resultados, si hay.
@@ -203,6 +260,9 @@ class OnlineVideoProvider extends ChangeNotifier {
 
   /// Cierra el video del todo (deja de sonar, desaparece la barra).
   void cerrar() {
+    _insistirEnSonar?.cancel();
+    _insistirEnSonar = null;
+    _ultimoEstado = null;
     _suscripcion?.cancel();
     _suscripcion = null;
     _controller?.close();
@@ -223,6 +283,7 @@ class OnlineVideoProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _insistirEnSonar?.cancel();
     _suscripcion?.cancel();
     _controller?.close();
     super.dispose();

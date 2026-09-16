@@ -242,11 +242,17 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
       // interrupción, o revivir la reproducción si el sistema cortó la
       // red mientras la pantalla estaba bloqueada.
       widget.audioHandler.onAppResumed();
+      _onlineVideoProvider.alVolverAlFrente();
     } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
       // Guardamos qué canción sonaba y en qué posición, para poder
       // continuar exactamente ahí la próxima vez que se abra la app.
       _playerProvider.saveSession();
+      // Y al video de YouTube se le insiste para que siga sonando: al
+      // quedar oculta la página, su reproductor se pausa solo. Ver la
+      // explicación larga en `online_video_provider.dart`.
+      _onlineVideoProvider.alIrseAlFondo();
     }
   }
 
