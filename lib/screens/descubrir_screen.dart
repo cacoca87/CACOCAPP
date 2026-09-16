@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
-import '../providers/playlist_provider.dart';
 import '../services/jamendo_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/song_cover.dart';
+import '../widgets/song_options_menu.dart';
 
 /// Buscar y reproducir música de Jamendo (catálogo Creative Commons,
 /// audio completo) — sin salir nunca de la app: el resultado se
@@ -114,7 +114,6 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
   @override
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
-    final playlistProvider = context.watch<PlaylistProvider>();
 
     return Scaffold(
       backgroundColor: AppTheme.ink,
@@ -267,7 +266,6 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                 itemCount: _resultados.length,
                 itemBuilder: (context, index) {
                   final cancion = _resultados[index];
-                  final esFavorita = playlistProvider.isFavorite(cancion.id);
                   final sonandoAhora = player.currentSong?.id == cancion.id;
                   return ListTile(
                     leading: SongCover(
@@ -293,18 +291,14 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: IconButton(
-                      icon: Icon(
-                        esFavorita ? Icons.favorite : Icons.favorite_border,
-                        color: esFavorita ? AppTheme.amber : AppTheme.mutedInk,
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        HapticFeedback.mediumImpact();
-                        context
-                            .read<PlaylistProvider>()
-                            .toggleFavorite(cancion.id);
-                      },
+                    // Mismo menú que en el resto de las listas de la app.
+                    // Antes acá solo había un corazón, así que desde
+                    // Descubrir no se podía agregar a playlist ni
+                    // descargar, aunque el comentario de arriba de este
+                    // archivo decía que sí.
+                    trailing: SongOptionsMenu(
+                      cancion: cancion,
+                      bibliotecaSeleccionada: 'Descubrir',
                     ),
                     onTap: () {
                       HapticFeedback.selectionClick();

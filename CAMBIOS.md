@@ -914,3 +914,62 @@ Eso explica también algo que parecía funcionar: cuando tocabas la burbuja y se
 Las dos reglas del encabezado de `online_video_overlay.dart` (clave fija + siempre `AnimatedPositioned`) siguen vigentes; esta vuelta agrega que el controlador **tampoco** se reemplaza, por el mismo motivo.
 
 `flutter analyze`, `flutter test` (45) y `flutter build apk --release` salieron limpios.
+
+## 57. Segunda auditoría a fondo: pérdida de datos en playlists, recuperación de conexión rota, y tres menús distintos para lo mismo
+
+Pediste buscar bugs con calma otra vez, limpiar lo que sobre y que todo guarde coherencia. Esta vuelta fui por archivos que la auditoría anterior no había mirado en detalle.
+
+### Bug grave: se borraban favoritos y canciones de playlists solas
+
+**Archivo:** `lib/providers/playlist_provider.dart`
+
+Al abrir la app, las playlists y favoritos se reconstruyen cruzando los ids guardados contra la lista de canciones disponibles. Los ids que no se encontraban **se descartaban**. El problema no era que no se mostraran: era que el siguiente guardado -- disparado por cualquier cosa que hicieras después, como marcar un favorito -- volvía a escribir la lista ya recortada y los borraba del disco **para siempre**.
+
+¿Cuándo pasaba? Con cualquier canción de Jamendo que hubieras agregado sin descargar: no está en la biblioteca del Drive ni entre las descargas, así que desaparecía sola al reabrir la app. Alguien ya había chocado con una parte de esto antes (hay un comentario en `pantalla_principal.dart` sobre incluir las descargas), pero se parchó solo ese caso.
+
+**Arreglo:** los favoritos ya no se filtran (un favorito es solo un id marcado, no hace falta tener la canción a mano para recordarlo), y las canciones de playlist que no se pueden resolver se recuerdan aparte y se vuelven a escribir al guardar, hasta que la canción esté disponible de nuevo. Se agregaron **3 tests** que fallan con el código viejo.
+
+### Bug grave: tras una desconexión, la app podía quedarse sin recuperación automática nunca más
+
+**Archivo:** `lib/services/my_audio_handler.dart`
+
+Cuando se corta la conexión, el reproductor reintenta solo con esperas cada vez más largas. Ese reintento levanta una bandera `_recovering` mientras trabaja y la baja al terminar. Pero había un `return` temprano (cuando no había canciones que reconstruir) que **se saltaba la bajada de la bandera**. Como todos los caminos de recuperación empiezan con "si estoy recuperando, no hago nada", la bandera quedaba trabada en `true` y la app se quedaba **sin ninguna recuperación automática por el resto de la sesión**: se cortaba la música y ya no volvía sola. Se arregló con un `finally`, que es el patrón que ya usaba la función de al lado en el mismo archivo.
+
+### Coherencia: había tres menús distintos para la misma canción
+
+Cada lista de la app tenía su propio menú, y no hacían lo mismo:
+
+- **Música descargada** tenía un menú propio al que le faltaba justo lo más importante de esa pantalla: **no había forma de borrar una descarga**.
+- **Descubrir (Jamendo)** solo tenía un corazón: no se podía agregar a playlist ni descargar, aunque el comentario al principio de ese archivo decía que sí.
+- **Tu Biblioteca** tenía el menú completo y correcto.
+
+Ahora las tres usan el mismo (`SongOptionsMenu`). Las dos primeras ganan funciones que no tenían, y se fueron ~60 líneas de menú duplicado.
+
+### Coherencia: en una tablet, Búsqueda Online no funcionaba
+
+**Archivo:** `lib/screens/pantalla_principal_desktop.dart`
+
+El diseño de pantalla grande (800px o más) **no montaba el reproductor de video**. En una tablet se podía buscar en YouTube, pero al tocar un resultado no pasaba absolutamente nada -- sin ese widget el reproductor nunca llega a construirse. Ya está incluido, igual que en celular.
+
+En esa misma pantalla había UI de mentira: una sección **"Videos musicales relacionados"** que era un recuadro vacío con un ícono de play que no llevaba a ningún lado, y un ícono de "más opciones" puramente decorativo que no se podía tocar. Se sacó la sección falsa y el ícono decorativo pasó a ser el menú real.
+
+### Bug visible: las estadísticas mostraban el ID interno en vez del título
+
+**Archivo:** `lib/screens/statistics_screen.dart`
+
+En "Detalle de reproducciones" se mostraba `entry.key`, que es el identificador interno de la canción (el nombre del archivo en el bucket), no su título. Lo gracioso: ya existía un método `tituloDeCancion()` hecho exactamente para esto, con su mapa de títulos guardándose y restaurándose en disco... y no lo llamaba nadie. Ahora sí.
+
+### Riesgo de memoria: las carátulas se acumulaban sin límite
+
+**Archivo:** `lib/services/id3_cover_service.dart`
+
+Las carátulas leídas de los MP3 se guardaban en disco (bien) **y además se quedaban en memoria para siempre** (mal). Recorriendo una biblioteca de cientos de canciones se acumulaban todas las imágenes en RAM -- decenas de MB -- que es la clase de cosa por la que Android termina cerrando la app sola. Ahora hay un tope de 60: al pasarse, las más viejas se descartan de memoria y, si vuelven a hacer falta, se releen del disco (rápido, y sin volver a bajarlas de la red).
+
+### Limpieza
+
+- `lib/screens/player_screen.dart`: los botones de anterior/siguiente saltaban el provider y hablaban directo con el motor de audio, mientras sus botones vecinos (aleatorio, repetir) sí usaban el provider. Ahora todos van por el mismo camino.
+- `lib/styles/app_theme.dart`: se borraron 7 alias de color y una constante que no usaba ninguna pantalla (sobraban de una versión anterior del tema). **Ojo con esto:** dos constantes que *parecían* muertas (`cardCornerRadius`, `miniPlayerCornerRadius`) en realidad se usan dentro del propio archivo sin el prefijo `AppTheme.`; las borré, el análisis las marcó como error, y las repuse con un comentario para que no vuelva a pasar.
+- `my_audio_handler.dart`: se borró `disposePlayer()`, que no llamaba nadie.
+- `playlist_provider.dart`: se borró el getter `favoriteIds`, que no usaba nadie y además exponía el conjunto interno para que cualquiera lo modificara salteando el guardado.
+
+`flutter analyze`, `flutter test` (**48**, subieron de 45) y `flutter build apk --release` salieron limpios.

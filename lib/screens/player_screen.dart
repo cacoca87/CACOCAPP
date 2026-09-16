@@ -470,7 +470,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 size: 40,
                                 onPressed: () {
                                   HapticFeedback.lightImpact();
-                                  audioHandler.skipToPrevious();
+                                  playerProvider.playPrevious();
                                 },
                                 tooltip: "Anterior",
                               ),
@@ -518,7 +518,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 size: 40,
                                 onPressed: () {
                                   HapticFeedback.lightImpact();
-                                  audioHandler.skipToNext();
+                                  playerProvider.playNext();
                                 },
                                 tooltip: "Siguiente",
                               ),

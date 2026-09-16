@@ -4,6 +4,8 @@ import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
 import '../widgets/barra_lateral.dart';
 import '../widgets/mini_player.dart';
+import '../widgets/online_video_overlay.dart';
+import '../widgets/song_options_menu.dart';
 import '../widgets/song_cover.dart';
 
 /// Layout de escritorio/tablet (panel lateral fijo + panel de "ahora
@@ -40,6 +42,20 @@ class PantallaPrincipalDesktop extends StatelessWidget {
   Widget build(BuildContext context) {
     final player = context.watch<PlayerProvider>();
 
+    // El video de Búsqueda Online va por ENCIMA de todo, igual que en la
+    // versión de celular. Antes este layout no lo montaba: en una tablet
+    // (cualquier pantalla de 800px o más) se podía buscar en YouTube,
+    // pero al tocar un resultado no pasaba absolutamente nada, porque
+    // sin este widget el reproductor nunca llega a construirse.
+    return Stack(
+      children: [
+        _construirLayout(context, player),
+        const OnlineVideoOverlay(),
+      ],
+    );
+  }
+
+  Widget _construirLayout(BuildContext context, PlayerProvider player) {
     return Scaffold(
       body: Row(
         children: [
@@ -87,8 +103,14 @@ class PantallaPrincipalDesktop extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const Icon(Icons.more_horiz,
-                              color: AppTheme.mutedInk),
+                          // Antes acá había un ícono de "más opciones"
+                          // que era solo decorativo: no se podía tocar
+                          // ni hacía nada. Ahora es el mismo menú real
+                          // que usan todas las listas de la app.
+                          SongOptionsMenu(
+                            cancion: player.currentSong!,
+                            bibliotecaSeleccionada: bibliotecaSeleccionada,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -115,24 +137,12 @@ class PantallaPrincipalDesktop extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        "Videos musicales relacionados",
-                        style: TextStyle(
-                          color: AppTheme.paper,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        height: 100,
-                        decoration: AppTheme.cardDecoration,
-                        child: const Center(
-                          child: Icon(Icons.play_circle_filled,
-                              size: 40, color: AppTheme.mutedInk),
-                        ),
-                      ),
+                      // Acá había una sección "Videos musicales
+                      // relacionados" que nunca se implementó: era un
+                      // recuadro vacío con un ícono de play que no
+                      // llevaba a ninguna parte. Se sacó porque hacía
+                      // ver la app a medio terminar; si algún día se
+                      // arma de verdad, vuelve con contenido real.
                     ],
                   ),
           ),

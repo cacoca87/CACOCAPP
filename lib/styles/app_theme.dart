@@ -21,8 +21,6 @@ class AppTheme {
   static const Color surfaceRaised =
       Color(0xFF2A211B); // elementos elevados / modales
   static const Color amber = Color(0xFFD9962E); // acento primario
-  static const Color amberDark = Color(0xFFB37A22);
-  static const Color amberLight = Color(0xFFE8B65E);
   static const Color ember = Color(0xFFB23B3B); // acento secundario, decorativo
   static const Color paper = Color(0xFFF2EDE6); // texto principal
   static const Color mutedInk = Color(0xFF9C9186); // texto secundario
@@ -32,18 +30,19 @@ class AppTheme {
       Color(0xFFE0554F); // errores/eliminar — distinto del "ember" decorativo
 
   // ===== Alias retrocompatibles (mismos nombres que usaba el resto del código) =====
+  // Solo quedan los que el código realmente usa. Este bloque tenía
+  // además `primaryDark`, `primaryLight`, `cardColor`, `textPrimary`,
+  // `textSecondary`, `textMuted`, `divider` y la constante
+  // `cornerRadius`, que no usaba ninguna pantalla: sobraban de una
+  // versión anterior del tema y solo hacían parecer que había más
+  // opciones de color de las que hay.
   static const Color background = ink;
   static const Color primary = amber;
-  static const Color primaryDark = amberDark;
-  static const Color primaryLight = amberLight;
   static const Color surfaceLight = surfaceRaised;
-  static const Color cardColor = surface;
-  static const Color textPrimary = paper;
-  static const Color textSecondary = mutedInk;
-  static const Color textMuted = faintInk;
-  static const Color divider = hairline;
 
-  static const double cornerRadius = 12.0;
+  // Estas dos sí se usan, pero más abajo en este mismo archivo (sin el
+  // prefijo `AppTheme.`), así que buscar "AppTheme.cardCornerRadius"
+  // por el proyecto no las encuentra y parecen muertas. No lo están.
   static const double cardCornerRadius = 10.0;
   static const double miniPlayerCornerRadius = 18.0;
 

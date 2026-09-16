@@ -218,6 +218,15 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     _retryTimer?.cancel();
     _retryTimer = Timer(Duration(seconds: delaySeconds), () async {
       _recovering = true;
+      // El `finally` es imprescindible: antes, si no había canciones
+      // para reconstruir se salía con un `return` que se saltaba el
+      // `_recovering = false` del final, y la bandera quedaba en `true`
+      // PARA SIEMPRE. Como tanto `_scheduleRetry` como `_ensureAlive`
+      // arrancan con "si estoy recuperando, no hago nada", eso dejaba
+      // la app sin ninguna recuperación automática por el resto de la
+      // sesión: se cortaba la música al perder señal y ya no volvía
+      // sola nunca más. Es el mismo patrón que ya usa `_ensureAlive`.
+      var huboError = false;
       try {
         final songs = _lastSongs;
         if (songs == null || songs.isEmpty) return;
@@ -228,12 +237,12 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
           initialPosition: _lastKnownPosition,
         );
         await player.play();
-      } catch (e) {
+      } catch (_) {
+        huboError = true;
+      } finally {
         _recovering = false;
-        _scheduleRetry();
-        return;
       }
-      _recovering = false;
+      if (huboError) _scheduleRetry();
     });
   }
 
@@ -466,12 +475,6 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
       default:
         await player.setLoopMode(LoopMode.off);
     }
-  }
-
-  Future<void> disposePlayer() async {
-    _retryTimer?.cancel();
-    await _mensajesController.close();
-    await player.dispose();
   }
 
   PlaybackState _transformEvent(PlaybackEvent event) {

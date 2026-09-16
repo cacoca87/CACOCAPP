@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../models/song.dart';
 import '../providers/player_provider.dart';
-import '../providers/playlist_provider.dart';
 import '../styles/app_theme.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
@@ -12,7 +10,7 @@ import '../widgets/song_options_menu.dart';
 /// importar de dónde vino originalmente (biblioteca del Drive/R2,
 /// Jamendo, o una descarga vieja de YouTube). Se reproduce tocando,
 /// igual que cualquier otra lista de la app, y cada canción tiene un
-/// menú para mandarla a favoritos o a una playlist.
+/// menú de opciones idéntico al del resto de la app.
 ///
 /// Recreada después de que se sacó por error en una vuelta anterior --
 /// en ese momento parecía que "descargado" solo se refería a las
@@ -35,74 +33,6 @@ class DownloadedSongsView extends StatelessWidget {
     } else if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
-  }
-
-  void _mostrarMenu(BuildContext context, Song cancion) {
-    final playlistProvider = context.read<PlaylistProvider>();
-    final esFavorita = playlistProvider.isFavorite(cancion.id);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              ListTile(
-                leading: Icon(
-                  esFavorita
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: esFavorita ? AppTheme.amber : AppTheme.mutedInk,
-                ),
-                title: Text(
-                  esFavorita ? "Quitar de favoritos" : "Agregar a favoritos",
-                  style: AppTheme.body.copyWith(color: AppTheme.paper),
-                ),
-                onTap: () {
-                  playlistProvider.toggleFavorite(cancion.id);
-                  Navigator.pop(sheetContext);
-                },
-              ),
-              if (playlistProvider.playlists.isNotEmpty)
-                const Divider(color: AppTheme.hairline, height: 1),
-              for (final playlist in playlistProvider.playlists)
-                ListTile(
-                  leading:
-                      const Icon(Icons.folder_rounded, color: AppTheme.primary),
-                  title: Text(playlist.name,
-                      style: AppTheme.body.copyWith(color: AppTheme.paper)),
-                  onTap: () {
-                    playlistProvider.addSongToPlaylist(playlist.id, cancion);
-                    Navigator.pop(sheetContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Se agregó "${cancion.title}" a "${playlist.name}"')),
-                    );
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.add_circle_outline_rounded,
-                    color: AppTheme.primary),
-                title: Text("Nueva playlist...",
-                    style: AppTheme.body.copyWith(color: AppTheme.paper)),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  mostrarDialogoNuevaPlaylist(context, cancion);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -172,11 +102,14 @@ class DownloadedSongsView extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.more_vert_rounded,
-                        color: AppTheme.mutedInk),
-                    tooltip: "Opciones",
-                    onPressed: () => _mostrarMenu(context, cancion),
+                  // Mismo menú que en el resto de las listas. El que
+                  // había acá era uno propio, y le faltaba justo la
+                  // opción más importante de esta pantalla: no había
+                  // forma de borrar una descarga desde "Música
+                  // descargada".
+                  trailing: SongOptionsMenu(
+                    cancion: cancion,
+                    bibliotecaSeleccionada: 'Descargadas',
                   ),
                   onTap: () {
                     HapticFeedback.selectionClick();

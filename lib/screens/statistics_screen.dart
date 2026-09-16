@@ -166,7 +166,11 @@ class StatisticsScreen extends StatelessWidget {
                   return ListTile(
                     dense: true,
                     title: Text(
-                      entry.key, // ID o referencia guardada en timeListened
+                      // Antes acá se mostraba `entry.key`, que es el ID
+                      // interno de la canción (el nombre del archivo en el
+                      // bucket), no su título. `tituloDeCancion` existe
+                      // justo para esto y no la llamaba nadie.
+                      player.tituloDeCancion(entry.key),
                       style: AppTheme.body
                           .copyWith(fontSize: 13, color: AppTheme.paper),
                       maxLines: 1,

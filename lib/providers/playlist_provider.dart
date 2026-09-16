@@ -8,8 +8,21 @@ class PlaylistProvider extends ChangeNotifier {
   final List<Playlist> _playlists = [];
   final Set<String> _favoriteIds = {};
 
+  // Canciones que están guardadas en una playlist pero que no se
+  // pudieron reconstruir al abrir la app, porque no aparecen en la
+  // lista con la que se llamó a [loadFromPrefs] (típicamente una
+  // canción de Jamendo que agregaste sin descargar: no está ni en la
+  // biblioteca del Drive ni entre las descargas).
+  //
+  // Antes esos ids simplemente se descartaban, y el problema no era que
+  // no se mostraran -- era que el siguiente `_persist()`, disparado por
+  // cualquier cosa que hicieras después (marcar un favorito, crear una
+  // playlist), volvía a escribir la lista ya recortada y los borraba
+  // del disco PARA SIEMPRE. Guardarlos acá los mantiene en el archivo
+  // hasta que la canción se pueda resolver de nuevo.
+  final Map<String, List<String>> _idsSinResolver = {};
+
   List<Playlist> get playlists => List.unmodifiable(_playlists);
-  Set<String> get favoriteIds => _favoriteIds;
 
   bool isFavorite(String songId) => _favoriteIds.contains(songId);
 
@@ -39,6 +52,7 @@ class PlaylistProvider extends ChangeNotifier {
 
   void deletePlaylist(String playlistId) {
     _playlists.removeWhere((p) => p.id == playlistId);
+    _idsSinResolver.remove(playlistId);
     notifyListeners();
     _persist();
   }
@@ -55,6 +69,10 @@ class PlaylistProvider extends ChangeNotifier {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index == -1) return;
     _playlists[index].addSong(song);
+    // Si esta canción era una de las que no se habían podido resolver,
+    // ya dejó de serlo -- si no se saca de ahí, `_persist()` escribiría
+    // su id dos veces y al reabrir la app aparecería duplicada.
+    _idsSinResolver[playlistId]?.remove(song.id);
     notifyListeners();
     _persist();
   }
@@ -63,6 +81,7 @@ class PlaylistProvider extends ChangeNotifier {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index == -1) return;
     _playlists[index].removeSong(songId);
+    _idsSinResolver[playlistId]?.remove(songId);
     notifyListeners();
     _persist();
   }
@@ -74,7 +93,10 @@ class PlaylistProvider extends ChangeNotifier {
           .map((p) => {
                 'id': p.id,
                 'name': p.name,
-                'songIds': p.songs.map((s) => s.id).toList(),
+                'songIds': [
+                  ...p.songs.map((s) => s.id),
+                  ...?_idsSinResolver[p.id],
+                ],
               })
           .toList();
       await prefs.setString(_kPlaylistsKey, jsonEncode(playlistsJson));
@@ -91,22 +113,32 @@ class PlaylistProvider extends ChangeNotifier {
 
       final favIds = prefs.getStringList(_kFavoritesKey);
       if (favIds != null) {
+        // Se guardan TODOS los ids, sin filtrar por los que estén en
+        // `allSongs`. Un favorito es solo un id marcado -- no hace falta
+        // tener la canción a mano para recordar que te gustaba, y
+        // filtrarlos acá hacía que se perdieran solos (ver la nota de
+        // `_idsSinResolver`).
         _favoriteIds
           ..clear()
-          ..addAll(favIds.where(songById.containsKey));
+          ..addAll(favIds);
       }
 
       final playlistsRaw = prefs.getString(_kPlaylistsKey);
       if (playlistsRaw != null) {
         final decoded = jsonDecode(playlistsRaw) as List;
         _playlists.clear();
+        _idsSinResolver.clear();
         for (final item in decoded) {
           final map = item as Map<String, dynamic>;
           final songIds = (map['songIds'] as List).cast<String>();
+          final id = map['id'] as String;
           final songs =
-              songIds.map((id) => songById[id]).whereType<Song>().toList();
+              songIds.map((sid) => songById[sid]).whereType<Song>().toList();
+          final sinResolver =
+              songIds.where((sid) => !songById.containsKey(sid)).toList();
+          if (sinResolver.isNotEmpty) _idsSinResolver[id] = sinResolver;
           _playlists.add(Playlist(
-            id: map['id'] as String,
+            id: id,
             name: map['name'] as String,
             songs: songs,
           ));

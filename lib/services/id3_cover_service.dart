@@ -30,6 +30,30 @@ class Id3CoverService {
   final Map<String, Uint8List?> _cacheCaratula = {};
   final Map<String, String?> _cacheAlbum = {};
   final Map<String, String?> _cacheArtista = {};
+
+  // Las carátulas también quedan guardadas en disco, así que tener los
+  // bytes en memoria es solo un atajo para no releer el archivo. Sin
+  // tope, ese atajo se volvía un problema: recorriendo una biblioteca
+  // de cientos de canciones se acumulaban TODAS las imágenes en RAM
+  // para siempre (decenas de MB), que es la clase de cosa por la que
+  // Android termina matando la app sola. Al pasarse del tope se
+  // descartan las más viejas: la próxima vez que hagan falta se
+  // releen del disco, que es rápido y no vuelve a bajarlas.
+  static const int _maxCaratulasEnMemoria = 60;
+  final List<String> _ordenCaratulas = [];
+
+  void _recordarCaratula(String url, Uint8List bytes) {
+    _cacheCaratula[url] = bytes;
+    _ordenCaratulas.remove(url);
+    _ordenCaratulas.add(url);
+    while (_ordenCaratulas.length > _maxCaratulasEnMemoria) {
+      // `remove` (y no dejarla en null) a propósito: null significa
+      // "esta canción no tiene carátula", que es otra cosa muy distinta
+      // de "todavía no la tengo cargada".
+      _cacheCaratula.remove(_ordenCaratulas.removeAt(0));
+    }
+  }
+
   Directory? _dirCache;
 
   Future<Directory> _coverDir() async {
@@ -97,7 +121,7 @@ class Id3CoverService {
       }
       if (await archivoImagen.exists()) {
         final bytes = await archivoImagen.readAsBytes();
-        _cacheCaratula[url] = bytes;
+        _recordarCaratula(url, bytes);
         return bytes;
       }
     } catch (_) {
@@ -128,7 +152,7 @@ class Id3CoverService {
         final base64Str = apic is Map ? apic['base64'] as String? : null;
         if (base64Str != null && base64Str.isNotEmpty) {
           final imagenBytes = base64Decode(base64Str);
-          _cacheCaratula[url] = imagenBytes;
+          _recordarCaratula(url, imagenBytes);
           _guardarEnDisco(url, imagenBytes); // no esperamos, no bloquea la UI
           return imagenBytes;
         }
