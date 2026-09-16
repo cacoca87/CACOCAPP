@@ -115,9 +115,75 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
+  // ===== SESIÓN DE VIDEO =====
+  //
+  // Cuando suena un video de YouTube (que vive dentro de una vista web,
+  // no en este motor de audio), la app no tenía NINGÚN servicio en
+  // primer plano corriendo. Sin eso, al bloquear la pantalla Android
+  // congela la app a los pocos segundos y el video se calla -- por más
+  // que la vista web en sí no esté pausada.
+  //
+  // La música de la biblioteca no sufre eso justamente porque pasa por
+  // acá, y `audio_service` levanta el servicio en primer plano con su
+  // notificación.
+  //
+  // Esto le presta ese mismo servicio al video: se publica una sesión
+  // de medios (notificación + controles en la pantalla de bloqueo) para
+  // que Android vea que la app está reproduciendo algo y la deje viva.
+  bool _modoVideo = false;
+  bool get modoVideo => _modoVideo;
+
+  /// Qué hacer cuando la notificación del video pide play / pausa /
+  /// siguiente. Las conecta quien maneja el video.
+  VoidCallback? onVideoPlay;
+  VoidCallback? onVideoPause;
+  VoidCallback? onVideoNext;
+
+  /// Empieza a mostrar la sesión de medios de un video.
+  void iniciarSesionDeVideo({
+    required String id,
+    required String titulo,
+    required String autor,
+  }) {
+    _modoVideo = true;
+    mediaItem.add(MediaItem(id: id, title: titulo, artist: autor));
+    publicarEstadoDeVideo(sonando: true);
+  }
+
+  void publicarEstadoDeVideo({required bool sonando}) {
+    if (!_modoVideo) return;
+    playbackState.add(PlaybackState(
+      controls: [
+        if (sonando) MediaControl.pause else MediaControl.play,
+        MediaControl.skipToNext,
+      ],
+      systemActions: const {MediaAction.playPause},
+      androidCompactActionIndices: const [0, 1],
+      processingState: AudioProcessingState.ready,
+      playing: sonando,
+    ));
+  }
+
+  /// Deja de mostrarla: o se cerró el video, o el motor de audio vuelve
+  /// a tomar el control (una canción de la biblioteca, por ejemplo).
+  void terminarSesionDeVideo() {
+    if (!_modoVideo) return;
+    _modoVideo = false;
+    playbackState.add(PlaybackState(
+      controls: const [],
+      processingState: AudioProcessingState.idle,
+      playing: false,
+    ));
+  }
+
   void _listenForPlaybackState() {
     player.playbackEventStream.listen(
-      (event) => playbackState.add(_transformEvent(event)),
+      (event) {
+        // En modo video la sesion de medios la maneja el video, no
+        // este motor: si no, lo pisaria con "no esta sonando nada".
+        if (_modoVideo) return;
+        playbackState.add(_transformEvent(event));
+      },
       onError: (Object e, StackTrace st) {
         AppLogger.e('Error del motor de audio', error: e);
         final ignoreUntil = _ignoreSourceErrorsUntil;
@@ -136,6 +202,7 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _listenForCurrentSongIndex() {
     player.currentIndexStream.listen((index) {
+      if (_modoVideo) return;
       final q = queue.value;
       if (index != null && index >= 0 && index < q.length) {
         _lastKnownIndex = index;
@@ -183,6 +250,7 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   void _listenForDuration() {
     player.durationStream.listen((d) {
+      if (_modoVideo) return;
       final index = player.currentIndex;
       final q = List<MediaItem>.from(queue.value);
       if (d != null && index != null && index >= 0 && index < q.length) {
@@ -380,6 +448,11 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   @override
   Future<void> play() async {
+    if (_modoVideo) {
+      onVideoPlay?.call();
+      publicarEstadoDeVideo(sonando: true);
+      return;
+    }
     _wantsToPlay = true;
     _retryCount = 0;
     if (await _ensureAlive(autoplay: true)) return;
@@ -395,6 +468,11 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   @override
   Future<void> pause() async {
+    if (_modoVideo) {
+      onVideoPause?.call();
+      publicarEstadoDeVideo(sonando: false);
+      return;
+    }
     _wantsToPlay = false;
     _pausedByInterruption = false;
     _retryTimer?.cancel();
@@ -430,6 +508,11 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   @override
   Future<void> skipToNext() async {
+    // La notificacion del video controla el video, no este motor.
+    if (_modoVideo) {
+      onVideoNext?.call();
+      return;
+    }
     _retryCount = 0;
     await _ensureAlive(autoplay: false);
     _lastKnownPosition = Duration.zero;

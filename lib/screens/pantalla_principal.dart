@@ -491,10 +491,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     } else if (seccionActiva == "Descubrir") {
       widgetCentral = DescubrirScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Buscador Online") {
-      widgetCentral = DualSearchScreen(
-        onVolver: _volverAInicio,
-        biblioteca: canciones,
-      );
+      widgetCentral = DualSearchScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Música Descargada") {
       widgetCentral = DownloadedSongsView(onVolver: _volverAInicio);
     } else if (seccionActiva == "Juegos") {

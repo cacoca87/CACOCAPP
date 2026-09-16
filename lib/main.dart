@@ -194,7 +194,25 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
     );
     _playlistProvider = PlaylistProvider();
     _audioEffectsProvider = AudioEffectsProvider(widget.audioHandler);
-    WidgetsBinding.instance.addObserver(this);
+
+    // El video de YouTube también muestra su notificación y sus
+    // controles en la pantalla de bloqueo. No es adorno: esa
+    // notificación levanta el servicio en primer plano, que es lo que
+    // evita que Android congele la app al apagar la pantalla. La música
+    // de la biblioteca ya lo tenía; el video no.
+    _onlineVideoProvider.onEmpiezaVideo = (id, titulo, autor) {
+      widget.audioHandler.iniciarSesionDeVideo(
+        id: 'yt_$id',
+        titulo: titulo,
+        autor: autor,
+      );
+    };
+    _onlineVideoProvider.onTerminaVideo =
+        widget.audioHandler.terminarSesionDeVideo;
+    widget.audioHandler.onVideoPlay = _onlineVideoProvider.reanudar;
+    widget.audioHandler.onVideoPause = _onlineVideoProvider.pausarSoloElVideo;
+    widget.audioHandler.onVideoNext = _onlineVideoProvider.siguiente;
+
     _pedirPermisosDeFondo();
 
     // Mensajes del reproductor (ej. "se perdió la conexión") se

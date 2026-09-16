@@ -122,6 +122,8 @@ class OnlineVideoProvider extends ChangeNotifier {
       _titulo = titulo;
       _autor = autor;
       _minimizado = false;
+
+      onEmpiezaVideo?.call(videoId, titulo, autor);
       notifyListeners();
       return;
     }
@@ -147,6 +149,8 @@ class OnlineVideoProvider extends ChangeNotifier {
     _titulo = titulo;
     _autor = autor;
     _minimizado = false;
+
+    onEmpiezaVideo?.call(videoId, titulo, autor);
     notifyListeners();
   }
 
@@ -244,6 +248,20 @@ class OnlineVideoProvider extends ChangeNotifier {
     }
   }
 
+  /// Avisos para que quien tenga acceso al servicio de audio muestre (o
+  /// saque) la notificación del video. No se llama directo desde acá
+  /// para no atar este provider al motor de audio: los conecta
+  /// `main.dart`.
+  ///
+  /// Para qué sirve: esa notificación levanta el servicio en primer
+  /// plano, y sin él Android congela la app a los pocos segundos de
+  /// bloquear la pantalla -- aunque la vista web del video siga viva.
+  void Function(String id, String titulo, String autor)? onEmpiezaVideo;
+  VoidCallback? onTerminaVideo;
+
+  /// Vuelve a poner en marcha el video. La usa la notificación.
+  void reanudar() => _controller?.playVideo();
+
   /// Achica el video a la barra de abajo -- sigue sonando.
   void minimizar() {
     if (_controller == null) return;
@@ -272,12 +290,21 @@ class OnlineVideoProvider extends ChangeNotifier {
     _indiceEnCola = -1;
     _videoYaTerminado = null;
     _minimizado = false;
+    onTerminaVideo?.call();
     notifyListeners();
   }
 
   /// Pausa el video, si hay uno. La usa `PlayerProvider` cuando arranca
   /// otra reproducción y cuando vence el temporizador de apagado.
+  /// Pausa el video SIN sacar su notificacion. La usa el boton de
+  /// pausa de la propia notificacion.
+  void pausarSoloElVideo() => _controller?.pauseVideo();
+
   void pausar() {
+    // El motor de audio toma el control de la notificacion: si la
+    // sesion del video quedara puesta, taparia a la cancion que
+    // empieza a sonar.
+    onTerminaVideo?.call();
     _controller?.pauseVideo();
   }
 

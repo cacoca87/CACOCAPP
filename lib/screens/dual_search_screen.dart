@@ -1,29 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/song.dart';
 import '../providers/online_video_provider.dart';
-import '../providers/player_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
 import 'youtube_escritorio_screen.dart';
 import '../widgets/estado_vacio.dart';
-import '../widgets/song_cover.dart';
 
 class DualSearchScreen extends StatefulWidget {
   final VoidCallback? onVolver;
 
-  /// Tu biblioteca (las canciones del servidor propio). Sirve para
-  /// avisarte, mientras buscás en YouTube, cuáles de esas canciones ya
-  /// tenés -- y esas SÍ siguen sonando con la pantalla bloqueada,
-  /// porque son archivos de audio de verdad y no una página web.
-  final List<Song> biblioteca;
-
-  const DualSearchScreen({
-    super.key,
-    this.onVolver,
-    this.biblioteca = const [],
-  });
+  const DualSearchScreen({super.key, this.onVolver});
 
   @override
   State<DualSearchScreen> createState() => _DualSearchScreenState();
@@ -68,25 +55,6 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
     super.dispose();
   }
 
-  /// Las canciones de tu biblioteca que coinciden con lo que estás
-  /// buscando. Se calcula acá y no en el `build` para no recorrer la
-  /// biblioteca entera en cada refresco.
-  List<Song> _enMiBiblioteca = const [];
-
-  void _buscarEnMiBiblioteca(String texto) {
-    final limpio = texto.trim().toLowerCase();
-    if (limpio.length < 2) {
-      _enMiBiblioteca = const [];
-      return;
-    }
-    _enMiBiblioteca = widget.biblioteca
-        .where((c) =>
-            c.title.toLowerCase().contains(limpio) ||
-            c.artist.toLowerCase().contains(limpio))
-        .take(4)
-        .toList();
-  }
-
   /// Abre el video en youtube.com de escritorio, dentro de la app.
   ///
   /// Es el modo pensado para escuchar con la pantalla bloqueada: la
@@ -109,17 +77,7 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // La búsqueda anterior sobrevive al salir y volver a esta pantalla
-    // (los campos `static` de más arriba), así que las coincidencias con
-    // la biblioteca hay que rehacerlas al entrar.
-    _buscarEnMiBiblioteca(_ultimaBusqueda);
-  }
-
   void _onSearchChanged(String query) {
-    _buscarEnMiBiblioteca(query);
     _ultimaBusqueda = query;
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     final generacion = ++_generacionBusqueda;
@@ -242,25 +200,6 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
           ),
         ),
         const SizedBox(height: 8),
-
-        // Lo que ya tenés en tu biblioteca y coincide con lo que
-        // estás buscando. Va ARRIBA de los resultados de YouTube a
-        // propósito: estas canciones son archivos de audio del
-        // servidor propio, así que siguen sonando con la pantalla
-        // bloqueada. Los videos de YouTube no, y no es algo que se
-        // pueda arreglar desde acá (ver el comentario largo en
-        // `youtube_service.dart`).
-        if (_enMiBiblioteca.isNotEmpty)
-          _SeccionDeMiBiblioteca(
-            canciones: _enMiBiblioteca,
-            onReproducir: (cancion, indice) {
-              FocusScope.of(context).unfocus();
-              context.read<OnlineVideoProvider>().cerrar();
-              context
-                  .read<PlayerProvider>()
-                  .playSong(cancion, _enMiBiblioteca, indice);
-            },
-          ),
 
         // Indicador de carga
         if (_cargandoResultados)
@@ -439,93 +378,6 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                         ),
         ),
       ],
-    );
-  }
-}
-
-/// Las canciones de tu biblioteca que coinciden con lo que estás
-/// buscando en YouTube.
-///
-/// Existe por una diferencia que no se ve pero decide todo: estas son
-/// archivos de audio que la app reproduce con su propio motor, así que
-/// **siguen sonando con la pantalla bloqueada**, con su notificación y
-/// sus controles. Los videos de YouTube de más abajo se ven, pero se
-/// callan al bloquear: el reproductor embebido es una página web y
-/// Android la congela. Por eso esta sección va arriba.
-class _SeccionDeMiBiblioteca extends StatelessWidget {
-  final List<Song> canciones;
-  final void Function(Song cancion, int indice) onReproducir;
-
-  const _SeccionDeMiBiblioteca({
-    required this.canciones,
-    required this.onReproducir,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(4, 4, 4, 10),
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.45)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.lock_outline_rounded,
-                    color: AppTheme.primary, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'En tu biblioteca · suena con la pantalla bloqueada',
-                    style: AppTheme.small.copyWith(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          for (var i = 0; i < canciones.length; i++)
-            ListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              leading: SongCover(
-                title: canciones[i].title,
-                artist: canciones[i].artist,
-                url: canciones[i].url,
-                coverUrlDirecto: canciones[i].coverUrl,
-                size: 40,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              title: Text(
-                canciones[i].title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTheme.body.copyWith(
-                    color: AppTheme.paper,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                canciones[i].artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTheme.small.copyWith(fontSize: 11),
-              ),
-              trailing: const Icon(Icons.play_circle_fill_rounded,
-                  color: AppTheme.primary, size: 26),
-              onTap: () => onReproducir(canciones[i], i),
-            ),
-        ],
-      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
+import '../main.dart';
 import '../styles/app_theme.dart';
 
 /// Abre el video en **youtube.com de verdad**, en su versión de
@@ -59,6 +60,16 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
   void initState() {
     super.initState();
 
+    // Le pedimos a `audio_service` que muestre una sesión de medios por
+    // este video. No es cosmético: eso levanta el servicio en primer
+    // plano, que es lo que evita que Android congele la app al bloquear
+    // la pantalla. Sin él, la vista web sigue viva pero el sistema
+    // suspende la app entera a los pocos segundos.
+    audioHandler.iniciarSesionDeVideo(
+      id: 'yt_${widget.videoId}',
+      titulo: widget.titulo,
+      autor: 'YouTube',
+    );
     final controlador = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(_navegadorDeEscritorio)
@@ -82,6 +93,14 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
       Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}'),
     );
     _controlador = controlador;
+  }
+
+  @override
+  void dispose() {
+    // Se saca la notificación al salir de esta pantalla: si quedara,
+    // Android seguiría creyendo que la app está reproduciendo algo.
+    audioHandler.terminarSesionDeVideo();
+    super.dispose();
   }
 
   @override
@@ -122,8 +141,7 @@ class _YoutubeEscritorioScreenState extends State<YoutubeEscritorioScreen> {
                   const ColoredBox(
                     color: AppTheme.ink,
                     child: Center(
-                      child:
-                          CircularProgressIndicator(color: AppTheme.amber),
+                      child: CircularProgressIndicator(color: AppTheme.amber),
                     ),
                   ),
               ],
