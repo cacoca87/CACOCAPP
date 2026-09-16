@@ -1101,3 +1101,48 @@ escrito distinto según dónde miraras. Unificado.
 
 `flutter analyze`, `flutter test` (**59**, subieron de 48), el chequeo de
 formato de todo el repo y `flutter build apk --release` salieron limpios.
+
+## 60. Pantalla de arranque (splash) con el logo, y el destello blanco que venía después
+
+Preguntaste para qué servía el splash y con qué imagen. Va lo uno y lo otro.
+
+**Qué es.** Es lo que Android muestra **antes** de que Flutter alcance a dibujar
+nada, durante el arranque del proceso. No había ninguno configurado, así que se
+usaba el blanco de fábrica: abrías la app, destello blanco, y recién después
+aparecía tu pantalla negra con ámbar. Con el splash puesto, arranca directo en
+negro con tu logo, como hacen Spotify o YouTube Music.
+
+**Con qué imagen.** La de los gatos, como dijiste. Se usó
+`assets/icon/icono_foreground.png` (1024×1024, fondo transparente, que es
+justo el formato que hace falta para poner encima de un color sólido) copiado a
+`assets/icon/splash.png`, que hasta hoy era un archivo de **0 bytes** -- por eso
+la configuración que ya existía en `pubspec.yaml` nunca había hecho nada. El
+fondo es `#14100E`, el mismo negro cálido de la app.
+
+Se generó con `dart run flutter_native_splash:create`, que arma las imágenes en
+todas las densidades de pantalla y también la variante especial que pide
+Android 12 en adelante.
+
+### El problema que no se ve hasta que lo buscás
+
+El generador deja el tema posterior al splash (`NormalTheme`, el que gobierna la
+ventana mientras Flutter termina de inicializarse) con
+`?android:colorBackground`, heredando de un tema **Light**. Eso resuelve a
+**blanco**. O sea: el splash negro quedaba bien, pero justo después aparecía el
+mismo destello blanco que estábamos tratando de sacar, movido unos milisegundos
+más tarde.
+
+Se fijó a `#14100E` en los cuatro archivos de estilo (claro, oscuro, y las dos
+variantes de Android 12+), con un comentario explicando por qué no puede
+volver a ser `?android:colorBackground`. La app no tiene modo claro, así que la
+ventana nunca debería ser blanca en ningún caso.
+
+`flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
+limpios. El APK pasó de 57,3 MB a 59,2 MB por las imágenes del splash en todas
+las densidades.
+
+**Queda pendiente tu decisión sobre el `applicationId`** (sección 59): sigue
+siendo `com.example.musicapp`. Cambiarlo ahora cuesta perder las playlists,
+favoritos y descargas guardados en tu celular; no cambiarlo y publicar algún día
+en Play Store es imposible, porque Google bloquea ese prefijo y el id no se
+puede cambiar después de publicar.
