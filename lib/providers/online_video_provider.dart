@@ -47,6 +47,19 @@ class OnlineVideoProvider extends ChangeNotifier {
   bool get minimizado => _minimizado;
   bool get hayVideo => _controller != null;
 
+  /// ¿Se puede reproducir video embebido en esta plataforma?
+  ///
+  /// El reproductor de YouTube es un WebView, y no todas las
+  /// plataformas tienen uno: Android, iOS, macOS y web sí; Windows y
+  /// Linux no. Sin esta comprobación, en Windows la app reventaba al
+  /// intentar crear el reproductor en vez de avisar que no se puede.
+  static bool get disponible {
+    if (kIsWeb) return true;
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+  }
+
   /// ¿Hay otro video después de este en la lista de resultados?
   bool get haySiguiente =>
       _indiceEnCola >= 0 && _indiceEnCola + 1 < _cola.length;
@@ -61,6 +74,7 @@ class OnlineVideoProvider extends ChangeNotifier {
     List<VideoEnCola> cola = const [],
     int indice = -1,
   }) {
+    if (!disponible) return;
     _cola = cola;
     _indiceEnCola = indice;
     _videoYaTerminado = null;

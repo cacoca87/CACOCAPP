@@ -30,9 +30,9 @@ dependencies:
   # "webview_flutter" directo, que se intentó antes y dio error 153/152
   # por una configuración de origin/User-Agent mal armada) porque está
   # mantenido específicamente para embeber el reproductor de YouTube y
-  # ya resuelve esos detalles correctamente. Soporta Android/iOS/macOS
-  # de forma nativa; en Windows no hay implementación oficial todavía
-  # (ver nota en online_video_player_screen.dart).
+  # ya resuelve esos detalles correctamente. Funciona en Android, iOS,
+  # macOS y web; en Windows y Linux no hay WebView, y ahí la Búsqueda
+  # Online avisa en vez de romper (ver `OnlineVideoProvider.disponible`).
   youtube_player_iframe: ^6.0.2
   # Botón de "Compartir" (canción actual / video de YouTube) al menú
   # nativo para mandar a WhatsApp, X, Instagram, etc. -- igual que hace

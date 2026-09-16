@@ -2172,3 +2172,59 @@ muerto.
 
 `flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 79. Las carpetas de Windows y web: qué se pudo arreglar y qué no
+
+Preguntaste si se podían dejar funcionales. La respuesta honesta es distinta
+para cada una, y la averigüé **compilando** en vez de suponer -- que es lo que
+había hecho la vuelta anterior, y me había equivocado.
+
+### Windows: sí, y quedó mejor
+
+Compila y produce un ejecutable. Dos cosas estaban mal:
+
+1. **La app se llamaba `musicapp` en Windows.** El nombre del proyecto, el
+   título de la ventana, el nombre del `.exe` y los datos de producto: todo
+   seguía con el nombre por defecto del proyecto original. Ahora es `CACOCAPP`
+   en los cinco lugares, y el ejecutable sale como `CACOCAPP.exe`.
+2. **La Búsqueda Online habría reventado.** El reproductor de YouTube es un
+   WebView, y en Windows y Linux no existe ninguno. La app intentaba crearlo
+   igual. Ahora hay `OnlineVideoProvider.disponible`, que sabe en qué
+   plataformas hay WebView (Android, iOS, macOS y web) y, donde no lo hay,
+   la sección lo dice con un mensaje claro en vez de romperse.
+
+Todo lo demás -- biblioteca, Jamendo, descargas, letras, estadísticas, los
+cuatro juegos y las noticias -- debería andar en Windows. **No lo ejecuté**, así
+que eso es lo que el código permite, no algo comprobado.
+
+**Un tropiezo en el camino:** después de renombrar, la compilación de Windows
+falló con "no existe el objetivo musicapp". No era el cambio: era el caché de
+compilación viejo, que guardaba el nombre anterior. Borrando `build/windows`
+(que es contenido generado, no fuente) compiló perfecto.
+
+### Web: compila, pero no esperaría que funcione
+
+También compila sin errores, lo que me sorprendió. Pero compilar no es
+funcionar, y hay dos motivos de fondo por los que no lo daría por bueno:
+
+- **CORS.** Un navegador bloquea las peticiones a servidores que no lo
+  autorizan expresamente. El RSS de Google Noticias, el servicio de letras y las
+  carátulas de iTunes no lo hacen, así que esas partes quedarían vacías.
+- **No hay sistema de archivos.** Las descargas para escuchar sin conexión y el
+  caché en disco de las carátulas no tienen dónde guardarse.
+
+Ninguno de los dos se arregla desde la app: el primero depende de servidores de
+terceros y el segundo, del navegador. Por eso la dejé compilando pero sin
+prometer nada.
+
+### Otra referencia a un archivo que no existe
+
+El comentario de `youtube_player_iframe` en `pubspec.yaml` remitía a
+`online_video_player_screen.dart`, un archivo borrado hace varias vueltas.
+Ahora describe el estado real y apunta a `OnlineVideoProvider.disponible`.
+
+El `README.md` también decía "hay código para escritorio, pero sin verificar".
+Ahora dice exactamente qué compila, qué se probó y qué no.
+
+`flutter analyze`, `flutter test` (142) y las **tres** compilaciones -- Android,
+Windows y web -- salieron limpias.

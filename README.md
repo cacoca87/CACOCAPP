@@ -120,7 +120,11 @@ reproducción. Hay dos reglas ahí que no conviene romper.
 
 ## Limitaciones conocidas
 
-- Solo se probó en Android. Hay código para escritorio, pero sin verificar.
+- Solo se probó en Android. Compila también para Windows y web, pero ninguna de
+  las dos se ejecutó: en Windows no hay WebView, así que Búsqueda Online avisa
+  que no está disponible en vez de romper; en web es muy probable que el
+  navegador bloquee las peticiones a las fuentes externas (CORS) y no hay
+  sistema de archivos para las descargas.
 - El ecualizador y los efectos de audio solo funcionan en Android, y no se
   aplican al reproductor de YouTube (ese maneja su propio audio).
 - Algunos videos de YouTube no permiten reproducción embebida; en esos casos la

@@ -156,113 +156,123 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
         const SizedBox(height: 8),
 
         // Listado de resultados
+        // En Windows y Linux no hay WebView, así que el reproductor
+        // embebido no existe. Se avisa en vez de dejar buscar cosas que
+        // después no van a poder reproducirse.
         Expanded(
-          child: _resultados.isEmpty
-              ? EstadoVacio(
-                  icono: Icons.video_library_outlined,
-                  mensaje: _cargandoResultados
-                      ? 'Buscando...'
-                      : 'Escribí el nombre de una canción o un artista para '
-                          'buscarlo en YouTube.',
+          child: !OnlineVideoProvider.disponible
+              ? const EstadoVacio(
+                  icono: Icons.desktop_access_disabled_rounded,
+                  mensaje: 'La Búsqueda Online necesita el reproductor de '
+                      'YouTube, que no está disponible en esta plataforma. '
+                      'Funciona en Android.',
                 )
-              : ListView.builder(
-                  itemCount: _resultados.length,
-                  itemBuilder: (context, index) {
-                    final video = _resultados[index];
+              : _resultados.isEmpty
+                  ? EstadoVacio(
+                      icono: Icons.video_library_outlined,
+                      mensaje: _cargandoResultados
+                          ? 'Buscando...'
+                          : 'Escribí el nombre de una canción o un artista para '
+                              'buscarlo en YouTube.',
+                    )
+                  : ListView.builder(
+                      itemCount: _resultados.length,
+                      itemBuilder: (context, index) {
+                        final video = _resultados[index];
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        leading: Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.network(
-                                video.thumbnailUrl,
-                                width: 75,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                errorBuilder: (c, e, s) => Container(
-                                  width: 75,
-                                  height: 50,
-                                  color: AppTheme.surfaceLight,
-                                  child: const Icon(Icons.music_video,
-                                      color: AppTheme.mutedInk),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              color: Colors.black87,
-                              child: Text(
-                                video.lengthSeconds,
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 10),
-                              ),
-                            ),
-                          ],
-                        ),
-                        title: Text(
-                          video.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.body.copyWith(
-                            color: AppTheme.paper,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        subtitle: Text(
-                          "${video.author} • ${video.viewCount}",
-                          style: AppTheme.small.copyWith(fontSize: 11),
-                        ),
-                        // Se sacó el botón de descargar: sigue dependiendo
-                        // de extraer el audio crudo de YouTube, lo mismo
-                        // que rompía la reproducción antes de pasar al
-                        // WebView -- ofrecerlo era prometer algo que
-                        // fallaba seguido.
-                        trailing: const Icon(Icons.play_circle_fill_rounded,
-                            color: AppTheme.amber, size: 28),
-                        // El video se pone a sonar en el overlay persistente
-                        // (OnlineVideoProvider) -- NO se navega a una pantalla
-                        // nueva, así el video sobrevive si después tocás
-                        // "atrás" o cambiás de sección (se minimiza en vez de
-                        // destruirse).
-                        onTap: () {
-                          // Sin esto, el campo de búsqueda conserva el foco
-                          // mientras mirás el video, y Android deja flotando
-                          // el manipulador del cursor: una "gota" del color
-                          // primario (ámbar) dibujada POR ENCIMA del video,
-                          // porque vive en la capa de superposición de la app.
-                          FocusScope.of(context).unfocus();
-                          // Se pasa la lista entera para que, al terminar
-                          // este video, siga solo con el siguiente.
-                          context.read<OnlineVideoProvider>().reproducir(
-                                videoId: video.videoId,
-                                titulo: video.title,
-                                autor: video.author,
-                                cola: _resultados
-                                    .map((r) => VideoEnCola(
-                                          videoId: r.videoId,
-                                          titulo: r.title,
-                                          autor: r.author,
-                                        ))
-                                    .toList(),
-                                indice: index,
-                              );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            leading: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.network(
+                                    video.thumbnailUrl,
+                                    width: 75,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (c, e, s) => Container(
+                                      width: 75,
+                                      height: 50,
+                                      color: AppTheme.surfaceLight,
+                                      child: const Icon(Icons.music_video,
+                                          color: AppTheme.mutedInk),
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 2),
+                                  color: Colors.black87,
+                                  child: Text(
+                                    video.lengthSeconds,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 10),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            title: Text(
+                              video.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTheme.body.copyWith(
+                                color: AppTheme.paper,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${video.author} • ${video.viewCount}",
+                              style: AppTheme.small.copyWith(fontSize: 11),
+                            ),
+                            // Se sacó el botón de descargar: sigue dependiendo
+                            // de extraer el audio crudo de YouTube, lo mismo
+                            // que rompía la reproducción antes de pasar al
+                            // WebView -- ofrecerlo era prometer algo que
+                            // fallaba seguido.
+                            trailing: const Icon(Icons.play_circle_fill_rounded,
+                                color: AppTheme.amber, size: 28),
+                            // El video se pone a sonar en el overlay persistente
+                            // (OnlineVideoProvider) -- NO se navega a una pantalla
+                            // nueva, así el video sobrevive si después tocás
+                            // "atrás" o cambiás de sección (se minimiza en vez de
+                            // destruirse).
+                            onTap: () {
+                              // Sin esto, el campo de búsqueda conserva el foco
+                              // mientras mirás el video, y Android deja flotando
+                              // el manipulador del cursor: una "gota" del color
+                              // primario (ámbar) dibujada POR ENCIMA del video,
+                              // porque vive en la capa de superposición de la app.
+                              FocusScope.of(context).unfocus();
+                              // Se pasa la lista entera para que, al terminar
+                              // este video, siga solo con el siguiente.
+                              context.read<OnlineVideoProvider>().reproducir(
+                                    videoId: video.videoId,
+                                    titulo: video.title,
+                                    autor: video.author,
+                                    cola: _resultados
+                                        .map((r) => VideoEnCola(
+                                              videoId: r.videoId,
+                                              titulo: r.title,
+                                              autor: r.author,
+                                            ))
+                                        .toList(),
+                                    indice: index,
+                                  );
+                            },
+                          ),
+                        );
+                      },
+                    ),
         ),
       ],
     );

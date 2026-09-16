@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.caco" "\0"
-            VALUE "FileDescription", "musicapp" "\0"
+            VALUE "FileDescription", "CACOCAPP" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "musicapp" "\0"
+            VALUE "InternalName", "CACOCAPP" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.caco. All rights reserved." "\0"
-            VALUE "OriginalFilename", "musicapp.exe" "\0"
-            VALUE "ProductName", "musicapp" "\0"
+            VALUE "OriginalFilename", "CACOCAPP.exe" "\0"
+            VALUE "ProductName", "CACOCAPP" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
