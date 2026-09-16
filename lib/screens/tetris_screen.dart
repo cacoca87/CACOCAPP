@@ -187,29 +187,45 @@ class _TetrisScreenState extends State<TetrisScreen>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              // Mover a la izquierda de la pantalla, girar y bajar a la
+              // derecha: así cada pulgar tiene lo suyo y no hay que
+              // cruzar la mano, como en el aparatito original.
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  BotonJuego(
-                    icono: Icons.chevron_left_rounded,
-                    tooltip: 'Izquierda',
-                    onTap: () => _accion(_juego.moverIzquierda),
+                  Row(
+                    children: [
+                      BotonJuego(
+                        icono: Icons.chevron_left_rounded,
+                        tooltip: 'Izquierda',
+                        onTap: () => _accion(_juego.moverIzquierda),
+                      ),
+                      const SizedBox(width: 12),
+                      BotonJuego(
+                        icono: Icons.chevron_right_rounded,
+                        tooltip: 'Derecha',
+                        onTap: () => _accion(_juego.moverDerecha),
+                      ),
+                    ],
                   ),
-                  BotonJuego(
-                    icono: Icons.rotate_right_rounded,
-                    tooltip: 'Rotar',
-                    onTap: () => _accion(_juego.rotar),
-                  ),
-                  BotonJuego(
-                    icono: Icons.keyboard_double_arrow_down_rounded,
-                    tooltip: 'Bajar del todo',
-                    onTap: () => _accion(_juego.caidaRapida),
-                  ),
-                  BotonJuego(
-                    icono: Icons.chevron_right_rounded,
-                    tooltip: 'Derecha',
-                    onTap: () => _accion(_juego.moverDerecha),
+                  Row(
+                    children: [
+                      BotonJuego(
+                        icono: Icons.keyboard_arrow_down_rounded,
+                        tooltip: 'Bajar',
+                        onTap: () => _accion(() => _juego.bajar()),
+                      ),
+                      const SizedBox(width: 12),
+                      BotonJuego(
+                        icono: Icons.rotate_right_rounded,
+                        tooltip: 'Girar',
+                        // Girar NO se repite: mantener apretado haría
+                        // dar vueltas la pieza sin control.
+                        repetible: false,
+                        onTap: () => _accion(_juego.rotar),
+                      ),
+                    ],
                   ),
                 ],
               ),

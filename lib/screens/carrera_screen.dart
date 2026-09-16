@@ -113,15 +113,12 @@ class _CarreraScreenState extends State<CarreraScreen>
     _programarReloj();
   }
 
-  /// Arma la matriz de colores que dibuja el tablero: los rivales más tu
-  /// auto en la fila de abajo.
-  List<List<int>> get _vista {
-    final v = _juego.rivales
-        .map((fila) => fila.map((r) => r ? _colorRival : 0).toList())
-        .toList();
-    v[_juego.filaJugador][_juego.carrilJugador] = _colorJugador;
-    return v;
-  }
+  /// La pista tal como hay que dibujarla. La arma la lógica, que es
+  /// quien sabe la forma de los autos.
+  List<List<int>> get _vista => _juego.vista(
+        colorJugador: _colorJugador,
+        colorRival: _colorRival,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +164,9 @@ class _CarreraScreenState extends State<CarreraScreen>
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
+                // Menos margen que antes: la pista pasó de 3 casilleros
+                // de ancho a 9, y ahora sí aprovecha la pantalla.
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Stack(
                   children: [
                     TableroJuego(celdas: _vista),

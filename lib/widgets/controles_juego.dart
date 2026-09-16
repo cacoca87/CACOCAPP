@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../styles/app_theme.dart';
@@ -5,11 +6,20 @@ import '../styles/app_theme.dart';
 /// Botón redondo de los controles de los juegos. Es grande a propósito:
 /// se juega con el pulgar y en movimiento, así que un botón chico se
 /// falla todo el tiempo.
-class BotonJuego extends StatelessWidget {
+///
+/// Mantenerlo apretado repite la acción, cada vez más rápido. Sin eso
+/// había que dar un toque por cada casillero, que para mover una pieza
+/// de un lado al otro son ocho o nueve toques y se siente brusco.
+class BotonJuego extends StatefulWidget {
   final IconData icono;
   final VoidCallback onTap;
   final String tooltip;
   final double tamano;
+
+  /// Si es `false`, la acción se dispara una sola vez por toque. Sirve
+  /// para cosas que no tiene sentido repetir, como tirar la pieza al
+  /// fondo de una vez.
+  final bool repetible;
 
   const BotonJuego({
     super.key,
@@ -17,25 +27,70 @@ class BotonJuego extends StatelessWidget {
     required this.onTap,
     required this.tooltip,
     this.tamano = 62,
+    this.repetible = true,
   });
+
+  @override
+  State<BotonJuego> createState() => _BotonJuegoState();
+}
+
+class _BotonJuegoState extends State<BotonJuego> {
+  Timer? _repeticion;
+  int _vecesRepetido = 0;
+
+  /// Cuánto se espera antes de empezar a repetir. Sin esta pausa, un
+  /// toque normal dispararía dos acciones.
+  static const _esperaInicial = Duration(milliseconds: 300);
+
+  @override
+  void dispose() {
+    _repeticion?.cancel();
+    super.dispose();
+  }
+
+  void _presionar() {
+    HapticFeedback.selectionClick();
+    widget.onTap();
+    if (!widget.repetible) return;
+    _vecesRepetido = 0;
+    _repeticion = Timer(_esperaInicial, _repetir);
+  }
+
+  void _repetir() {
+    widget.onTap();
+    _vecesRepetido++;
+    // Acelera con cada repetición, hasta un tope: mantener apretado
+    // tiene que sentirse como que la pieza se desliza, no como toques
+    // sueltos muy seguidos.
+    final ms = (150 - _vecesRepetido * 12).clamp(55, 150);
+    _repeticion = Timer(Duration(milliseconds: ms), _repetir);
+  }
+
+  void _soltar() {
+    _repeticion?.cancel();
+    _repeticion = null;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: Material(
         color: AppTheme.surfaceRaised,
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
-          onTap: () {
-            HapticFeedback.selectionClick();
-            onTap();
-          },
+          // La acción se dispara en `onTapDown` y no en `onTap` para que
+          // la repetición pueda arrancar apenas se apoya el dedo.
+          onTapDown: (_) => _presionar(),
+          onTapUp: (_) => _soltar(),
+          onTapCancel: _soltar,
+          onTap: () {},
           child: SizedBox(
-            width: tamano,
-            height: tamano,
-            child: Icon(icono, color: AppTheme.amber, size: tamano * 0.42),
+            width: widget.tamano,
+            height: widget.tamano,
+            child: Icon(widget.icono,
+                color: AppTheme.amber, size: widget.tamano * 0.42),
           ),
         ),
       ),

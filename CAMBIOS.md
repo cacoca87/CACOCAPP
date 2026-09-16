@@ -1532,3 +1532,70 @@ guarda al terminar, antes de tocar el récord.
 
 `flutter analyze`, `flutter test` (81), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 68. La gota naranja, el auto-avance de YouTube, y los juegos a tu gusto
+
+La barra del video quedó andando. Esto es todo lo que reportaste después.
+
+### La "gota anaranjada": era el cursor del buscador
+
+**Archivo:** `lib/screens/dual_search_screen.dart`
+
+Aparecía solo en las pantallas de video y nunca en los juegos, lo que ya decía
+que era de la app y no del celular. Es el **manipulador del cursor del campo de
+búsqueda**: Android/Flutter lo dibuja con forma de gota, del color primario del
+tema -- que en esta app es el ámbar -- y lo pone en la capa de superposición,
+por encima de todo lo demás.
+
+El campo de búsqueda **nunca perdía el foco** al tocar un resultado, así que el
+cursor seguía ahí con su manipulador flotando sobre el video. Ahora se le quita
+el foco al elegir un video.
+
+### Al terminar un video no seguía con el siguiente
+
+**Archivos:** `lib/providers/online_video_provider.dart`, `dual_search_screen.dart`
+
+Al tocar un resultado ahora se le pasa **la lista entera** de resultados y la
+posición elegida. El provider escucha el estado del reproductor y, cuando llega
+`ended`, pasa solo al siguiente, como cualquier reproductor.
+
+Hay una guarda para no encadenar saltos: el estado `ended` puede llegar más de
+una vez seguida, y sin ella un solo final podía saltear varios videos de un
+tirón.
+
+### Bloques: controles por mano y repetición al mantener apretado
+
+**Archivos:** `lib/widgets/controles_juego.dart`, `lib/screens/tetris_screen.dart`
+
+- **Los controles se separaron por mano**, como pediste: mover izquierda y
+  derecha del lado izquierdo de la pantalla, bajar y girar del derecho. Antes
+  estaban los cuatro en fila y había que cruzar la mano.
+- **Mantener apretado repite la acción, cada vez más rápido.** Antes hacía falta
+  un toque por casillero: mover una pieza de un lado al otro eran ocho o nueve
+  toques, y por eso se sentía brusco.
+- **Girar es el único que no se repite**: mantenerlo apretado haría dar vueltas
+  la pieza sin control.
+- El botón de "bajar del todo" pasó a ser un "bajar" normal, que con la
+  repetición ya cumple la misma función de forma más controlable.
+
+### Carrera: ahora son autos de verdad, y la pista usa la pantalla
+
+**Archivos:** `lib/utils/carrera_logica.dart` (reescrito),
+`test/utils/carrera_logica_test.dart`, `lib/screens/carrera_screen.dart`
+
+Tenías razón en las dos cosas. Antes cada auto era **un solo cuadradito** y la
+pista tenía tres casilleros de ancho, o sea que sobraba pantalla por todos
+lados.
+
+Ahora los autos se dibujan con la silueta del juego original -- techo, capó
+ancho, cuerpo y ruedas traseras, una figura de 4×3 casilleros -- y por lo tanto
+cada carril mide tres casilleros. La pista pasó de 3 columnas a **9**, y el
+margen lateral bajó de 40 a 12 píxeles.
+
+Por dentro cambió el modelo: en vez de una grilla de booleanos, los rivales son
+ahora objetos con su carril y su posición, y el choque se calcula viendo si las
+filas de los dos autos se superponen. Hay un test que dibuja la vista y verifica
+que el auto ocupe tantos casilleros como su silueta, no uno solo.
+
+`flutter analyze`, `flutter test` (**85**, subieron de 81), el chequeo de formato
+de todo el repo y `flutter build apk --release` salieron limpios.

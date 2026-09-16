@@ -245,12 +245,29 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                         // nueva, así el video sobrevive si después tocás
                         // "atrás" o cambiás de sección (se minimiza en vez de
                         // destruirse).
-                        onTap: () =>
-                            context.read<OnlineVideoProvider>().reproducir(
-                                  videoId: video.videoId,
-                                  titulo: video.title,
-                                  autor: video.author,
-                                ),
+                        onTap: () {
+                          // Sin esto, el campo de búsqueda conserva el foco
+                          // mientras mirás el video, y Android deja flotando
+                          // el manipulador del cursor: una "gota" del color
+                          // primario (ámbar) dibujada POR ENCIMA del video,
+                          // porque vive en la capa de superposición de la app.
+                          FocusScope.of(context).unfocus();
+                          // Se pasa la lista entera para que, al terminar
+                          // este video, siga solo con el siguiente.
+                          context.read<OnlineVideoProvider>().reproducir(
+                                videoId: video.videoId,
+                                titulo: video.title,
+                                autor: video.author,
+                                cola: _resultados
+                                    .map((r) => VideoEnCola(
+                                          videoId: r.videoId,
+                                          titulo: r.title,
+                                          autor: r.author,
+                                        ))
+                                    .toList(),
+                                indice: index,
+                              );
+                        },
                       ),
                     );
                   },
