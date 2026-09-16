@@ -131,5 +131,64 @@ void main() {
       expect(await segunda.getEmbeddedCover(url), isNull);
       expect(llamadas, 1);
     });
+
+    test('una marca vieja de "sin carátula" se descarta y se vuelve a pedir',
+        () async {
+      // Lo importante de la corrección: la regla nueva no sirve de nada
+      // si lo que quedó mal escrito en el celular se sigue leyendo.
+      await carpetaDeCache.create(recursive: true);
+      await File('${carpetaDeCache.path}/$clave.nocover')
+          .writeAsBytes(const []);
+      await File('${carpetaDeCache.path}/$clave.noartist')
+          .writeAsBytes(const []);
+
+      var pidio = false;
+      final servicio = Id3CoverService.testable(MockClient((_) async {
+        pidio = true;
+        return http.Response.bytes(List<int>.filled(2048, 0), 206);
+      }));
+
+      await servicio.getEmbeddedCover(url);
+      expect(pidio, isTrue,
+          reason: 'la marca vieja no puede seguir tapando la consulta');
+    });
+
+    test('una carátula ya guardada NO se borra: volver a bajarla gasta datos',
+        () async {
+      await carpetaDeCache.create(recursive: true);
+      final guardada = File('${carpetaDeCache.path}/$clave.jpg');
+      await guardada.writeAsBytes(const [1, 2, 3]);
+      await File('${carpetaDeCache.path}/$clave.nocover')
+          .writeAsBytes(const []);
+
+      var pidio = false;
+      final servicio = Id3CoverService.testable(MockClient((_) async {
+        pidio = true;
+        return http.Response.bytes(List<int>.filled(2048, 0), 206);
+      }));
+
+      expect(await servicio.getEmbeddedCover(url), [1, 2, 3]);
+      expect(pidio, isFalse);
+      expect(await guardada.exists(), isTrue);
+    });
+
+    test('la limpieza se hace una sola vez', () async {
+      await carpetaDeCache.create(recursive: true);
+      final servicio = Id3CoverService.testable(
+        MockClient((_) async => http.Response('', 503)),
+      );
+      await servicio.getEmbeddedCover(url);
+      await esperarEscrituras();
+
+      // Una marca escrita DESPUÉS de la limpieza tiene que sobrevivir:
+      // si no, la app volvería a pedir lo mismo en cada apertura.
+      final marcaNueva = File('${carpetaDeCache.path}/otra.mp3.nocover');
+      await marcaNueva.writeAsBytes(const []);
+      final otro = Id3CoverService.testable(
+        MockClient((_) async => http.Response('', 503)),
+      );
+      await otro.getEmbeddedCover('https://ejemplo.test/otra.mp3');
+      expect(await marcaNueva.exists(), isTrue);
+    });
   });
 }

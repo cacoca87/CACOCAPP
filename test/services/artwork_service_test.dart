@@ -100,5 +100,41 @@ void main() {
       expect(await sano.getCoverUrl('Otra', 'Alguien'),
           'https://itunes.test/d/600x600bb.jpg');
     });
+
+    test('lo guardado con la regla vieja se descarta y se vuelve a preguntar',
+        () async {
+      // El "" guardado significaba "ya busqué, no hay carátula". Si
+      // quedó escrito por una apertura sin internet, tiene que
+      // descartarse: si no, la corrección no se nota nunca.
+      SharedPreferences.setMockInitialValues({
+        'artwork_cache_roxanne|the police': '',
+      });
+
+      var pidio = false;
+      final servicio = ArtworkService.testable(MockClient((_) async {
+        pidio = true;
+        return http.Response(
+            _respuestaConCaratula('https://itunes.test/x/600x600bb.jpg'), 200);
+      }));
+
+      expect(await servicio.getCoverUrl('Roxanne', 'The Police'),
+          'https://itunes.test/x/600x600bb.jpg');
+      expect(pidio, isTrue);
+    });
+
+    test('lo guardado con la regla vieja además se borra del disco', () async {
+      SharedPreferences.setMockInitialValues({
+        'artwork_cache_vieja|banda': '',
+        'otra_cosa_que_no_es_nuestra': 'se queda',
+      });
+      final servicio = ArtworkService.testable(
+        MockClient((_) async => http.Response(_sinResultados, 200)),
+      );
+      await servicio.getCoverUrl('Vieja', 'Banda');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('artwork_cache_vieja|banda'), isFalse);
+      expect(prefs.getString('otra_cosa_que_no_es_nuestra'), 'se queda');
+    });
   });
 }

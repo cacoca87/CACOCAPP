@@ -187,5 +187,35 @@ void main() {
       expect(letra.textoPlano, 'Guardada');
       expect(pidioRed, isFalse);
     });
+
+    test('una letra guardada con la regla vieja se descarta', () async {
+      // Sin esto la corrección no se nota: lo guardado se lee ANTES de
+      // buscar nada, así que "Amén" seguiría mostrando la letra en
+      // inglés de otra canción para siempre.
+      SharedPreferences.setMockInitialValues({
+        'lyrics_cache_v1_roxanne|the police':
+            '{"plano":"letra vieja equivocada","lineas":null}',
+      });
+
+      final servicio = LyricsService.testable(MockClient((request) async {
+        if (request.url.host != 'lrclib.net') {
+          return http.Response('Not Found', 404);
+        }
+        return http.Response(
+          jsonEncode([
+            {'syncedLyrics': null, 'plainLyrics': 'la letra correcta'}
+          ]),
+          200,
+        );
+      }));
+
+      final letra = await servicio.getLyrics(
+          title: 'Roxanne', artist: 'The Police', urlCancion: '');
+      expect(letra.textoPlano, 'la letra correcta');
+
+      // Y además se borra, para no dejarla ocupando lugar.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('lyrics_cache_v1_roxanne|the police'), isFalse);
+    });
   });
 }

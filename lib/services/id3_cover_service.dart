@@ -74,7 +74,43 @@ class Id3CoverService {
     final dir = Directory('${base.path}/id3_covers');
     if (!await dir.exists()) await dir.create(recursive: true);
     _dirCache = dir;
+    await _borrarLasMarcasDeLaReglaVieja(dir);
     return dir;
+  }
+
+  /// Borra, UNA sola vez, las marcas de "esta canción no tiene
+  /// carátula / álbum / artista" que quedaron escritas por el fallo
+  /// corregido en la vuelta 29.
+  ///
+  /// Hasta entonces, una apertura de la app sin internet anotaba esas
+  /// marcas como si fueran definitivas, y como se leen ANTES de pedir
+  /// nada, la biblioteca se quedaba con el dibujito gris y "Artista
+  /// Desconocido" para siempre, aunque el MP3 sí trajera los datos.
+  /// Corregir la regla no alcanzaba: lo ya escrito seguía ahí.
+  ///
+  /// Se borran SOLO las marcas de "no hay". Las carátulas y los textos
+  /// que sí se encontraron se conservan: volver a bajarlos costaría
+  /// datos móviles sin ninguna necesidad.
+  ///
+  /// El aviso de que ya se hizo es un archivito en la misma carpeta,
+  /// para no arrastrar una dependencia más solo por esto.
+  Future<void> _borrarLasMarcasDeLaReglaVieja(Directory dir) async {
+    try {
+      final yaSeHizo = File('${dir.path}/.marcas_revisadas_v2');
+      if (await yaSeHizo.exists()) return;
+
+      const marcasDeNoHay = ['.nocover', '.noalbum', '.noartist'];
+      await for (final archivo in dir.list()) {
+        if (archivo is! File) continue;
+        if (marcasDeNoHay.any(archivo.path.endsWith)) {
+          await archivo.delete();
+        }
+      }
+      await yaSeHizo.writeAsBytes(const []);
+    } catch (_) {
+      // Si no se pudo, no pasa nada grave: la app funciona igual, solo
+      // que esas canciones siguen sin su carátula hasta la próxima.
+    }
   }
 
   /// Nombre de archivo seguro derivado de la URL (usamos el último

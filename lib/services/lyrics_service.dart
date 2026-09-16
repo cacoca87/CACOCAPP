@@ -43,7 +43,36 @@ class LyricsService {
 
   String _clave(String title, String artist) =>
       '${title.toLowerCase()}|${artist.toLowerCase()}';
-  String _prefKey(String clave) => 'lyrics_cache_v1_$clave';
+
+  /// La `v2` no es decorativa: sube de versión a propósito para que se
+  /// descarte TODO lo que se guardó con la regla vieja.
+  ///
+  /// Hasta la vuelta 42, la app tomaba el primer resultado de lrclib a
+  /// ciegas y guardaba en disco letras que eran de otra canción (el
+  /// caso comprobado: "Refuse Amen", en inglés, para "Amén"). Como lo
+  /// guardado se lee ANTES de buscar nada, esas letras equivocadas
+  /// seguirían mostrándose para siempre aunque la regla nueva esté
+  /// bien. Cambiando el nombre, se vuelven a buscar una sola vez.
+  String _prefKey(String clave) => 'lyrics_cache_v2_$clave';
+  static const String _prefijoViejo = 'lyrics_cache_v1_';
+  // Por instancia y no `static`: en la app hay una sola (`instance`),
+  // asi que se limpia una vez igual, pero deja de depender del orden en
+  // que corren los tests.
+  bool _yaSeLimpioLoViejo = false;
+
+  /// Borra de una sola vez las letras guardadas con la regla vieja.
+  /// Solo es para no dejar basura ocupando lugar: con el nombre nuevo
+  /// ya no se leen igual.
+  Future<void> _limpiarLoGuardadoConLaReglaVieja(
+      SharedPreferences prefs) async {
+    if (_yaSeLimpioLoViejo) return;
+    _yaSeLimpioLoViejo = true;
+    try {
+      for (final clave in prefs.getKeys().toList()) {
+        if (clave.startsWith(_prefijoViejo)) await prefs.remove(clave);
+      }
+    } catch (_) {}
+  }
 
   /// [duracion] es cuánto dura de verdad la canción o el video que está
   /// sonando. Sirve para descartar resultados que son otra canción con
@@ -60,6 +89,7 @@ class LyricsService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      await _limpiarLoGuardadoConLaReglaVieja(prefs);
       final guardado = prefs.getString(_prefKey(clave));
       if (guardado != null) {
         final letra = _deserializar(guardado);
