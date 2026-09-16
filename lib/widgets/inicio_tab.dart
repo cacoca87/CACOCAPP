@@ -173,64 +173,6 @@ class InicioTab extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Accesos rápidos a todo lo que antes solo vivía en el menú
-          // lateral (Playlists, Artistas, Álbumes, Música Descargada,
-          // Estadísticas, Recomendaciones, Descubrir) -- sin esto, esas
-          // secciones no tenían ninguna presencia visual en Inicio y
-          // solo se llegaba a ellas abriendo el drawer.
-          Text("Explorar",
-              style: AppTheme.heading
-                  .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
-          const SizedBox(height: 10),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: esPantallaPequena ? 3 : 5,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 0.95,
-            children: [
-              _AccesoRapido(
-                icono: Icons.queue_music_rounded,
-                etiqueta: "Playlists",
-                onTap: onVerTodoPlaylists,
-              ),
-              _AccesoRapido(
-                icono: Icons.person_rounded,
-                etiqueta: "Artistas",
-                onTap: () => onIrASeccion("Artistas"),
-              ),
-              _AccesoRapido(
-                icono: Icons.album_rounded,
-                etiqueta: "Álbumes",
-                onTap: () => onIrASeccion("Álbumes"),
-              ),
-              _AccesoRapido(
-                icono: Icons.download_done_rounded,
-                etiqueta: "Descargada",
-                onTap: () => onIrASeccion("Música Descargada"),
-              ),
-              _AccesoRapido(
-                icono: Icons.auto_awesome_rounded,
-                etiqueta: "Recomendado",
-                onTap: onVerTodoRecomendaciones,
-              ),
-              _AccesoRapido(
-                icono: Icons.travel_explore_rounded,
-                etiqueta: "Descubrir",
-                onTap: () => onIrASeccion("Descubrir"),
-              ),
-              _AccesoRapido(
-                icono: Icons.bar_chart_rounded,
-                etiqueta: "Estadísticas",
-                onTap: () => onIrASeccion("Estadísticas"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
           if (!hayContenidoPersonalizado)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -293,6 +235,69 @@ class InicioTab extends StatelessWidget {
               esPantallaPequena: esPantallaPequena,
               onVerTodo: onVerTodoRecomendaciones,
             ),
+          const SizedBox(height: 20),
+
+          // Accesos rápidos a todo lo que antes solo vivía en el menú
+          // lateral (Playlists, Artistas, Álbumes, Música Descargada,
+          // Estadísticas, Recomendaciones, Descubrir) -- sin esto, esas
+          // secciones no tenían ninguna presencia visual en Inicio y
+          // solo se llegaba a ellas abriendo el drawer.
+          //
+          // Va DEBAJO de los carruseles a propósito. Antes estaba
+          // arriba de todo, y había que pasar una pantalla entera de
+          // recuadros grises antes de ver una sola tapa de disco --
+          // siendo que las carátulas son lo más lindo que tiene la app.
+          // Primero el contenido, después la navegación.
+          Text("Explorar",
+              style: AppTheme.heading
+                  .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+          const SizedBox(height: 10),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: esPantallaPequena ? 3 : 5,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.95,
+            children: [
+              _AccesoRapido(
+                icono: Icons.queue_music_rounded,
+                etiqueta: "Playlists",
+                onTap: onVerTodoPlaylists,
+              ),
+              _AccesoRapido(
+                icono: Icons.person_rounded,
+                etiqueta: "Artistas",
+                onTap: () => onIrASeccion("Artistas"),
+              ),
+              _AccesoRapido(
+                icono: Icons.album_rounded,
+                etiqueta: "Álbumes",
+                onTap: () => onIrASeccion("Álbumes"),
+              ),
+              _AccesoRapido(
+                icono: Icons.download_done_rounded,
+                etiqueta: "Descargada",
+                onTap: () => onIrASeccion("Música Descargada"),
+              ),
+              _AccesoRapido(
+                icono: Icons.auto_awesome_rounded,
+                etiqueta: "Recomendado",
+                onTap: onVerTodoRecomendaciones,
+              ),
+              _AccesoRapido(
+                icono: Icons.travel_explore_rounded,
+                etiqueta: "Descubrir",
+                onTap: () => onIrASeccion("Descubrir"),
+              ),
+              _AccesoRapido(
+                icono: Icons.bar_chart_rounded,
+                etiqueta: "Estadísticas",
+                onTap: () => onIrASeccion("Estadísticas"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

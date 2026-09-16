@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 
 /// Muestra la cola de reproducción actual (la playlist que se está
@@ -25,8 +26,10 @@ class QueueScreen extends StatelessWidget {
             style: AppTheme.subheading.copyWith(fontSize: 16)),
       ),
       body: cola.isEmpty
-          ? Center(
-              child: Text("No hay ninguna cola activa", style: AppTheme.body),
+          ? const EstadoVacio(
+              icono: Icons.queue_music_rounded,
+              mensaje: "No hay ninguna cola activa. Poné a sonar una canción "
+                  "y acá vas a ver qué sigue después.",
             )
           : ListView.builder(
               itemCount: cola.length,

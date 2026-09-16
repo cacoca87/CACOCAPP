@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
 
@@ -53,25 +54,12 @@ class DownloadedSongsView extends StatelessWidget {
         ),
       ),
       body: descargadas.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.download_done_rounded,
-                        size: 48, color: AppTheme.mutedInk),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Todavía no descargaste ninguna canción. Tocá el ícono de "
-                      "descarga en cualquier canción de tu biblioteca para guardarla "
-                      "offline.",
-                      style: AppTheme.body,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
+          ? const EstadoVacio(
+              icono: Icons.download_done_rounded,
+              mensaje:
+                  "Todavía no descargaste ninguna canción. Tocá el ícono de "
+                  "descarga en cualquier canción de tu biblioteca para "
+                  "guardarla y escucharla sin conexión.",
             )
           : ListView.builder(
               itemCount: descargadas.length,

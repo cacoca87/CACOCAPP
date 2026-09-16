@@ -5,6 +5,7 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/estado_vacio.dart';
 
 class LyricsScreen extends StatefulWidget {
   const LyricsScreen({super.key});
@@ -91,9 +92,10 @@ class _LyricsScreenState extends State<LyricsScreen> {
         centerTitle: true,
       ),
       body: cancion == null
-          ? Center(
-              child:
-                  Text("No hay canción reproduciéndose", style: AppTheme.body),
+          ? const EstadoVacio(
+              icono: Icons.lyrics_outlined,
+              mensaje: "No hay ninguna canción sonando. Reproducí algo y "
+                  "volvé acá para ver la letra.",
             )
           : FutureBuilder<Lyrics>(
               future: _future,

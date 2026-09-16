@@ -1254,3 +1254,60 @@ o en un `GestureDetector` sin saber por qué no sirve.
 
 `flutter analyze`, `flutter test` (59) y `flutter build apk --release` salieron
 limpios.
+
+## 63. Apariencia: contenido antes que navegación, progreso en el mini reproductor y estados vacíos unificados
+
+Diste el visto bueno a las sugerencias de apariencia. Se aplicaron las tres de
+mejor relación entre lo que se nota y lo que arriesga, manteniendo la identidad
+visual que ya tenía la app (negro cálido, ámbar, tipografía con serifas) porque
+es justamente lo que la distingue de un clon de Spotify.
+
+### La home mostraba los botones antes que la música
+
+**Archivo:** `lib/widgets/inicio_tab.dart`
+
+El orden era: tarjeta "Toda tu música" → tarjeta "Buscador Online" → grilla
+"Explorar" con siete recuadros grises → *y recién ahí* los cinco carruseles con
+las carátulas. Había que pasar una pantalla entera de botones grises antes de
+ver una sola tapa de disco, siendo que las carátulas son lo más lindo que tiene
+la app.
+
+La grilla "Explorar" bajó debajo de los carruseles. Las dos tarjetas grandes se
+quedaron arriba: son destinos principales y el Buscador Online es lo que
+distingue a esta app. No se sacó ningún acceso -- todos siguen estando, y
+además el menú lateral los tiene todos por duplicado.
+
+### Línea de progreso en el mini reproductor
+
+**Archivo:** `lib/widgets/mini_player.dart`
+
+Una línea de 2 píxeles arriba del mini reproductor que muestra cuánto va de la
+canción, como la de Spotify y YouTube Music. Reemplaza al borde superior que
+había antes, así que no ocupa ni un píxel más de alto: cuando no hay duración
+conocida queda en cero y se ve exactamente igual que el borde viejo.
+
+### Los cinco estados vacíos ahora se ven igual
+
+**Archivo nuevo:** `lib/widgets/estado_vacio.dart`
+**Archivos modificados:** `queue_screen.dart`, `lyrics_screen.dart`,
+`player_screen.dart`, `downloaded_songs_view.dart`, `vista_spotify_grid.dart`
+
+Cada pantalla resolvía su "acá no hay nada" por su cuenta, y ninguna se parecía
+a otra: dos tenían ícono y texto pero con tamaños distintos entre sí (48 y 64
+píxeles), y tres eran una sola línea de texto gris suelta en el medio de la
+pantalla, que se lee más como un error que como un estado normal.
+
+Ahora todas usan el mismo widget, y de paso los mensajes dicen **qué hacer**
+para salir del estado vacío en vez de solo constatar que está vacío: "No hay
+ninguna cola activa" pasó a "No hay ninguna cola activa. Poné a sonar una
+canción y acá vas a ver qué sigue después".
+
+### Nota sobre una sugerencia que no hizo falta
+
+Al revisar antes de proponer, encontré que el **color dinámico ya estaba
+implementado**: la pantalla completa del reproductor extrae la paleta de la
+carátula con `palette_generator`. Extenderlo al resto de la app queda como
+posible paso siguiente, no como algo faltante.
+
+`flutter analyze`, `flutter test` (59), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

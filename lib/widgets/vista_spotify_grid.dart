@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/song.dart';
 import '../styles/app_theme.dart';
+import 'estado_vacio.dart';
 import 'song_cover.dart';
 
 /// Grilla tipo Spotify usada para "Playlists", "Artistas" y "Álbumes".
@@ -37,17 +38,9 @@ class VistaSpotifyGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (elementos.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.library_music_outlined,
-                size: 64, color: AppTheme.mutedInk),
-            const SizedBox(height: 16),
-            Text("No hay $titulo disponibles",
-                style: AppTheme.body.copyWith(fontSize: 16)),
-          ],
-        ),
+      return EstadoVacio(
+        icono: Icons.library_music_outlined,
+        mensaje: "No hay $titulo disponibles todavía.",
       );
     }
 

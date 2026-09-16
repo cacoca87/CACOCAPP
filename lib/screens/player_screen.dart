@@ -12,6 +12,7 @@ import '../services/id3_cover_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/audio_effects_sheet.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
@@ -103,9 +104,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: Scaffold(
               backgroundColor: AppTheme.ink,
               appBar: AppBar(backgroundColor: Colors.transparent),
-              body: Center(
-                child: Text("No hay canción reproduciéndose",
-                    style: AppTheme.body),
+              body: const EstadoVacio(
+                icono: Icons.music_note_rounded,
+                mensaje: "No hay ninguna canción sonando. Elegí algo de tu "
+                    "biblioteca para empezar.",
               ),
             ),
           );
