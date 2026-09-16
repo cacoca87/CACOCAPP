@@ -289,12 +289,33 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       ),
     );
 
+    // El diálogo ya se cerró: el controlador no lo usa nadie más. Sin
+    // esto quedaba vivo para siempre, uno nuevo por cada vez que se
+    // abriera el diálogo.
+    controlador.dispose();
+
     if (nuevoNombre == null ||
         nuevoNombre.isEmpty ||
         nuevoNombre == nombreActual) {
       return;
     }
     if (!mounted) return;
+
+    // Las mismas reglas que al crear una biblioteca. Antes acá no se
+    // validaba nada: se podía renombrar una playlist a "Favoritos" (que
+    // es una vista propia de la app) o al nombre de otra que ya existía,
+    // y como las bibliotecas se buscan por nombre, la segunda quedaba
+    // inalcanzable.
+    if (nuevoNombre == "Principal (Drive)" || nuevoNombre == "Favoritos") {
+      _avisar(
+          '"$nuevoNombre" es un nombre reservado de la app. Probá con otro.');
+      return;
+    }
+    if (playlistProvider.playlists
+        .any((p) => p.id != playlistARenombrar.id && p.name == nuevoNombre)) {
+      _avisar('Ya tenés una biblioteca llamada "$nuevoNombre".');
+      return;
+    }
 
     playlistProvider.renamePlaylist(playlistARenombrar.id, nuevoNombre);
     setState(() {

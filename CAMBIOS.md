@@ -1906,3 +1906,46 @@ primero que lee quien abre el repo.
 
 `flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 74. Pasadas 11 a 15: renombrar una biblioteca no validaba nada
+
+### Pasada 11: leer entero el archivo más grande
+
+`pantalla_principal.dart` son 961 líneas y hasta ahora lo había leído por
+pedazos. Leyéndolo de punta a punta aparecieron **dos cosas en la misma
+función**, la de renombrar una biblioteca:
+
+1. **El controlador del campo de texto nunca se liberaba.** Es exactamente la
+   misma fuga que arreglé hace varias vueltas en el diálogo de "Nueva playlist",
+   y esta se me había pasado: quedaba uno vivo por cada vez que abrieras el
+   diálogo.
+2. **No validaba el nombre nuevo.** Crear una biblioteca sí comprueba que el
+   nombre no esté repetido ni sea uno reservado; renombrar no comprobaba nada.
+   Se podía renombrar una playlist a **"Favoritos"** -- que es una vista propia
+   de la app -- o al nombre de otra que ya existía. Y como las bibliotecas se
+   buscan por nombre, la segunda con el nombre repetido quedaba inalcanzable.
+
+Ahora renombrar usa las mismas reglas que crear, con los mismos avisos.
+
+### Pasada 12: todos los campos de texto
+
+Ya que aparecieron dos fugas del mismo tipo, revisé los seis
+`TextEditingController` de la app: **los seis tienen su liberación**. Los cuatro
+que viven en una pantalla se liberan en su `dispose`, y los dos de diálogos
+sueltos, apenas se cierra el diálogo.
+
+### Pasadas 13 a 15: sin hallazgos
+
+- **Eliminar una biblioteca**: pide confirmación, dice cuántas canciones tiene y
+  aclara que las canciones no se borran; deja el estado consistente después.
+- **`player_screen.dart`**: la extracción del color de la carátula comprueba
+  `mounted`, verifica que la canción no haya cambiado mientras tanto y atrapa
+  cualquier error. No tiene nada que liberar.
+- **Los dos patrones que ya dieron bugs repetidos en esta app** -- íconos que
+  parecen botones pero no lo son, y altos fijos con texto adentro -- se buscaron
+  en todo el proyecto. No queda ninguno de los dos. El ícono de "play" en los
+  resultados de YouTube parecía uno de esos, pero la fila entera es tocable, así
+  que es un indicador y no un botón roto.
+
+`flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.
