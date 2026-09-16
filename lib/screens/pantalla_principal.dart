@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
+import '../utils/bibliotecas_reservadas.dart';
 import '../utils/plural.dart';
 import '../models/song.dart';
 import '../providers/online_video_provider.dart';
@@ -27,18 +28,6 @@ import 'juegos_screen.dart';
 import 'noticias_screen.dart';
 import 'dual_search_screen.dart';
 import 'pantalla_principal_desktop.dart';
-
-/// Los nombres que la app usa para sus propias vistas de la barra
-/// lateral. Ninguna playlist puede llamarse asi: las bibliotecas se
-/// buscan por nombre, asi que una playlist llamada "Recientes" quedaba
-/// tapada por la vista del mismo nombre y era imposible de abrir.
-/// Antes la validacion solo cubria las dos primeras.
-const List<String> nombresReservadosDeBiblioteca = [
-  "Principal (Drive)",
-  "Favoritos",
-  "Recientes",
-  "Más Escuchadas",
-];
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -206,19 +195,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   void _crearBiblioteca() {
     final nombre = _nuevaBibController.text.trim();
-    if (nombre.isEmpty) return;
-
-    // Antes estos dos casos hacían `return` en silencio: tocabas
-    // "crear", no pasaba nada, y no había forma de saber por qué.
-    if (nombresReservadosDeBiblioteca.contains(nombre)) {
-      _avisar('"$nombre" es un nombre reservado de la app. Probá con otro.');
-      return;
-    }
-
     final provider = context.read<PlaylistProvider>();
-    final yaExiste = provider.playlists.any((p) => p.name == nombre);
-    if (yaExiste) {
-      _avisar('Ya tenés una biblioteca llamada "$nombre".');
+
+    // Antes estos casos hacían `return` en silencio: tocabas "crear",
+    // no pasaba nada, y no había forma de saber por qué. Las reglas
+    // viven en `utils/bibliotecas_reservadas.dart` para que los tres
+    // lugares que crean o renombran playlists usen las mismas.
+    final error = errorDeNombreDeBiblioteca(
+      nombre,
+      nombresExistentes: provider.playlists.map((p) => p.name),
+    );
+    if (error != null) {
+      // El campo vacío no merece un cartel: simplemente no hace nada.
+      if (nombre.isNotEmpty) _avisar(error);
       return;
     }
 
@@ -327,19 +316,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
     if (!mounted) return;
 
-    // Las mismas reglas que al crear una biblioteca. Antes acá no se
-    // validaba nada: se podía renombrar una playlist a "Favoritos" (que
-    // es una vista propia de la app) o al nombre de otra que ya existía,
-    // y como las bibliotecas se buscan por nombre, la segunda quedaba
+    // Las mismas reglas que al crear una biblioteca, del mismo lugar
+    // (`utils/bibliotecas_reservadas.dart`). Antes acá no se validaba
+    // nada: se podía renombrar una playlist a "Favoritos" (que es una
+    // vista propia de la app) o al nombre de otra que ya existía, y
+    // como las bibliotecas se buscan por nombre, la segunda quedaba
     // inalcanzable.
-    if (nombresReservadosDeBiblioteca.contains(nuevoNombre)) {
-      _avisar(
-          '"$nuevoNombre" es un nombre reservado de la app. Probá con otro.');
-      return;
-    }
-    if (playlistProvider.playlists
-        .any((p) => p.id != playlistARenombrar.id && p.name == nuevoNombre)) {
-      _avisar('Ya tenés una biblioteca llamada "$nuevoNombre".');
+    final error = errorDeNombreDeBiblioteca(
+      nuevoNombre,
+      nombresExistentes: playlistProvider.playlists.map((p) => p.name),
+      nombreQueSeReemplaza: nombreActual,
+    );
+    if (error != null) {
+      _avisar(error);
       return;
     }
 

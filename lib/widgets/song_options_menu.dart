@@ -6,6 +6,7 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../styles/app_theme.dart';
+import '../utils/bibliotecas_reservadas.dart';
 
 /// Menú (⋮) de "más opciones" para una canción: favoritos, descargar
 /// offline, agregar/quitar de playlists. Extraído de
@@ -32,9 +33,9 @@ class SongOptionsMenu extends StatelessWidget {
     final estaDescargada = playerProvider.isDownloaded(cancion.id);
 
     Playlist? playlistActual;
-    if (bibliotecaSeleccionada != "Principal (Drive)" &&
-        bibliotecaSeleccionada != "Favoritos" &&
-        bibliotecaSeleccionada != "Recientes") {
+    // Los cuatro nombres reservados vienen de un solo lugar: antes acá
+    // faltaba "Más Escuchadas".
+    if (!nombresReservadosDeBiblioteca.contains(bibliotecaSeleccionada)) {
       for (final p in playlistProvider.playlists) {
         if (p.name == bibliotecaSeleccionada) {
           playlistActual = p;
@@ -217,11 +218,32 @@ Future<void> mostrarDialogoNuevaPlaylist(
   // se acumulaba uno nuevo cada vez que se abría el diálogo.
   controlador.dispose();
 
-  if (nombre == null || nombre.isEmpty) return;
+  if (nombre == null) return;
   if (!context.mounted) return;
 
   final provider = context.read<PlaylistProvider>();
+
+  // Este era el tercer lugar donde se crean playlists, y el unico que
+  // no validaba nada: desde aca se podia crear una llamada "Favoritos"
+  // o "Recientes" y esquivar las reglas de la barra lateral. Un nombre
+  // repetido SI vale: en ese caso se agrega a la que ya existe, que es
+  // lo que la persona esta pidiendo.
   final yaExiste = provider.playlists.any((p) => p.name == nombre);
+  if (!yaExiste) {
+    final error = errorDeNombreDeBiblioteca(
+      nombre,
+      nombresExistentes: const [],
+    );
+    if (error != null) {
+      if (nombre.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), duration: const Duration(seconds: 3)),
+        );
+      }
+      return;
+    }
+  }
+
   final playlist = yaExiste
       ? provider.playlists.firstWhere((p) => p.name == nombre)
       : provider.createPlaylist(nombre);
