@@ -96,8 +96,12 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
       ),
       body: Column(
         children: [
+          // El alto crece con la escala de texto del sistema: con la
+          // letra grande, un alto fijo dejaba los chips cortados. Mismo
+          // motivo que en `mini_player.dart`.
           SizedBox(
-            height: 44,
+            height: 44 *
+                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),

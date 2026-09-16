@@ -59,6 +59,14 @@
     </application>
 
     <queries>
+        <!-- Necesario desde Android 11: sin declarar que la app va a
+             abrir enlaces, `url_launcher` no "ve" ningún navegador
+             instalado y el botón de abrir una noticia falla en silencio.
+             Android oculta por defecto qué otras apps hay instaladas. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

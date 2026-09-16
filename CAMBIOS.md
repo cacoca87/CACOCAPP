@@ -1740,3 +1740,55 @@ noticias).
 formato de todo el repo y `flutter build apk --release` salieron limpios. Se
 verificó además que el nombre "Noticias" coincida en los tres lugares donde se
 usa.
+
+## 71. Repaso sobre lo recién agregado: un botón que no habría funcionado
+
+Antes de que lo pruebes, repasé la sección de Noticias y la app entera. Lo más
+importante es un bug que habría aparecido apenas tocaras una noticia.
+
+### El botón de abrir una noticia no habría funcionado en ningún celular moderno
+
+**Archivo:** `android/app/src/main/AndroidManifest.xml`
+
+Desde Android 11, una app **no puede ver qué otras apps hay instaladas** salvo
+que lo declare. `url_launcher` necesita eso para encontrar un navegador; sin la
+declaración, `launchUrl` devuelve que no pudo abrir y el usuario solo ve el
+aviso de error. Tu Xiaomi y el Samsung del profesor están muy por encima de esa
+versión, así que habría fallado en los dos.
+
+Se agregó al manifiesto la declaración de que la app abre enlaces `https`. Esto
+no se detecta compilando ni con los tests: solo aparece al tocar el botón, que
+es justo lo que ibas a hacer.
+
+### Otras dos filas de chips con el mismo problema del mini reproductor
+
+**Archivos:** `lib/screens/noticias_screen.dart`, `lib/screens/descubrir_screen.dart`
+
+Buscando el mismo patrón que arreglé en el mini reproductor, aparecieron dos
+filas de chips con alto fijo: las categorías de Noticias (44 píxeles) y los
+géneros de Descubrir (40). Con la letra del sistema más grande, los chips
+quedaban cortados. Una de las dos era código que acababa de escribir yo en la
+vuelta anterior, lo cual dice bastante de por qué conviene repasar lo propio.
+
+Las dos crecen ahora con la escala de texto, con el mismo tope.
+
+### Limpieza
+
+Se borró `NoticiasService.limpiarCache()`, un método que escribí en la vuelta
+anterior y que no usa nadie.
+
+### Lo que se revisó y estaba bien
+
+- Sin archivos huérfanos.
+- Las dos dependencias nuevas (`xml` y `url_launcher`) están en uso; no quedó
+  ninguna de más.
+- El resto de los altos fijos que encontré no contienen texto (un indicador de
+  carga, un cuadrado de color, un gráfico), así que la escala de fuente no los
+  afecta.
+- `NoticiasScreen` no tiene temporizadores ni controladores que liberar, y sus
+  `setState` posteriores a un `await` comprueban `mounted` y el contador de
+  generación.
+- Los nombres de sección coinciden en los tres lugares, ahora con "Noticias".
+
+`flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

@@ -173,8 +173,12 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
           // Chips de género: buscan por tags reales de Jamendo (no por
           // texto), así que encuentran música de ese género aunque la
           // palabra en sí no aparezca en ningún título.
+          // El alto crece con la escala de texto del sistema: con la
+          // letra grande, un alto fijo dejaba los chips cortados. Mismo
+          // motivo que en `mini_player.dart`.
           SizedBox(
-            height: 40,
+            height: 40 *
+                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6),
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),

@@ -115,8 +115,6 @@ class NoticiasService {
       );
     }
   }
-
-  void limpiarCache() => _cache.clear();
 }
 
 /// Decodifica como UTF-8 y, si los bytes no son UTF-8 válido, cae en
