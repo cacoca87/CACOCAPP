@@ -40,6 +40,12 @@ class ArtworkService {
     }
 
     // 2) No estaba guardado: lo buscamos en iTunes, como antes.
+    // `respuestaValida` distingue "iTunes contesto y no tiene esta
+    // cancion" de "no hubo internet". Antes los dos casos se guardaban
+    // igual en disco, asi que abrir la app una sola vez sin conexion
+    // dejaba TODA la biblioteca marcada como "sin caratula" para
+    // siempre, con el dibujito gris en cada fila.
+    var respuestaValida = false;
     try {
       final term = Uri.encodeComponent('$artist $title');
       final url = Uri.parse(
@@ -48,6 +54,7 @@ class ArtworkService {
       final response = await http.get(url).timeout(const Duration(seconds: 6));
 
       if (response.statusCode == 200) {
+        respuestaValida = true;
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final results = data['results'] as List?;
         if (results != null && results.isNotEmpty) {
@@ -64,8 +71,11 @@ class ArtworkService {
       // Sin internet o iTunes caído: seguimos con el fallback genérico.
     }
 
+    // El "no hay" queda en memoria siempre (para no repetir la consulta
+    // cincuenta veces en la misma sesion), pero solo baja a disco si la
+    // respuesta fue de verdad.
     _cache[key] = null;
-    _guardar(key, ''); // marca "ya se buscó, no hay resultado"
+    if (respuestaValida) _guardar(key, '');
     return null;
   }
 

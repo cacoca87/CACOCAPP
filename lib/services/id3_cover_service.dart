@@ -78,16 +78,23 @@ class Id3CoverService {
 
   /// Obtiene los bytes del MP3 (archivo local si es una canción
   /// descargada, o los primeros ~512KB por red vía HTTP Range) — el
-  /// paso costoso que carátula y álbum comparten.
-  Future<Uint8List?> _obtenerBytesMp3(String url) async {
+  /// paso costoso que carátula, álbum y artista comparten.
+  ///
+  /// Devuelve tambien, por separado, si se pudo leer el archivo. La
+  /// diferencia importa: "lo lei entero y no trae caratula" se puede
+  /// anotar en disco para siempre, pero "no habia internet" no. Antes
+  /// los dos casos eran el mismo `null`, asi que abrir la app una sola
+  /// vez con mala conexion dejaba la biblioteca entera marcada como
+  /// "sin caratula" y "Artista Desconocido" de forma permanente.
+  Future<({Uint8List? bytes, bool seLeyo})> _obtenerBytesMp3(String url) async {
     try {
       final esArchivoLocal =
           !url.startsWith('http://') && !url.startsWith('https://');
 
       if (esArchivoLocal) {
         final archivoLocal = File(url);
-        if (!await archivoLocal.exists()) return null;
-        return await archivoLocal.readAsBytes();
+        if (!await archivoLocal.exists()) return (bytes: null, seLeyo: false);
+        return (bytes: await archivoLocal.readAsBytes(), seLeyo: true);
       }
 
       final response = await http.get(Uri.parse(url), headers: {
@@ -96,10 +103,12 @@ class Id3CoverService {
 
       // 200 = el servidor ignoró el Range y mandó todo igual (también
       // sirve). 206 = sí respetó el rango (lo esperado).
-      if (response.statusCode != 200 && response.statusCode != 206) return null;
-      return response.bodyBytes;
+      if (response.statusCode != 200 && response.statusCode != 206) {
+        return (bytes: null, seLeyo: false);
+      }
+      return (bytes: response.bodyBytes, seLeyo: true);
     } catch (_) {
-      return null;
+      return (bytes: null, seLeyo: false);
     }
   }
 
@@ -129,11 +138,14 @@ class Id3CoverService {
     }
 
     // 2) No estaba en disco: parseamos los tags del MP3.
+    var seLeyoElArchivo = false;
     try {
-      final bytes = await _obtenerBytesMp3(url);
+      final lectura = await _obtenerBytesMp3(url);
+      seLeyoElArchivo = lectura.seLeyo;
+      final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheCaratula[url] = null;
-        _marcarSinCaratula(url);
+        if (seLeyoElArchivo) _marcarSinCaratula(url);
         return null;
       }
 
@@ -161,7 +173,7 @@ class Id3CoverService {
     }
 
     _cacheCaratula[url] = null;
-    _marcarSinCaratula(url);
+    if (seLeyoElArchivo) _marcarSinCaratula(url);
     return null;
   }
 
@@ -261,11 +273,14 @@ class Id3CoverService {
     }
 
     // 2) No estaba en disco: parseamos los tags del MP3.
+    var seLeyoElArchivo = false;
     try {
-      final bytes = await _obtenerBytesMp3(url);
+      final lectura = await _obtenerBytesMp3(url);
+      seLeyoElArchivo = lectura.seLeyo;
+      final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheAlbum[url] = null;
-        _marcarSinAlbum(url);
+        if (seLeyoElArchivo) _marcarSinAlbum(url);
         return null;
       }
 
@@ -280,7 +295,7 @@ class Id3CoverService {
     }
 
     _cacheAlbum[url] = null;
-    _marcarSinAlbum(url);
+    if (seLeyoElArchivo) _marcarSinAlbum(url);
     return null;
   }
 
@@ -338,11 +353,14 @@ class Id3CoverService {
       // Si falla la lectura de disco, seguimos igual por red.
     }
 
+    var seLeyoElArchivo = false;
     try {
-      final bytes = await _obtenerBytesMp3(url);
+      final lectura = await _obtenerBytesMp3(url);
+      seLeyoElArchivo = lectura.seLeyo;
+      final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheArtista[url] = null;
-        _marcarSinArtista(url);
+        if (seLeyoElArchivo) _marcarSinArtista(url);
         return null;
       }
 
@@ -357,7 +375,7 @@ class Id3CoverService {
     }
 
     _cacheArtista[url] = null;
-    _marcarSinArtista(url);
+    if (seLeyoElArchivo) _marcarSinArtista(url);
     return null;
   }
 
