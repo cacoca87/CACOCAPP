@@ -99,6 +99,8 @@ class _LyricsScreenState extends State<LyricsScreen> {
                     // el resaltado se sienta en vivo.
                     posicion: audioHandler.player.positionStream,
                     onTocarLinea: audioHandler.seek,
+                    // El ajuste de desfase se guarda por cancion.
+                    claveDeAjuste: cancion.id,
                   );
                 }
 

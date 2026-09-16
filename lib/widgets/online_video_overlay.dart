@@ -258,6 +258,7 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
                   child: _PanelLetra(
                     futuro: _letraDe(provider),
                     controller: controller,
+                    videoId: provider.videoId,
                   ),
                 ),
             ],
@@ -423,7 +424,15 @@ class _Header extends StatelessWidget {
 class _PanelLetra extends StatelessWidget {
   final Future<Lyrics> futuro;
   final YoutubePlayerController controller;
-  const _PanelLetra({required this.futuro, required this.controller});
+
+  /// Con qué nombre se recuerda el ajuste de desfase de ESTE video.
+  final String? videoId;
+
+  const _PanelLetra({
+    required this.futuro,
+    required this.controller,
+    required this.videoId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +472,8 @@ class _PanelLetra extends StatelessWidget {
               seconds: tiempo.inMilliseconds / 1000,
               allowSeekAhead: true,
             ),
+            // El ajuste de desfase se guarda por video.
+            claveDeAjuste: videoId,
             // Menos aire arriba que en la pantalla de Letra: acá el
             // panel es la mitad de alto porque arriba está el video.
             padding: const EdgeInsets.fromLTRB(24, 40, 24, 80),
