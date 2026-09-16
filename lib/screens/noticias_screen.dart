@@ -38,6 +38,14 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
     _cargar();
   }
 
+  void _volver() {
+    if (widget.onVolver != null) {
+      widget.onVolver!();
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
+
   Future<void> _cargar({bool forzar = false}) async {
     final generacion = ++_generacion;
     setState(() {
@@ -101,7 +109,10 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
           tooltip: 'Volver',
-          onPressed: widget.onVolver,
+          // Igual que en Descubrir y Estadisticas: si esta pantalla se
+          // abriera con Navigator en vez de insertada, sin este respaldo
+          // el boton quedaba apagado y no habia forma de salir.
+          onPressed: _volver,
         ),
       ),
       body: Column(
@@ -162,6 +173,23 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
             ? Icons.wifi_off_rounded
             : Icons.newspaper_outlined,
         mensaje: error.mensaje,
+        accion: ElevatedButton.icon(
+          style: AppTheme.primaryButton,
+          onPressed: () => _cargar(forzar: true),
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: const Text('Reintentar'),
+        ),
+      );
+    }
+
+    if (_noticias.isEmpty) {
+      // Google News a veces contesta bien pero sin resultados para esa
+      // busqueda. Antes eso dejaba la pantalla en blanco, sin decir
+      // nada ni ofrecer volver a intentar.
+      return EstadoVacio(
+        icono: Icons.newspaper_outlined,
+        mensaje: 'No hay noticias de "${_categoria.nombre}" en este '
+            'momento. Probá con otra categoría o volvé a intentar.',
         accion: ElevatedButton.icon(
           style: AppTheme.primaryButton,
           onPressed: () => _cargar(forzar: true),

@@ -452,6 +452,11 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
       await player.seek(Duration.zero);
     } else if (player.hasPrevious) {
       await player.seekToPrevious();
+    } else {
+      // Primera cancion de la cola y recien empezada: "anterior" no
+      // hacia nada visible. Al menos que vuelva al principio, que es
+      // lo que hace cualquier reproductor.
+      await player.seek(Duration.zero);
     }
     _lastKnownPosition = Duration.zero;
     _wantsToPlay = true;
