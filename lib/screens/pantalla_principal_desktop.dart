@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
 import '../widgets/barra_lateral.dart';
+import '../widgets/estado_vacio.dart';
 import '../widgets/mini_player.dart';
 import '../widgets/online_video_overlay.dart';
 import '../widgets/song_options_menu.dart';
@@ -83,11 +84,10 @@ class PantallaPrincipalDesktop extends StatelessWidget {
             color: AppTheme.background,
             padding: const EdgeInsets.all(16),
             child: player.currentSong == null
-                ? Center(
-                    child: Text(
-                      "Selecciona una canción",
-                      style: AppTheme.body.copyWith(fontSize: 13),
-                    ),
+                ? const EstadoVacio(
+                    icono: Icons.queue_music_rounded,
+                    mensaje: 'Elegí una canción de la lista y acá vas a ver '
+                        'la carátula, el álbum y los controles.',
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

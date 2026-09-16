@@ -109,15 +109,10 @@ class _LyricsScreenState extends State<LyricsScreen> {
                 final letra = snapshot.data ?? Lyrics.vacia;
 
                 if (!letra.hayAlgo) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        "Letra no disponible para esta canción",
-                        style: AppTheme.body,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+                  return const EstadoVacio(
+                    icono: Icons.lyrics_outlined,
+                    mensaje: 'No se encontró la letra de esta canción. No '
+                        'todas las tienen publicada.',
                   );
                 }
 

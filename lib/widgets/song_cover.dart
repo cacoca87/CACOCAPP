@@ -100,12 +100,24 @@ class _SongCoverState extends State<SongCover> {
           return _placeholder();
         }
 
+        // Las caratulas vienen a 600x600 o mas. Sin `cacheWidth`,
+        // Flutter las decodifica a tamano completo en memoria aunque
+        // se dibujen en un cuadradito de 44 px: eso es ~1,4 MB de RAM
+        // por fila, y una biblioteca de cientos de canciones recorrida
+        // de punta a punta hacia trabar el scroll en celulares de
+        // gama media. Le pedimos que decodifique al tamano real de
+        // pantalla (logico x densidad del dispositivo).
+        final densidad = MediaQuery.devicePixelRatioOf(context);
+        final ladoEnPixeles = (widget.size * densidad).round();
+
         Widget image;
         if (result.kind == _CoverKind.bytes) {
           image = Image.memory(
             result.data,
             width: widget.size,
             height: widget.size,
+            cacheWidth: ladoEnPixeles,
+            cacheHeight: ladoEnPixeles,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _placeholder(),
           );
@@ -114,6 +126,8 @@ class _SongCoverState extends State<SongCover> {
             result.data as String,
             width: widget.size,
             height: widget.size,
+            cacheWidth: ladoEnPixeles,
+            cacheHeight: ladoEnPixeles,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _placeholder(),
           );

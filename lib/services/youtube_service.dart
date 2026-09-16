@@ -1,4 +1,5 @@
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import '../utils/formato_tiempo.dart';
 
 /// Resultado de búsqueda ya adaptado a lo que necesita la UI de
 /// `dual_search_screen.dart`. Se mantiene esta forma (en vez de exponer
@@ -25,13 +26,11 @@ class YoutubeVideoResult {
 
   factory YoutubeVideoResult.fromVideo(Video video) {
     final segundos = video.duration?.inSeconds ?? 0;
-    final minutos = segundos ~/ 60;
-    final segundosRestantes = segundos % 60;
     return YoutubeVideoResult(
       videoId: video.id.value,
       title: video.title,
       author: video.author,
-      lengthSeconds: '$minutos:${segundosRestantes.toString().padLeft(2, '0')}',
+      lengthSeconds: duracionCortaDeSegundos(segundos),
       lengthInSeconds: segundos,
       viewCount: '${video.engagement.viewCount} vistas',
       thumbnailUrl: video.thumbnails.highResUrl,

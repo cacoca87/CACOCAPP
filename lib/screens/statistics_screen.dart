@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../utils/formato_tiempo.dart';
 import '../widgets/estado_vacio.dart';
 
 class StatisticsScreen extends StatelessWidget {
@@ -22,15 +23,6 @@ class StatisticsScreen extends StatelessWidget {
     } else if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
-  }
-
-  String _formatearTiempo(int segundos) {
-    final horas = segundos ~/ 3600;
-    final minutos = (segundos % 3600) ~/ 60;
-    if (horas > 0) {
-      return '$horas h $minutos min';
-    }
-    return '$minutos min';
   }
 
   @override
@@ -71,19 +63,37 @@ class StatisticsScreen extends StatelessWidget {
                   child: BarChart(
                     BarChartData(
                       alignment: BarChartAlignment.spaceAround,
+                      // El *1.1 deja aire arriba de la barra mas alta.
+                      // El minimo de 60 es para que una sesion de menos
+                      // de un minuto no deje el eje en cero (grafico
+                      // aplastado y todas las etiquetas iguales).
                       maxY: top.isNotEmpty
-                          ? (top.first.value.toDouble() * 1.1)
-                          : 10.0,
+                          ? (top.first.value.toDouble() * 1.1).clamp(60.0, 1e9)
+                          : 60.0,
                       barTouchData: BarTouchData(
                         enabled: true,
                         touchTooltipData: BarTouchTooltipData(
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            // Buscamos de forma segura el título de la canción mediante su ID o índice
+                            // El comentario que estaba aca decia que se
+                            // buscaba el titulo de la cancion, pero el
+                            // globo mostraba solo el tiempo: tocar una
+                            // barra no te decia de que cancion era.
+                            final indice = group.x;
+                            final titulo = indice >= 0 && indice < top.length
+                                ? player.tituloDeCancion(top[indice].key)
+                                : '';
                             return BarTooltipItem(
-                              _formatearTiempo(rod.toY.toInt()),
-                              const TextStyle(
-                                  color: AppTheme.paper,
-                                  fontWeight: FontWeight.bold),
+                              titulo.isEmpty ? '' : '$titulo\n',
+                              AppTheme.small.copyWith(color: AppTheme.paper),
+                              children: [
+                                TextSpan(
+                                  text: tiempoEscuchado(rod.toY.toInt()),
+                                  style: const TextStyle(
+                                    color: AppTheme.amber,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             );
                           },
                         ),
@@ -112,10 +122,14 @@ class StatisticsScreen extends StatelessWidget {
                         leftTitles: AxisTitles(
                           sideTitles: SideTitles(
                             showTitles: true,
-                            reservedSize: 40,
+                            // 44 y no 40: con "1 h 23 min" el texto se
+                            // cortaba contra el borde del grafico. El eje
+                            // usa la version corta ("1h 23m") justamente
+                            // para que entre.
+                            reservedSize: 44,
                             getTitlesWidget: (value, meta) {
                               return Text(
-                                _formatearTiempo(value.toInt()),
+                                tiempoEscuchadoCorto(value.toInt()),
                                 style: AppTheme.small.copyWith(fontSize: 10),
                               );
                             },
@@ -173,7 +187,7 @@ class StatisticsScreen extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: Text(
-                      _formatearTiempo(entry.value),
+                      tiempoEscuchado(entry.value),
                       style: AppTheme.small.copyWith(color: AppTheme.amber),
                     ),
                   );

@@ -57,7 +57,7 @@ class LyricsService {
       final guardado = prefs.getString(_prefKey(clave));
       if (guardado != null) {
         final letra = _deserializar(guardado);
-        _cache[clave] = letra;
+        _recordar(clave, letra);
         return letra;
       }
     } catch (_) {}
@@ -104,9 +104,29 @@ class LyricsService {
     letra ??= await _buscarEnLyricsOvh(tituloLimpio, artist);
 
     final resultado = letra ?? Lyrics.vacia;
-    _cache[clave] = resultado;
-    _guardar(clave, resultado);
+    _recordar(clave, resultado);
+    // Solo se guarda en disco lo que SI se encontro. Antes tambien se
+    // guardaba el "no hay letra", asi que una sola consulta hecha sin
+    // internet dejaba esa cancion marcada como "sin letra" para
+    // siempre, incluso con la conexion ya funcionando. El "no hay"
+    // sigue viviendo en memoria, que alcanza para no repetir la
+    // busqueda cinco veces dentro de la misma sesion.
+    if (resultado.hayAlgo) _guardar(clave, resultado);
     return resultado;
+  }
+
+  // Tope de letras en memoria, por el mismo motivo que las caratulas
+  // en `id3_cover_service.dart`: una biblioteca grande escuchada de
+  // punta a punta llenaba este mapa sin que nada lo vaciara nunca.
+  static const int _maxLetrasEnMemoria = 60;
+  final List<String> _ordenCache = [];
+
+  void _recordar(String clave, Lyrics letra) {
+    if (!_cache.containsKey(clave)) _ordenCache.add(clave);
+    _cache[clave] = letra;
+    while (_ordenCache.length > _maxLetrasEnMemoria) {
+      _cache.remove(_ordenCache.removeAt(0));
+    }
   }
 
   Future<Lyrics?> _buscarEnLyricsOvh(String title, String artist) async {

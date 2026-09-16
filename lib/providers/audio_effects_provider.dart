@@ -44,6 +44,17 @@ class AudioEffectsProvider extends ChangeNotifier {
   StreamSubscription<int?>? _sesionSub;
   int? _ultimaSesion;
 
+  // El provider vive tanto como la app, pero igual hay que cuidarse:
+  // varios metodos siguen despues de un `await`, y notificar despues
+  // de `dispose()` es un error en tiempo de ejecucion.
+  bool _dispuesto = false;
+
+  // Los sliders disparan decenas de cambios por segundo mientras se
+  // arrastran. Sin el temporizador de abajo, cada uno reescribia el
+  // archivo de preferencias entero (con un jsonEncode adentro) en el
+  // medio del gesto.
+  Timer? _guardadoPendiente;
+
   InfoEfectosAudio get info => _info;
   bool get cargando => _cargando;
   bool get disponible => _info.bandas.isNotEmpty;
@@ -55,8 +66,14 @@ class AudioEffectsProvider extends ChangeNotifier {
 
   int nivelBanda(int indice) => _nivelesGuardados[indice] ?? 0;
 
+  /// `true` cuando ya se le preguntó al celular por sus efectos. Sin
+  /// esto el panel decía "tu dispositivo no soporta ecualizador" en el
+  /// caso en que todavía no había sonado nada y nunca se preguntó.
+  bool get seConsultoElDispositivo => _ultimaSesion != null;
+
   AudioEffectsProvider(this.audioHandler) {
     _cargarPreferencias().then((_) {
+      if (_dispuesto) return;
       _sesionSub = audioHandler.player.androidAudioSessionIdStream
           .listen(_onSesionCambio);
     });
@@ -79,6 +96,18 @@ class AudioEffectsProvider extends ChangeNotifier {
           ..addAll(decoded.map((k, v) => MapEntry(int.parse(k), v as int)));
       }
     } catch (_) {}
+  }
+
+  /// Agenda el guardado en disco para dentro de medio segundo. Si
+  /// llega otro cambio antes, este se descarta: asi se escribe una
+  /// sola vez, cuando la persona suelta el slider, y no cincuenta
+  /// veces en el medio del gesto.
+  void _guardarPronto() {
+    _guardadoPendiente?.cancel();
+    _guardadoPendiente = Timer(
+      const Duration(milliseconds: 500),
+      _guardarPreferencias,
+    );
   }
 
   Future<void> _guardarPreferencias() async {
@@ -105,6 +134,7 @@ class AudioEffectsProvider extends ChangeNotifier {
     notifyListeners();
 
     final info = await AudioEffectsService.instance.adjuntar(sessionId);
+    if (_dispuesto) return;
     _info = info;
     _cargando = false;
 
@@ -130,6 +160,7 @@ class AudioEffectsProvider extends ChangeNotifier {
         await AudioEffectsService.instance.setGananciaVolumen(_gananciaVolumen);
         await AudioEffectsService.instance.setVolumenActivo(_volumenActivo);
       }
+      if (_dispuesto) return;
     }
     notifyListeners();
   }
@@ -144,46 +175,51 @@ class AudioEffectsProvider extends ChangeNotifier {
     }
     notifyListeners();
     await AudioEffectsService.instance.setNivelBanda(indice, nivel);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   Future<void> toggleEcualizador() async {
     _eqActivo = !_eqActivo;
     notifyListeners();
     await AudioEffectsService.instance.setEcualizadorActivo(_eqActivo);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   Future<void> setFuerzaGraves(int fuerza) async {
     _fuerzaGraves = fuerza;
     notifyListeners();
     await AudioEffectsService.instance.setFuerzaGraves(fuerza);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   Future<void> toggleGraves() async {
     _gravesActivo = !_gravesActivo;
     notifyListeners();
     await AudioEffectsService.instance.setGravesActivo(_gravesActivo);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   Future<void> setGananciaVolumen(int ganancia) async {
     _gananciaVolumen = ganancia;
     notifyListeners();
     await AudioEffectsService.instance.setGananciaVolumen(ganancia);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   Future<void> toggleVolumen() async {
     _volumenActivo = !_volumenActivo;
     notifyListeners();
     await AudioEffectsService.instance.setVolumenActivo(_volumenActivo);
-    _guardarPreferencias();
+    _guardarPronto();
   }
 
   @override
   void dispose() {
+    _dispuesto = true;
+    _guardadoPendiente?.cancel();
+    // Si quedaba un guardado agendado, lo escribimos ya: si no, el
+    // ultimo movimiento del slider antes de cerrar se perdia.
+    _guardarPreferencias();
     _sesionSub?.cancel();
     super.dispose();
   }

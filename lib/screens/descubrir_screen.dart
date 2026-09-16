@@ -42,6 +42,10 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
   // acababa de pedir.
   int _generacionBusqueda = 0;
 
+  // La última consulta lanzada, para poder repetirla desde el botón
+  // "Reintentar" sin que el usuario tenga que reescribir nada.
+  Future<List<Song>> Function()? _ultimaConsulta;
+
   void _volver() {
     if (widget.onVolver != null) {
       widget.onVolver!();
@@ -81,6 +85,7 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
 
   Future<void> _ejecutarBusqueda(Future<List<Song>> Function() consulta) async {
     final generacion = ++_generacionBusqueda;
+    _ultimaConsulta = consulta;
     setState(() {
       _buscando = true;
       _error = null;
@@ -103,6 +108,16 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
         _buscando = false;
       });
     }
+  }
+
+  /// Vuelve a lanzar la última consulta tal cual (texto o género).
+  /// Hace falta para el botón "Reintentar" del estado de error: el
+  /// fallo más común acá es la conexión, y volver a escribir toda la
+  /// búsqueda para reintentar no tenía sentido.
+  void _repetirUltimaBusqueda() {
+    final consulta = _ultimaConsulta;
+    if (consulta == null) return;
+    _ejecutarBusqueda(consulta);
   }
 
   @override
@@ -230,35 +245,26 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
             )
           else if (_error != null)
             Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(_error!,
-                      style: AppTheme.body, textAlign: TextAlign.center),
+              child: EstadoVacio(
+                icono: Icons.cloud_off_rounded,
+                mensaje: _error!,
+                // La misma acción que en Noticias: un error sin forma de
+                // reintentar obligaba a volver a escribir la búsqueda.
+                accion: ElevatedButton.icon(
+                  style: AppTheme.primaryButton,
+                  onPressed: _repetirUltimaBusqueda,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Reintentar'),
                 ),
               ),
             )
           else if (!_yaHizoAlgunaBusqueda)
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.travel_explore_rounded,
-                          size: 48, color: AppTheme.mutedInk),
-                      const SizedBox(height: 12),
-                      Text(
-                        "Escribí algo o tocá un género — Jamendo tiene un catálogo "
-                        "de artistas independientes con licencia libre, y suena acá "
-                        "mismo, sin salir de la app.",
-                        style: AppTheme.body,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
+            const Expanded(
+              child: EstadoVacio(
+                icono: Icons.travel_explore_rounded,
+                mensaje: 'Escribí algo o tocá un género. Jamendo tiene un '
+                    'catálogo de artistas independientes con licencia libre, '
+                    'y suena acá mismo sin salir de la app.',
               ),
             )
           else if (_resultados.isEmpty)

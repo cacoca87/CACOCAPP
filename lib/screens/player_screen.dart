@@ -13,6 +13,7 @@ import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/audio_effects_sheet.dart';
 import '../widgets/estado_vacio.dart';
+import '../utils/formato_tiempo.dart';
 import '../widgets/song_cover.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
@@ -64,12 +65,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     } catch (_) {
       // Si falla, mantenemos el color por defecto sin romper la app.
     }
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
   }
 
   Widget _buildControlButton({
@@ -421,11 +416,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      _formatDuration(Duration(
+                                      duracionCorta(Duration(
                                           milliseconds: currentVal.toInt())),
                                       style: AppTheme.small,
                                     ),
-                                    Text(_formatDuration(totalDuration),
+                                    Text(duracionCorta(totalDuration),
                                         style: AppTheme.small),
                                   ],
                                 ),

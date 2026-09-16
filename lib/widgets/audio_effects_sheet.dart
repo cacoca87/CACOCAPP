@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/audio_effects_provider.dart';
 import '../styles/app_theme.dart';
+import 'estado_vacio.dart';
 
 String _formatearFrecuencia(int hz) {
   if (hz >= 1000) {
@@ -47,16 +48,25 @@ class _PanelDeAudio extends StatelessWidget {
           contenido = const Center(
               child: CircularProgressIndicator(color: AppTheme.amber));
         } else if (!fx.disponible) {
-          contenido = Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Tu dispositivo no soporta ecualizador. Esto depende del '
-                'fabricante del celular, no de la app.',
-                style: AppTheme.body,
-                textAlign: TextAlign.center,
+          // Dos estados distintos que antes se mostraban con el mismo
+          // texto: si todavia no sono nada, nunca se le pregunto al
+          // celular, asi que decirle "tu dispositivo no soporta
+          // ecualizador" era directamente falso.
+          contenido = ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.only(top: 40),
+            children: [
+              EstadoVacio(
+                icono: fx.seConsultoElDispositivo
+                    ? Icons.equalizer_rounded
+                    : Icons.music_note_rounded,
+                mensaje: fx.seConsultoElDispositivo
+                    ? 'Tu dispositivo no soporta ecualizador. Esto depende '
+                        'del fabricante del celular, no de la app.'
+                    : 'Poné una canción a sonar y volvé acá: el ecualizador '
+                        'se engancha a la canción que está sonando.',
               ),
-            ),
+            ],
           );
         } else {
           contenido = ListView(
