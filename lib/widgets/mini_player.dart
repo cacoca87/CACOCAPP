@@ -23,7 +23,7 @@ class MiniPlayer extends StatelessWidget {
   /// Se topea en 1.6 para que, con escalas enormes, la barra no se coma
   /// media pantalla: el título completo siempre está en el reproductor
   /// grande, que es donde hay lugar de sobra.
-  static double altoBarra(BuildContext context) {
+  static double _altoBarra(BuildContext context) {
     final escala = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
     return 65 * escala;
   }
@@ -32,7 +32,7 @@ class MiniPlayer extends StatelessWidget {
   /// `online_video_overlay.dart` para ubicar la barra del video justo
   /// encima; tienen que salir del mismo lugar o una se le monta a la
   /// otra.
-  static double altoTotal(BuildContext context) => altoBarra(context) + 2;
+  static double altoTotal(BuildContext context) => _altoBarra(context) + 2;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class MiniPlayer extends StatelessWidget {
         children: [
           const _LineaDeProgreso(),
           Container(
-            height: altoBarra(context),
+            height: _altoBarra(context),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: const BoxDecoration(
               color: AppTheme.surface,

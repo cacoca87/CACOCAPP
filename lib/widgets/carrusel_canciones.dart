@@ -60,7 +60,6 @@ class CarruselCanciones extends StatelessWidget {
                   child: SizedBox(
                     width: ancho,
                     child: TarjetaPresionable(
-                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         HapticFeedback.selectionClick();
                         player.playSong(cancion, canciones, index);

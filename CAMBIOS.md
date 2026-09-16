@@ -2090,3 +2090,85 @@ Ahora no queda ni un `print` ni un `debugPrint` suelto en toda la app.
 
 `flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 78. Vuelta sobre lo obsoleto y lo que no se usa
+
+Esta vuelta fue con la lupa puesta en lo que sobra, no en lo que falla.
+
+### Un parámetro que prometía algo y no hacía nada
+
+**Archivos:** `lib/widgets/tarjeta_presionable.dart`, `carrusel_canciones.dart`,
+`carrusel_playlists.dart`
+
+`TarjetaPresionable` declaraba un parámetro `borderRadius`, lo aceptaba en su
+constructor, **dos lugares se lo pasaban**... y su `build` no lo usaba en ningún
+lado. Redondeaba exactamente nada.
+
+Es la misma clase de problema que los íconos decorativos: algo que parece hacer
+algo y no lo hace. Peor acá, porque alguien que lo lea va a creer que el
+redondeo viene de ahí. Se borró el parámetro y las dos veces que se pasaba.
+
+### Un comentario que describía un diseño que ya no existe
+
+`player_provider.dart` todavía hablaba de "la burbuja flotante". El modo chico
+dejó de ser una burbuja hace varias vueltas: ahora es una barra fija. Corregido,
+y verificado que no quede ninguna otra mención en toda la app.
+
+### Menos superficie pública
+
+`MiniPlayer.altoBarra()` era público pero solo lo usa su propio archivo; quien
+lo necesita desde afuera usa `altoTotal()`. Pasó a privado.
+
+### Dos paquetes descontinuados (no se tocaron, y explico por qué)
+
+`flutter pub get` avisa que hay dos dependencias marcadas como descontinuadas
+por sus autores:
+
+- **`id3`**: lee los tags de tus MP3 (carátula, álbum, artista).
+- **`palette_generator`**: saca el color dominante de la carátula para el
+  reproductor.
+
+"Descontinuado" significa que no va a haber más versiones, **no que esté roto**:
+las dos funcionan hoy y están fijadas a una versión concreta, así que no se van
+a mover solas.
+
+No las reemplacé a propósito. `id3` no tiene un reemplazo directo y es la base
+de toda la metadata real de tu biblioteca; cambiarla ahora sería arriesgar lo
+que mejor anda a cambio de nada visible. `palette_generator` se usa en un solo
+lugar y para un detalle estético: si algún día falla, se pierde el color de
+fondo y nada más.
+
+Si te lo preguntan en la presentación, eso es exactamente lo que conviene
+responder: son dependencias fijadas, funcionando, y con un plan claro si alguna
+vez hay que moverlas.
+
+### Dos carpetas que tampoco toqué, por la misma razón
+
+El proyecto tiene carpetas `web/` (15 archivos) y `windows/` (18). La app **no
+puede funcionar en ninguna de las dos**: usa reproducción en segundo plano,
+WebView y permisos que no existen ahí.
+
+Borrarlas dejaría el repositorio más coherente con lo que dice el README
+(que es una app de Android), pero es una decisión tuya y no una limpieza
+obvia: sacarlas quita la posibilidad de compilar para esas plataformas hasta
+volver a generarlas. **Queda a tu criterio.**
+
+Ojo con una confusión posible: el diseño de pantalla ancha
+(`pantalla_principal_desktop.dart`) **sí se usa** -- se activa en cualquier
+pantalla de 800 píxeles o más, o sea en tablets Android. Eso no es código
+muerto.
+
+### Lo que se revisó y estaba bien
+
+- **Assets**: los tres archivos de `assets/icon/` están en uso (ícono, ícono
+  adaptativo y pantalla de arranque). Ninguno sobra.
+- **Nombres eliminados**: no queda ni una referencia a `RefreshRetryGuard`,
+  `obtenerUrlAudioPuro`, `pausarPorOtraReproduccion`,
+  `onEmpiezaOtraReproduccion` ni `limpiarCache`, todos borrados o renombrados en
+  vueltas anteriores.
+- **Métodos públicos sin uso**: de los cuatro que aparecieron, tres eran falsos
+  positivos (un constructor, un método que el framework de audio llama solo, y
+  uno usado dentro del propio archivo).
+
+`flutter analyze`, `flutter test` (142), el chequeo de formato de todo el repo y
+`flutter build apk --release` salieron limpios.

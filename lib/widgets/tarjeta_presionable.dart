@@ -7,13 +7,11 @@ import 'package:flutter/material.dart';
 class TarjetaPresionable extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;
-  final BorderRadius? borderRadius;
 
   const TarjetaPresionable({
     super.key,
     required this.child,
     required this.onTap,
-    this.borderRadius,
   });
 
   @override

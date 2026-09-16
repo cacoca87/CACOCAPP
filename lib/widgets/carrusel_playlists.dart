@@ -59,7 +59,6 @@ class CarruselPlaylists extends StatelessWidget {
                   child: SizedBox(
                     width: ancho,
                     child: TarjetaPresionable(
-                      borderRadius: BorderRadius.circular(8),
                       onTap: () {
                         HapticFeedback.selectionClick();
                         onSeleccionarPlaylist(playlist.name);

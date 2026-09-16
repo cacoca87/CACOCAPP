@@ -341,7 +341,7 @@ class PlayerProvider extends ChangeNotifier {
     Duration initialPosition = Duration.zero,
     bool autoplay = true,
   }) async {
-    // Si había un video de YouTube sonando en la burbuja flotante, se
+    // Si había un video de YouTube sonando en la barra de abajo, se
     // pausa -- solo cuando esto realmente va a sonar (no en la
     // restauración silenciosa de sesión al abrir la app).
     if (autoplay) onPausarVideoOnline?.call();
