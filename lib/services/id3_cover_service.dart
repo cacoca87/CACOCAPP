@@ -4,20 +4,20 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:id3/id3.dart';
 import 'package:path_provider/path_provider.dart';
+import '../utils/id3_tags.dart';
 
 /// Extrae metadata REAL incrustada en el propio MP3 (tags ID3v2):
-/// carátula (frame APIC) y nombre de álbum (frame TALB) — tal como lo
-/// hace un reproductor profesional, sin necesitar servidor propio ni
-/// descargar el archivo completo.
+/// carátula (frame APIC), nombre de álbum (TALB) y artista (TPE1) --
+/// tal como lo hace un reproductor profesional, sin necesitar servidor
+/// propio ni descargar el archivo completo.
 ///
 /// Solo pedimos los primeros ~512KB vía HTTP Range, donde normalmente
 /// viven los tags ID3v2 (van al inicio del archivo). R2/Cloudflare
 /// soporta peticiones por rango igual que cualquier bucket S3.
 ///
-/// La carátula y el álbum comparten el mismo parseo de tags — así que
-/// si `SongCover` ya pidió la carátula de una canción, pedir después
-/// su álbum es prácticamente gratis (no hay una segunda petición de
-/// red, se reusa lo que ya se parseó en memoria).
+/// Los tres comparten el mismo parseo -- así que si `SongCover` ya pidió
+/// la carátula de una canción, pedir después su álbum o su artista es
+/// prácticamente gratis (no hay una segunda petición de red).
 ///
 /// Todo se guarda también en disco (carpeta de caché de la app): antes,
 /// cerrar la app por completo perdía todo el trabajo hecho y tocaba
@@ -204,24 +204,8 @@ class Id3CoverService {
 
   // ========== ÁLBUM REAL (TALB) ==========
 
-  String? _extraerAlbum(Map<String, dynamic>? tags) {
-    if (tags == null || !tags.containsKey('Album')) return null;
-    final valor = tags['Album'];
-
-    // Validación segura de tipos para prevenir errores inesperados (TypeError)
-    String? album;
-    if (valor is String) {
-      album = valor;
-    } else if (valor is Map && valor.containsKey('text')) {
-      album = valor['text']?.toString();
-    } else {
-      album = valor?.toString();
-    }
-
-    if (album == null) return null;
-    final limpio = album.trim();
-    return limpio.isEmpty ? null : limpio;
-  }
+  String? _extraerAlbum(Map<String, dynamic>? tags) =>
+      leerTagDeTexto(tags, 'Album');
 
   /// Devuelve el nombre de álbum REAL que trae el propio MP3 (tag
   /// ID3 "Album"/TALB), o `null` si no tiene ese tag. A diferencia de
@@ -306,23 +290,8 @@ class Id3CoverService {
   // " - " en el nombre) se mostraba como "Artista Desconocido" en vez
   // de "Tom Petty".
 
-  String? _extraerArtista(Map<String, dynamic>? tags) {
-    if (tags == null || !tags.containsKey('Artist')) return null;
-    final valor = tags['Artist'];
-
-    String? artista;
-    if (valor is String) {
-      artista = valor;
-    } else if (valor is Map && valor.containsKey('text')) {
-      artista = valor['text']?.toString();
-    } else {
-      artista = valor?.toString();
-    }
-
-    if (artista == null) return null;
-    final limpio = artista.trim();
-    return limpio.isEmpty ? null : limpio;
-  }
+  String? _extraerArtista(Map<String, dynamic>? tags) =>
+      leerTagDeTexto(tags, 'Artist');
 
   /// Devuelve el artista REAL que trae el propio MP3 (tag ID3
   /// "Artist"/TPE1), o `null` si no tiene ese tag.

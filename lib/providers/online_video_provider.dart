@@ -186,10 +186,9 @@ class OnlineVideoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Se llama cuando arranca a sonar audio de la biblioteca/Jamendo/
-  /// descargas -- pausa el video para no tener dos cosas sonando a la
-  /// vez sin que el usuario lo haya pedido explícitamente.
-  void pausarPorOtraReproduccion() {
+  /// Pausa el video, si hay uno. La usa `PlayerProvider` cuando arranca
+  /// otra reproducción y cuando vence el temporizador de apagado.
+  void pausar() {
     _controller?.pauseVideo();
   }
 

@@ -14,12 +14,14 @@ import 'recommendation_engine.dart';
 class PlayerProvider extends ChangeNotifier {
   final MyAudioHandler audioHandler;
 
-  /// Se llama cada vez que arranca a sonar una canción nueva (al
-  /// principio de `setQueue`). `main.dart` lo usa para pausar el video
-  /// flotante de YouTube (`OnlineVideoProvider`) si estaba sonando --
-  /// así no quedan dos cosas sonando a la vez sin que el usuario lo
-  /// haya pedido.
-  final VoidCallback? onEmpiezaOtraReproduccion;
+  /// Pausa el video de YouTube que esté sonando en la app, si hay uno.
+  ///
+  /// Se llama desde dos lugares: cuando arranca a sonar una canción de
+  /// la biblioteca (para que no queden dos cosas sonando a la vez) y
+  /// cuando vence el temporizador de apagado. Este segundo caso faltaba:
+  /// el temporizador solo frenaba el motor de audio, así que si te
+  /// dormías escuchando un video, seguía sonando toda la noche.
+  final VoidCallback? onPausarVideoOnline;
 
   List<Song> _queue = [];
   int _currentIndex = 0;
@@ -85,7 +87,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> get whenDownloadsLoaded => _descargasListas ?? Future.value();
   bool isDownloading(String songId) => _descargando.contains(songId);
 
-  PlayerProvider(this.audioHandler, {this.onEmpiezaOtraReproduccion}) {
+  PlayerProvider(this.audioHandler, {this.onPausarVideoOnline}) {
     audioHandler.playbackState.listen((state) {
       _isPlaying = state.playing;
       if (_isPlaying) {
@@ -341,7 +343,7 @@ class PlayerProvider extends ChangeNotifier {
     // Si había un video de YouTube sonando en la burbuja flotante, se
     // pausa -- solo cuando esto realmente va a sonar (no en la
     // restauración silenciosa de sesión al abrir la app).
-    if (autoplay) onEmpiezaOtraReproduccion?.call();
+    if (autoplay) onPausarVideoOnline?.call();
     _queue = songs;
     _currentIndex =
         initialIndex.clamp(0, _queue.isNotEmpty ? _queue.length - 1 : 0);
@@ -423,6 +425,10 @@ class PlayerProvider extends ChangeNotifier {
     _sleepTimerEndsAt = DateTime.now().add(duracion);
     _sleepTimer = Timer(duracion, () {
       audioHandler.pause();
+      // También el video de YouTube: si no, el temporizador solo frenaba
+      // el motor de audio y un video en la barra seguía sonando toda la
+      // noche, que es justo lo contrario de para qué sirve esto.
+      onPausarVideoOnline?.call();
       _sleepTimer = null;
       _sleepTimerEndsAt = null;
       notifyListeners();

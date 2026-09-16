@@ -169,7 +169,7 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
     super.initState();
     _playerProvider = PlayerProvider(
       widget.audioHandler,
-      onEmpiezaOtraReproduccion: _onlineVideoProvider.pausarPorOtraReproduccion,
+      onPausarVideoOnline: _onlineVideoProvider.pausar,
     );
     _playlistProvider = PlaylistProvider();
     _audioEffectsProvider = AudioEffectsProvider(widget.audioHandler);

@@ -1949,3 +1949,51 @@ sueltos, apenas se cierra el diálogo.
 
 `flutter analyze`, `flutter test` (134), el chequeo de formato de todo el repo y
 `flutter build apk --release` salieron limpios.
+
+## 75. Pasadas 16 a 20: el temporizador de apagado no apagaba el video
+
+### Pasada 20: BUG REAL -- te dormías y el video seguía sonando
+
+**Archivos:** `lib/providers/player_provider.dart`,
+`lib/providers/online_video_provider.dart`, `lib/main.dart`
+
+El temporizador de apagado solo llamaba a `audioHandler.pause()`, o sea que
+frenaba **el motor de audio y nada más**. Si te quedabas dormido escuchando un
+video de YouTube en la barra de abajo, seguía sonando toda la noche -- que es
+exactamente lo contrario de para qué existe un temporizador de apagado.
+
+Ya había un mecanismo para pausar el video (el que se dispara cuando ponés una
+canción de la biblioteca), pero estaba pensado y nombrado solo para ese caso:
+`onEmpiezaOtraReproduccion`. Se renombró a **`onPausarVideoOnline`**, que
+describe lo que hace en vez de por qué se llamó la primera vez, y ahora lo usan
+los dos lugares. El método del otro lado pasó de `pausarPorOtraReproduccion()` a
+simplemente `pausar()`.
+
+### Pasada 16: código duplicado en la lectura de tags MP3
+
+`_extraerAlbum` y `_extraerArtista` en `id3_cover_service.dart` eran **18 líneas
+idénticas** salvo la clave del tag. Se extrajo a `lib/utils/id3_tags.dart` como
+función pura y se le pusieron **8 tests**, que además cubren casos que antes no
+verificaba nadie: un tag que viene como texto, como mapa, como número, vacío, o
+con solo espacios.
+
+Ese último caso importa: un MP3 con el campo de artista creado pero sin
+completar tiene que contar como ausente, para que la app caiga al respaldo del
+nombre del archivo en vez de mostrar un artista en blanco.
+
+### Pasada 17: el encabezado de un archivo mentía
+
+`id3_cover_service.dart` decía extraer "carátula y nombre de álbum". Desde hace
+varias vueltas también extrae el **artista**. Corregido.
+
+### Pasadas 18 y 19: sin hallazgos
+
+- **Configuración de Android**: la compilación de release firma con las claves de
+  depuración. Es el valor por defecto de Flutter, está documentado con un `TODO`
+  y no molesta para instalar a mano; solo importaría al publicar en Play Store.
+  Se deja como está.
+- **`inicio_tab.dart`**: las tarjetas de acceso rápido usan `maxLines` con
+  recorte, así que la escala de texto grande no las desborda.
+
+`flutter analyze`, `flutter test` (**142**, subieron de 134), el chequeo de
+formato de todo el repo y `flutter build apk --release` salieron limpios.
