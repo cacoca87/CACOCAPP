@@ -93,6 +93,15 @@ class PlayerProvider extends ChangeNotifier {
       _isPlaying = state.playing;
       if (_isPlaying) {
         _iniciarTemporizadorDeEscucha();
+        // El historial y el contador de reproducciones se anotan ACA y
+        // no al cambiar el `mediaItem`: al abrir la app se restaura la
+        // ultima sesion en pausa, y eso emitia un `mediaItem` que
+        // sumaba una reproduccion sin que nadie escuchara nada. Abrir
+        // la app diez veces contaba diez escuchas.
+        final song = _currentSong;
+        if (song != null && song.id.isNotEmpty) {
+          _registrarEnHistorial(song.id);
+        }
       } else {
         _detenerTemporizadorDeEscucha();
       }
@@ -103,8 +112,11 @@ class PlayerProvider extends ChangeNotifier {
       if (item != null) {
         final song = _queue.firstWhere(
           (s) => s.id == item.id,
+          // El indice se acota a la cola: si quedo apuntando mas alla
+          // del final (una cola nueva mas corta que la anterior), esto
+          // era un RangeError en medio de un evento de audio.
           orElse: () => _queue.isNotEmpty
-              ? _queue[_currentIndex]
+              ? _queue[_currentIndex.clamp(0, _queue.length - 1)]
               : Song(
                   id: item.id,
                   title: item.title,
@@ -116,7 +128,6 @@ class PlayerProvider extends ChangeNotifier {
         );
         if (song.id.isNotEmpty) {
           _currentSong = song;
-          _registrarEnHistorial(song.id);
           notifyListeners();
         }
       }
@@ -155,7 +166,20 @@ class PlayerProvider extends ChangeNotifier {
   static const String _historialKey = 'player_history_v1';
   static const String _conteoKey = 'player_playcount_v1';
 
+  // El id de la ultima cancion que se conto como reproducida.
+  //
+  // `audioHandler.mediaItem` emite VARIAS veces por cada cancion: una
+  // al armar la fuente, otra cuando llega el indice, otra cuando se
+  // conoce la duracion y otra cuando aparece la caratula. Sin este
+  // control, una sola escucha sumaba tres o cuatro reproducciones al
+  // contador, y "Tus mas escuchadas" y las Estadisticas quedaban con
+  // numeros inventados (distintos ademas segun cuantas de esas
+  // emisiones llegara a hacer cada cancion).
+  String? _ultimaCancionContada;
+
   void _registrarEnHistorial(String songId) {
+    if (songId == _ultimaCancionContada) return;
+    _ultimaCancionContada = songId;
     _historial.remove(songId);
     _historial.insert(0, songId);
     if (_historial.length > 30) {
@@ -193,7 +217,13 @@ class PlayerProvider extends ChangeNotifier {
   static const String _tiempoEscuchadoKey = 'player_time_listened_v2';
 
   void _iniciarTemporizadorDeEscucha() {
-    _tiempoEscuchaTimer?.cancel();
+    // Si ya hay uno andando se deja como esta. Antes se cancelaba y se
+    // creaba de nuevo en CADA evento del reproductor: si esos eventos
+    // llegan mas seguido que una vez por segundo, el temporizador se
+    // reiniciaba siempre antes de cumplir su primer segundo y el
+    // tiempo escuchado no subia nunca -- con Estadisticas vacia para
+    // siempre.
+    if (_tiempoEscuchaTimer?.isActive ?? false) return;
     _tiempoEscuchaTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final song = _currentSong;
       if (song == null) return;

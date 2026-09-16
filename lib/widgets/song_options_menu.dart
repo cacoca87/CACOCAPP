@@ -65,7 +65,7 @@ class SongOptionsMenu extends StatelessWidget {
         } else if (accion == "descargar") {
           confirmarYDescargar(context, cancion);
         } else if (accion == "eliminar_descarga") {
-          context.read<PlayerProvider>().deleteDownload(cancion.id);
+          confirmarYEliminarDescarga(context, cancion);
         }
       },
       itemBuilder: (context) {
@@ -324,6 +324,55 @@ Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
       ),
       backgroundColor: exito ? AppTheme.amber : AppTheme.danger,
       duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
+/// Borra el archivo descargado, previa confirmacion.
+///
+/// La confirmacion hace falta porque es la unica accion destructiva de
+/// la app sin vuelta atras: el archivo se borra del telefono y hay que
+/// volver a bajarlo con datos. "Descargar offline", que gasta menos,
+/// ya preguntaba; esta no.
+Future<void> confirmarYEliminarDescarga(
+    BuildContext context, Song cancion) async {
+  final provider = context.read<PlayerProvider>();
+
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: AppTheme.surfaceLight,
+      title: Text('¿Eliminar la descarga?',
+          style: AppTheme.subheading.copyWith(fontSize: 17)),
+      content: Text(
+        'Se borra el archivo de "${cancion.title}" del celular. La canción '
+        'sigue en tu biblioteca, pero para escucharla sin conexión vas a '
+        'tener que descargarla de nuevo.',
+        style: AppTheme.body.copyWith(color: AppTheme.mutedInk),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: Text('Cancelar',
+              style: AppTheme.body.copyWith(color: AppTheme.mutedInk)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child:
+              const Text('Eliminar', style: TextStyle(color: AppTheme.danger)),
+        ),
+      ],
+    ),
+  );
+  if (confirmar != true) return;
+
+  await provider.deleteDownload(cancion.id);
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Se eliminó la descarga de "${cancion.title}"'),
+      duration: const Duration(seconds: 2),
     ),
   );
 }

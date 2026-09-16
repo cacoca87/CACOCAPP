@@ -5,6 +5,7 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
 import 'carrusel_canciones.dart';
+import 'estado_vacio.dart';
 import 'carrusel_playlists.dart';
 
 /// Pestaña de "Inicio" (recientes, más escuchadas, playlists,
@@ -176,24 +177,12 @@ class InicioTab extends StatelessWidget {
             ),
           ),
           if (!hayContenidoPersonalizado)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Center(
-                child: Column(
-                  children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        size: 48, color: AppTheme.mutedInk),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        "Empieza a escuchar música para que aparezcan aquí tus recientes, favoritas y recomendaciones.",
-                        style: AppTheme.body.copyWith(fontSize: 13),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-                ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 40),
+              child: EstadoVacio(
+                icono: Icons.auto_awesome_rounded,
+                mensaje: "Empezá a escuchar música para que aparezcan acá tus "
+                    "recientes, favoritas y recomendaciones.",
               ),
             ),
 
