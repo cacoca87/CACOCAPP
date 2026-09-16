@@ -53,8 +53,14 @@ class LyricsService {
   /// guardado se lee ANTES de buscar nada, esas letras equivocadas
   /// seguirían mostrándose para siempre aunque la regla nueva esté
   /// bien. Cambiando el nombre, se vuelven a buscar una sola vez.
-  String _prefKey(String clave) => 'lyrics_cache_v2_$clave';
-  static const String _prefijoViejo = 'lyrics_cache_v1_';
+  String _prefKey(String clave) => 'lyrics_cache_v3_$clave';
+  // Se limpia TODO lo guardado con reglas anteriores. La v3 llega
+  // porque la v2 dejaba pasar canciones de otro artista que duraban
+  // casi lo mismo (el caso "Amén" / Bring Me the Horizon).
+  static const List<String> _prefijosViejos = [
+    'lyrics_cache_v1_',
+    'lyrics_cache_v2_',
+  ];
   // Por instancia y no `static`: en la app hay una sola (`instance`),
   // asi que se limpia una vez igual, pero deja de depender del orden en
   // que corren los tests.
@@ -69,7 +75,7 @@ class LyricsService {
     _yaSeLimpioLoViejo = true;
     try {
       for (final clave in prefs.getKeys().toList()) {
-        if (clave.startsWith(_prefijoViejo)) await prefs.remove(clave);
+        if (_prefijosViejos.any(clave.startsWith)) await prefs.remove(clave);
       }
     } catch (_) {}
   }
@@ -121,25 +127,33 @@ class LyricsService {
             duracion: duracion);
       }
     }
-
-    // Intento 3: búsqueda amplia solo por título, sin artista -- por si
-    // el artista (venga de donde venga) no coincide con como está
-    // catalogada la canción en lrclib, pero el título sí es único
-    // como para encontrarla igual.
+    // Intento 3: búsqueda amplia solo por título -- por si el artista
+    // no está catalogado igual en lrclib. Pero el artista SIGUE
+    // exigiéndose sobre los resultados: sin eso, cualquier canción del
+    // mundo con un título parecido y una duración parecida se colaba.
+    // Pasó de verdad: "Amén" (188 s) trajo "AmEN!" de Bring Me the
+    // Horizon (189,5 s), una letra en inglés llena de insultos, para
+    // una canción cristiana en español.
     if (letra == null || !letra.hayAlgo) {
-      letra = await _buscarEnLrclib(tituloLimpio, null, duracion: duracion);
+      letra = await _buscarEnLrclib(
+        tituloLimpio,
+        null,
+        duracion: duracion,
+        artistaEsperado: artist,
+        exigirArtista: true,
+      );
     }
 
-    // Intento 4: tags ID3 embebidas en el propio archivo de audio (si
-    // la fuente las trae, esto es 100% confiable porque es texto que
-    // vino con la canción, no una búsqueda por nombre).
+    // Intento 4: tags ID3 embebidas en el propio archivo de audio. Es
+    // lo más confiable que hay: es texto que vino DENTRO de la canción,
+    // no el resultado de buscar por nombre.
     letra ??= await _buscarEnId3(urlCancion);
 
-    // Intento 5 (último recurso): lyrics.ovh, una API gratuita más
-    // vieja y con menos cobertura que lrclib, pero que a veces tiene
-    // canciones que lrclib no tiene (y viceversa) -- vale la pena
-    // probarla antes de rendirse del todo.
-    letra ??= await _buscarEnLyricsOvh(tituloLimpio, artist);
+    // Antes acá había un intento 5 con lyrics.ovh. Se sacó: esa fuente
+    // solo hace coincidir texto, no dice cuánto dura la canción ni
+    // permite comprobar nada. O sea que no hay forma de saber si lo que
+    // devuelve es de esta canción o de otra que se llama parecido, y
+    // mostrar la letra equivocada es peor que no mostrar ninguna.
 
     final resultado = letra ?? Lyrics.vacia;
     _recordar(clave, resultado);
@@ -167,29 +181,12 @@ class LyricsService {
     }
   }
 
-  Future<Lyrics?> _buscarEnLyricsOvh(String title, String artist) async {
-    if (artist.trim().isEmpty || title.trim().isEmpty) return null;
-    try {
-      final url = Uri.parse(
-        'https://api.lyrics.ovh/v1/${Uri.encodeComponent(artist)}/${Uri.encodeComponent(title)}',
-      );
-      final response =
-          await _client.get(url).timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) return null;
-
-      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final texto = decoded['lyrics'] as String?;
-      if (texto == null || texto.trim().isEmpty) return null;
-      return Lyrics(textoPlano: texto.trim());
-    } catch (_) {
-      return null;
-    }
-  }
-
   Future<Lyrics?> _buscarEnLrclib(
     String title,
     String? artist, {
     Duration? duracion,
+    String? artistaEsperado,
+    bool exigirArtista = false,
   }) async {
     try {
       final query = StringBuffer('track_name=${Uri.encodeComponent(title)}');
@@ -208,7 +205,8 @@ class LyricsService {
       final primero = elegirLetraDeLrclib(
         resultados,
         duracion: duracion,
-        artistaBuscado: artist,
+        artistaBuscado: artistaEsperado ?? artist,
+        exigirArtista: exigirArtista,
       );
       if (primero == null) return null;
 

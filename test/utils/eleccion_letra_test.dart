@@ -108,5 +108,53 @@ void main() {
         'Buena',
       );
     });
+
+    test('el caso real de "Amén": mismo largo, artista distinto, se descarta',
+        () {
+      // Lo que pasó de verdad y llegó a verse en pantalla: "Amén" de
+      // Amén dura 188 s, y en la base hay un "AmEN!" de Bring Me the
+      // Horizon de 189,5 s. Segundo y medio de diferencia. Pasó el
+      // filtro de duración y la app mostró una letra en inglés llena de
+      // insultos para una canción cristiana en español.
+      final resultados = [
+        _resultado(
+            track: 'AmEN!', artista: 'Bring Me the Horizon', duracion: 189.55),
+      ];
+      expect(
+        elegirLetraDeLrclib(
+          resultados,
+          duracion: const Duration(seconds: 188),
+          artistaBuscado: 'Amén',
+          exigirArtista: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('exigiendo artista, el correcto igual se encuentra', () {
+      final resultados = [
+        _resultado(
+            track: 'AmEN!', artista: 'Bring Me the Horizon', duracion: 189.55),
+        _resultado(track: 'Amén', artista: 'Amén', duracion: 188),
+      ];
+      final elegida = elegirLetraDeLrclib(
+        resultados,
+        duracion: const Duration(seconds: 188),
+        artistaBuscado: 'Amén',
+        exigirArtista: true,
+      );
+      expect(elegida!['artistName'], 'Amén');
+    });
+
+    test('sin exigir artista, se comporta como antes', () {
+      final resultados = [
+        _resultado(track: 'Otra', artista: 'Otro', duracion: 188),
+      ];
+      expect(
+        elegirLetraDeLrclib(resultados,
+            duracion: const Duration(seconds: 188))!['trackName'],
+        'Otra',
+      );
+    });
   });
 }

@@ -24,22 +24,41 @@ const int toleranciaDeDuracionEnSegundos = 7;
 /// [duracion] es cuánto dura de verdad la canción que está sonando.
 /// Cuando no se conoce (por ejemplo, el audio todavía no cargó), no se
 /// puede descartar nada y se devuelve el primero, como antes.
+///
+/// [exigirArtista] obliga a que el artista además coincida. Se usa en
+/// la búsqueda que va SOLO por título, y existe por un caso real y
+/// vergonzoso: "Amén" de Amén dura 188 segundos, y en la base hay un
+/// "AmEN!" de Bring Me the Horizon que dura 189,5. Título parecido y
+/// segundo y medio de diferencia: pasó el filtro de duración y la app
+/// mostró, con total seguridad, una letra en inglés llena de insultos
+/// para una canción cristiana en español. Con el artista de por medio
+/// eso no vuelve a pasar.
 Map<String, dynamic>? elegirLetraDeLrclib(
   List<dynamic> resultados, {
   Duration? duracion,
   String? artistaBuscado,
+  bool exigirArtista = false,
 }) {
   final mapas = resultados.whereType<Map<String, dynamic>>().toList();
   if (mapas.isEmpty) return null;
 
+  // Cuando se exige el artista, lo demás no alcanza: primero se
+  // descarta todo lo que no sea de ese artista.
+  final porArtista = exigirArtista
+      ? mapas
+          .where((m) => _mismoArtista(m['artistName'], artistaBuscado))
+          .toList()
+      : mapas;
+  if (porArtista.isEmpty) return null;
+
   final segundosReales = duracion?.inSeconds ?? 0;
-  if (segundosReales <= 0) return mapas.first;
+  if (segundosReales <= 0) return porArtista.first;
 
   // Solo se consideran los que dicen cuánto duran; sin ese dato no hay
   // forma de saber si es la canción correcta.
   final conDuracion =
-      mapas.where((m) => _duracionDe(m) != null).toList(growable: false);
-  if (conDuracion.isEmpty) return mapas.first;
+      porArtista.where((m) => _duracionDe(m) != null).toList(growable: false);
+  if (conDuracion.isEmpty) return porArtista.first;
 
   final candidatos = conDuracion
       .where((m) =>
