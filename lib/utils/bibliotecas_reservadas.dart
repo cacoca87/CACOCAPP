@@ -6,6 +6,8 @@
 /// canción) y cada uno validaba por su cuenta -- o no validaba nada.
 library;
 
+import 'busqueda.dart';
+
 /// Toda la música junta: la del servidor y la que ya estaba en el
 /// celular.
 ///
@@ -54,6 +56,22 @@ const List<String> nombresReservadosDeBiblioteca = [
 /// [nombreQueSeReemplaza] es el nombre actual cuando se está
 /// renombrando: choca consigo mismo y no tiene que contar como
 /// duplicado.
+///
+/// LAS COMPARACIONES IGNORAN MAYÚSCULAS Y TILDES
+///
+/// Antes se comparaba letra por letra, y eso dejaba pasar dos cosas
+/// que en la pantalla se ven prácticamente iguales:
+///
+///  * una playlist llamada `favoritos` al lado de la vista
+///    "Favoritos" de la app, o `Mas Escuchadas` sin tilde al lado de
+///    "Más Escuchadas";
+///  * dos playlists tuyas llamadas `Rock` y `rock`.
+///
+/// En los dos casos terminás con dos entradas que parecen la misma y
+/// no lo son, y las canciones repartidas entre las dos sin entender
+/// por qué. Se usa la misma normalización que la búsqueda
+/// (`utils/busqueda.dart`), para que "igual" quiera decir lo mismo en
+/// toda la app.
 String? errorDeNombreDeBiblioteca(
   String nombre, {
   required Iterable<String> nombresExistentes,
@@ -61,10 +79,24 @@ String? errorDeNombreDeBiblioteca(
 }) {
   final limpio = nombre.trim();
   if (limpio.isEmpty) return 'Escribí un nombre para la biblioteca.';
-  if (nombresReservadosDeBiblioteca.contains(limpio)) {
+
+  final comparable = paraBuscar(limpio);
+
+  if (nombresReservadosDeBiblioteca
+      .any((reservado) => paraBuscar(reservado) == comparable)) {
     return '"$limpio" es un nombre reservado de la app. Probá con otro.';
   }
-  if (limpio != nombreQueSeReemplaza && nombresExistentes.contains(limpio)) {
+
+  // Al renombrar, el nombre viejo no cuenta como choque. Se compara
+  // normalizado para que cambiarle SOLO las mayúsculas a una playlist
+  // --de "Rock" a "rock"-- siga estando permitido: si no, la playlist
+  // chocaría consigo misma.
+  final seEstaRenombrando = nombreQueSeReemplaza != null &&
+      paraBuscar(nombreQueSeReemplaza) == comparable;
+
+  if (!seEstaRenombrando &&
+      nombresExistentes
+          .any((existente) => paraBuscar(existente) == comparable)) {
     return 'Ya tenés una biblioteca llamada "$limpio".';
   }
   return null;

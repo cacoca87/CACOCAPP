@@ -59,5 +59,64 @@ void main() {
         contains('reservado'),
       );
     });
+
+    group('las mayúsculas y las tildes tampoco', () {
+      // Antes se comparaba letra por letra, así que estos pasaban. El
+      // resultado era una playlist llamada "favoritos" al lado de la
+      // vista "Favoritos" de la app, o "Mas Escuchadas" sin tilde al
+      // lado de "Más Escuchadas": dos entradas que parecen la misma y
+      // no lo son.
+      const variantes = [
+        'favoritos',
+        'FAVORITOS',
+        'FaVoRiToS',
+        'Mas Escuchadas', // sin tilde
+        'mas escuchadas',
+        'toda tu musica', // sin tilde y en minúsculas
+      ];
+
+      for (final nombre in variantes) {
+        test('"$nombre" sigue siendo un nombre reservado', () {
+          expect(
+            errorDeNombreDeBiblioteca(nombre, nombresExistentes: const []),
+            contains('reservado'),
+          );
+        });
+      }
+
+      test('dos playlists tuyas que solo difieren en mayúsculas chocan', () {
+        // Si no, terminás con "Rock" y "rock" en la barra lateral y las
+        // canciones repartidas entre las dos sin entender por qué.
+        expect(
+          errorDeNombreDeBiblioteca('rock', nombresExistentes: const ['Rock']),
+          contains('Ya tenés'),
+        );
+        expect(
+          errorDeNombreDeBiblioteca('Cumbia',
+              nombresExistentes: const ['cumbiá']),
+          contains('Ya tenés'),
+        );
+      });
+
+      test('cambiarle SOLO las mayúsculas a una playlist sigue valiendo', () {
+        // Renombrar "Rock" a "rock" no puede chocar consigo misma.
+        expect(
+          errorDeNombreDeBiblioteca(
+            'rock',
+            nombresExistentes: const ['Rock'],
+            nombreQueSeReemplaza: 'Rock',
+          ),
+          isNull,
+        );
+      });
+
+      test('un nombre distinto de verdad sigue estando libre', () {
+        expect(
+          errorDeNombreDeBiblioteca('Favoritas del verano',
+              nombresExistentes: const ['Rock']),
+          isNull,
+        );
+      });
+    });
   });
 }
