@@ -107,6 +107,14 @@ class _LetraSincronizadaState extends State<LetraSincronizada> {
       final prefs = await SharedPreferences.getInstance();
       final ms = prefs.getInt(clave);
       if (ms == null || !mounted) return;
+      // Se vuelve a comprobar que siga siendo la MISMA canción.
+      //
+      // Leer del disco tarda, y en ese rato se puede haber pasado a
+      // otra canción. Sin esta línea, el desfase guardado de la canción
+      // anterior se le aplicaba a la nueva: la letra arrancaba corrida
+      // sin que nadie hubiera tocado nada. Pasa pasando canciones
+      // rápido con la letra abierta.
+      if (_claveGuardada != clave) return;
       setState(() => _ajuste = Duration(milliseconds: ms));
     } catch (_) {
       // Sin ajuste guardado se muestra igual, sin corrimiento.
