@@ -8,6 +8,7 @@ import '../styles/app_theme.dart';
 import 'carrusel_canciones.dart';
 import 'estado_vacio.dart';
 import 'carrusel_playlists.dart';
+import 'tarjeta_tocable.dart';
 
 /// Pestaña de "Inicio" (recientes, más escuchadas, playlists,
 /// favoritas, recomendaciones). Extraído de `pantalla_principal.dart`
@@ -78,50 +79,42 @@ class InicioTab extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           // Acceso directo a la biblioteca completa
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
+          TarjetaTocable(
             onTap: onVerBibliotecaCompleta,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.library_music_rounded,
-                        color: AppTheme.ink),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Toda tu música",
-                          style: AppTheme.body.copyWith(
-                              color: AppTheme.paper,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                            "${contarCanciones(totalCanciones)} en tu biblioteca",
-                            style: AppTheme.small),
-                      ],
-                    ),
+                  child: const Icon(Icons.library_music_rounded,
+                      color: AppTheme.ink),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Toda tu música",
+                        style: AppTheme.body.copyWith(
+                            color: AppTheme.paper,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                          "${contarCanciones(totalCanciones)} en tu biblioteca",
+                          style: AppTheme.small),
+                    ],
                   ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: AppTheme.mutedInk),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.mutedInk),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -129,51 +122,42 @@ class InicioTab extends StatelessWidget {
           // ACCESO DIRECTO AL BUSCADOR ONLINE DE YOUTUBE
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: InkWell(
+            child: TarjetaTocable(
               onTap: onAbrirBuscadorOnline,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: AppTheme.amber.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppTheme.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.video_library_rounded,
-                          color: AppTheme.amber),
+              borde: Border.all(color: AppTheme.amber.withValues(alpha: 0.3)),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppTheme.amber.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            seccionBuscadorOnline,
-                            style: AppTheme.body.copyWith(
-                                color: AppTheme.paper,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15),
-                          ),
-                          const SizedBox(height: 2),
-                          Text("Busca y mira videos de YouTube en la app",
-                              style: AppTheme.small),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded,
+                    child: const Icon(Icons.video_library_rounded,
                         color: AppTheme.amber),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          seccionBuscadorOnline,
+                          style: AppTheme.body.copyWith(
+                              color: AppTheme.paper,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15),
+                        ),
+                        const SizedBox(height: 2),
+                        Text("Busca y mira videos de YouTube en la app",
+                            style: AppTheme.small),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: AppTheme.amber),
+                ],
               ),
             ),
           ),
@@ -319,30 +303,22 @@ class _AccesoRapido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return TarjetaTocable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icono, color: AppTheme.amber, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              etiqueta,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  AppTheme.small.copyWith(color: AppTheme.paper, fontSize: 11),
-            ),
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icono, color: AppTheme.amber, size: 24),
+          const SizedBox(height: 8),
+          Text(
+            etiqueta,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.small.copyWith(color: AppTheme.paper, fontSize: 11),
+          ),
+        ],
       ),
     );
   }

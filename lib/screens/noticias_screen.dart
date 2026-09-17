@@ -7,6 +7,7 @@ import '../services/noticias_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
+import '../widgets/tarjeta_tocable.dart';
 
 /// Noticias por categoría: negocios internacionales, comercio global,
 /// logística, cadena de suministro, contratos, tecnología y música.
@@ -220,43 +221,36 @@ class _TarjetaNoticia extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+      child: TarjetaTocable(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      noticia.titulo,
-                      style: AppTheme.body.copyWith(
-                        color: AppTheme.paper,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    noticia.titulo,
+                    style: AppTheme.body.copyWith(
+                      color: AppTheme.paper,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
                     ),
-                    if (pie.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(pie, style: AppTheme.small.copyWith(fontSize: 11)),
-                    ],
+                  ),
+                  if (pie.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(pie, style: AppTheme.small.copyWith(fontSize: 11)),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.open_in_new_rounded,
-                  color: AppTheme.mutedInk, size: 18),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.open_in_new_rounded,
+                color: AppTheme.mutedInk, size: 18),
+          ],
         ),
       ),
     );

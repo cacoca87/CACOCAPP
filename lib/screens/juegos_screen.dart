@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
 import '../widgets/boton_volver.dart';
+import '../widgets/tarjeta_tocable.dart';
 import 'carrera_screen.dart';
 import 'disparos_screen.dart';
 import 'snake_screen.dart';
@@ -118,43 +119,35 @@ class _TarjetaJuego extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+    return TarjetaTocable(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icono, color: AppTheme.ink, size: 28),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    titulo,
-                    style: AppTheme.subheading.copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(descripcion, style: AppTheme.small),
-                ],
-              ),
+            child: Icon(icono, color: AppTheme.ink, size: 28),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: AppTheme.subheading.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(descripcion, style: AppTheme.small),
+              ],
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppTheme.mutedInk),
-          ],
-        ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppTheme.mutedInk),
+        ],
       ),
     );
   }
