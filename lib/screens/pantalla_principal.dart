@@ -73,6 +73,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   /// de WhatsApp, grabaciones, tonos). Se muestra al actualizar.
   int _descartadosDelCelular = 0;
 
+  /// Si la persona dio permiso para leer la música del celular.
+  ///
+  /// `null` mientras no venga al caso: en una computadora no hay
+  /// ninguna música del teléfono que leer, así que no corresponde decir
+  /// ni que sí ni que no.
+  ///
+  /// Sin esto, decir que no al permiso dejaba la app sin la música del
+  /// celular **para siempre y sin ninguna explicación**: no aparecía, y
+  /// no había forma de saber por qué ni cómo arreglarlo.
+  bool? _hayPermisoDelCelular;
+
   /// La biblioteca completa: lo del servidor más lo del celular, en un
   /// solo orden alfabético.
   ///
@@ -174,6 +185,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     setState(() {
       _delCelular = resultado.canciones;
       _descartadosDelCelular = resultado.descartadas;
+      _hayPermisoDelCelular = resultado.hayPermiso;
       _rearmarBiblioteca();
     });
   }
@@ -222,6 +234,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               delServidor: list.length,
               delCelular: _delCelular.length,
               salteados: _descartadosDelCelular,
+              hayPermisoDelCelular: _hayPermisoDelCelular,
             ),
             // Crema sobre ambar no se lee al sol; sobre el rojo de error
             // si. Ver `AppTheme.textoSobreAmbar`.
@@ -229,6 +242,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           ),
           backgroundColor: vinoDelServidor ? AppTheme.primary : AppTheme.danger,
           duration: const Duration(seconds: 3),
+          // Decir que falta el permiso sin dar forma de darlo es media
+          // ayuda: Android no vuelve a preguntar despues de dos "no",
+          // asi que la unica salida es la pantalla de ajustes de la
+          // app, y nadie sabe de memoria donde queda.
+          action: _hayPermisoDelCelular == false
+              ? const SnackBarAction(
+                  label: 'Permitir',
+                  textColor: AppTheme.paper,
+                  onPressed: abrirAjustesParaDarElPermiso,
+                )
+              : null,
         ),
       );
     } catch (e) {

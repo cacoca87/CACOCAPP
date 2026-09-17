@@ -84,6 +84,45 @@ void main() {
       );
     });
 
+    test('si dijiste que no al permiso, lo dice', () {
+      // Antes no decía nada: la música del celular simplemente no
+      // aparecía, sin explicación y sin forma de arreglarlo. El dato lo
+      // calculaba el servicio y la pantalla lo tiraba a la basura.
+      final texto = avisoDeActualizacion(
+        vinoDelServidor: true,
+        delServidor: 160,
+        delCelular: 0,
+        salteados: 0,
+        hayPermisoDelCelular: false,
+      );
+      expect(texto, contains('falta el permiso'));
+    });
+
+    test('con el permiso dado, no dice nada del permiso', () {
+      final texto = avisoDeActualizacion(
+        vinoDelServidor: true,
+        delServidor: 160,
+        delCelular: 5,
+        salteados: 0,
+        hayPermisoDelCelular: true,
+      );
+      expect(texto, isNot(contains('permiso')));
+      expect(texto, contains('5 canciones del celular'));
+    });
+
+    test('en una computadora no se habla del permiso', () {
+      // Ahí no hay ninguna música del teléfono que leer, así que no
+      // corresponde decir ni que sí ni que no.
+      final texto = avisoDeActualizacion(
+        vinoDelServidor: true,
+        delServidor: 160,
+        delCelular: 0,
+        salteados: 0,
+        hayPermisoDelCelular: null,
+      );
+      expect(texto, 'Biblioteca actualizada: 160 canciones');
+    });
+
     test('la biblioteca vacía no rompe el texto', () {
       expect(
         avisoDeActualizacion(

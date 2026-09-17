@@ -218,3 +218,21 @@ String _nombreDelArchivo(String ruta) {
   final sinExtension = punto <= 0 ? nombre : nombre.substring(0, punto);
   return sinExtension.trim().isEmpty ? 'Sin título' : sinExtension.trim();
 }
+
+/// Abre la pantalla de ajustes de la app, donde se puede dar el permiso
+/// a mano.
+///
+/// Hace falta porque Android deja de preguntar después de dos "no": a
+/// partir de ahí, pedir el permiso desde la app no muestra nada y
+/// devuelve "denegado" al instante. La única salida son los ajustes del
+/// sistema, y nadie sabe de memoria dónde quedan.
+///
+/// Vive acá y no en la pantalla para que el resto de la app no tenga
+/// que saber nada de cómo se manejan los permisos.
+Future<void> abrirAjustesParaDarElPermiso() async {
+  try {
+    await openAppSettings();
+  } catch (e) {
+    AppLogger.w('No se pudieron abrir los ajustes de la app: $e');
+  }
+}
