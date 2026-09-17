@@ -44,9 +44,18 @@ class CarruselPlaylists extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(titulo,
-                  style: AppTheme.subheading
-                      .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+              // `Expanded` + una sola línea: con la letra del sistema
+              // agrandada, un título como "Escuchado recientemente" no
+              // entra al lado del botón "Ver todo" y la fila se
+              // desborda. Es el mismo fallo que ya había en el menú
+              // lateral, en la misma pantalla y a la misma altura.
+              Expanded(
+                child: Text(titulo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.subheading
+                        .copyWith(fontSize: esPantallaPequena ? 16 : 18)),
+              ),
               TextButton(
                 onPressed: onVerTodo,
                 child: Text("Ver todo",
