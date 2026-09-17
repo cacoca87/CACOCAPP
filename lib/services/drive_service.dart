@@ -79,11 +79,15 @@ class DriveService {
     // como estaba la última vez que hubo señal.
     //
     // Antes esto no existía y se pasaba directo a la lista fija de más
-    // abajo, que se escribió una vez y quedó congelada. O sea que abrir
-    // la app sin internet no te mostraba TU biblioteca con menos cosas:
-    // te mostraba OTRA biblioteca. Los temas subidos después de esa
-    // lista --los de Amén, por ejemplo-- desaparecían, y podían
-    // aparecer archivos que ya no están en el servidor.
+    // abajo. Esa lista NO está mal --sus canciones están todas en el
+    // servidor y se reproducen perfecto-- pero está INCOMPLETA: es una
+    // foto del bucket del día en que se escribió, y todo lo que se
+    // subió después no figura. Los temas de Amén, por ejemplo.
+    //
+    // Así que sin señal veías una biblioteca a la que le faltaban
+    // canciones que sí tenés, sin ninguna forma de saber cuáles. La
+    // lista guardada arregla eso porque se actualiza sola cada vez que
+    // la app habla con el servidor.
     final guardada = await _leerListaGuardada();
     if (guardada != null && guardada.isNotEmpty) {
       final canciones = _construirCanciones(guardada);
@@ -91,14 +95,22 @@ class DriveService {
       return canciones;
     }
 
-    // SEGUNDO RESPALDO: la lista fija que viaja dentro de la app. Solo
-    // se usa en la primera apertura sin señal, cuando todavía no hubo
-    // ninguna vez con internet y no hay nada guardado. Es una constante
-    // de 160 entradas, así que esto nunca queda vacío -- antes había
-    // acá un tercer respaldo para el caso "ni siquiera la lista fija
-    // dio nada", que era inalcanzable y además mentía: devolvía una
-    // canción titulada "Sweet Child O Mine" de "Guns N Roses" cuya URL
-    // apuntaba a un MP3 de demostración genérico de otro sitio.
+    // SEGUNDO RESPALDO: la lista fija que viaja dentro de la app.
+    //
+    // NO SE BORRA, y conviene dejarlo escrito para que a nadie se le
+    // ocurra al ver 160 líneas de nombres y pensar que son relleno:
+    // esas canciones ESTÁN en el servidor y se reproducen perfecto. Es
+    // una foto real del bucket, solo que le faltan las que se subieron
+    // después de armarla.
+    //
+    // Sirve para la primerísima apertura sin señal, cuando todavía no
+    // hubo ninguna vez con internet y no hay nada guardado: ahí es esto
+    // o una pantalla vacía. Con 160 entradas, nunca queda vacío.
+    //
+    // (Antes había acá un TERCER respaldo, para el caso "ni siquiera la
+    // lista fija dio nada". Ese sí era inútil y además mentía: devolvía
+    // una canción titulada "Sweet Child O Mine" de "Guns N Roses" cuya
+    // dirección apuntaba a un MP3 de demostración de otro sitio.)
     final cancionesFijas = _construirCanciones(_nombresArchivosFijos);
     _cache = cancionesFijas;
     return cancionesFijas;

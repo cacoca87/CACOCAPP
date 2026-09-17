@@ -3176,21 +3176,27 @@ a escucharlos sea seguro: `videoStateController` es un
 instante en la biblioteca, porque ese tipo de flujo repite el último
 valor al suscribirse.
 
-### Sin internet, la app mostraba OTRA biblioteca
+### Sin internet, la biblioteca aparecía incompleta
 
 Cuando el servidor no contesta, la app cae en un respaldo. Ese respaldo
-era una **lista fija de 160 nombres escrita dentro del código**, armada
-una vez y congelada desde entonces.
+era una **lista fija de 160 nombres escrita dentro del código**.
 
-O sea que quedarse sin señal no te mostraba tu biblioteca con menos
-cosas: te mostraba otra. Los temas subidos después de esa lista —los de
-Amén, por ejemplo— desaparecían, y podían aparecer archivos que ya no
-están en el servidor.
+**Corrección, porque acá me equivoqué al escribirlo la primera vez:**
+puse que esa lista podía traer archivos que ya no están en el servidor.
+Eso lo supuse, no lo comprobé, y el dueño de la app lo corrigió: esas
+160 canciones **están** en el R2 y se reproducen perfecto. La lista es
+una foto real del bucket, no un ejemplo de relleno.
 
-Ahora se recuerda la última lista que **sí** vino del servidor, y es esa
-la que se usa sin señal. La lista fija queda solo para la primerísima
-apertura sin internet, cuando todavía no hubo ninguna vez con conexión:
-ahí es eso o una pantalla vacía.
+El problema entonces no es que esté equivocada: es que está
+**incompleta**. Es la foto del día en que se escribió, así que todo lo
+que se subió después no figura — los temas de Amén, por ejemplo. Sin
+señal veías una biblioteca a la que le faltaban canciones que sí tenés,
+sin ninguna forma de saber cuáles.
+
+Ahora se recuerda la última lista que **sí** vino del servidor, que se
+actualiza sola cada vez que la app habla con él. La lista fija **no se
+borra**: queda para la primerísima apertura sin internet, cuando todavía
+no hubo ninguna vez con conexión y es eso o una pantalla vacía.
 
 De paso se emparejó ese servicio con los otros cinco: el cliente HTTP
 entra por el constructor (era el único que no lo tenía, y por eso el

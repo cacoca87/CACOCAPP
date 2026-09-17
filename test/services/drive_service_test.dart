@@ -34,15 +34,17 @@ void main() {
     });
 
     test(
-        'EL CASO QUE IMPORTA: sin señal se muestra TU biblioteca, '
-        'no otra', () async {
-      // Antes, quedarse sin internet no te mostraba tu biblioteca con
-      // menos cosas: te mostraba OTRA. Se caía en una lista fija que se
-      // escribió una vez y quedó congelada dentro de la app, así que
-      // los temas subidos después --los de Amén, por ejemplo--
-      // desaparecían.
+        'EL CASO QUE IMPORTA: sin señal aparece la biblioteca COMPLETA, '
+        'no la foto vieja', () async {
+      // Antes, quedarse sin internet te dejaba con la lista fija que
+      // viaja dentro de la app. Esa lista no está mal --sus canciones
+      // están en el servidor y suenan perfecto-- pero es una foto del
+      // bucket del día en que se escribió: todo lo subido después no
+      // figura. Los temas de Amén, por ejemplo.
       //
-      // Ahora se recuerda la última lista que sí vino del servidor.
+      // Así que veías una biblioteca a la que le faltaban canciones que
+      // sí tenés, sin forma de saber cuáles. Ahora se recuerda la
+      // última lista que sí vino del servidor, que sí está completa.
       final conSenial = DriveService(
         client: MockClient((_) async => http.Response(
             _respuesta(['Amén - Te Quiero.mp3', 'Amén - Libre.mp3']), 200)),
@@ -67,8 +69,10 @@ void main() {
     });
 
     test('la primera vez sin señal cae en la lista que trae la app', () async {
-      // Nunca hubo internet, así que no hay nada guardado. Acá sí
-      // corresponde la lista fija: es eso o una pantalla vacía.
+      // Nunca hubo internet, así que no hay nada guardado. Acá la lista
+      // fija hace exactamente su trabajo: es eso o una pantalla vacía,
+      // y esas canciones están en el servidor de verdad. Por eso NO se
+      // borra aunque ya casi nunca se use.
       final servicio = DriveService(
         client: MockClient((_) async => throw const SocketException('sin red')),
       );
