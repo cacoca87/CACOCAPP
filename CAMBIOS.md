@@ -4158,3 +4158,54 @@ los **tres** modos de repetición se distingan entre sí --si no, no hay
 forma de saber en cuál estás sin probar--.
 
 `flutter analyze` limpio, **529 tests** en verde y APK de 40,5 MB.
+
+## 100. Vueltas 118 y 119: lo que se perdía y lo que el README mentía
+
+### El último movimiento del ecualizador se podía perder
+
+Lo del ecualizador se guarda medio segundo después de moverlo, a
+propósito: si no, arrastrar un slider reescribía el archivo de
+preferencias entero cincuenta veces en el medio del gesto.
+
+El problema es ese medio segundo. Si te vas de la app justo ahí, Android
+puede matarla estando al fondo y entonces el guardado nunca llega a
+correr. Ahora, al irse al fondo, se escribe ya lo que estuviera
+esperando.
+
+Se revisó si había más guardados con espera y **no hay**: los demás
+arrancan en el acto.
+
+### El README decía que no había pruebas de interfaz
+
+Decía, textual:
+
+> *"No hay pruebas de interfaz, así que los cambios visuales o de
+> interacción se verifican probando la app en un dispositivo real."*
+
+Hay unas ochenta, y son justo las que encontraron la mitad de los bugs
+de las últimas treinta vueltas: el destello tapado, los desbordes con la
+letra grande, el botón de los juegos que dejaba de repetir a los 0,5
+segundos. El README --que es lo primero que alguien lee para entender el
+proyecto-- afirmaba lo contrario.
+
+Se reescribió esa sección: los tres grupos de pruebas, que varios
+arreglos están comprobados **al revés** (volviendo a poner el error para
+ver que la prueba lo agarre), y que hubo un test que pasaba igual con el
+arreglo y sin él, y se borró.
+
+Y otras tres cosas que el README no decía:
+
+- **La música del propio celular** no figuraba en ningún lado, siendo una
+  de las cuatro fuentes de la app.
+- **Que Búsqueda Online no suena con la pantalla apagada** no estaba en
+  las limitaciones, que es exactamente donde alguien lo iría a buscar.
+  Ahora está, con el porqué: es una vista web, Android la suspende, y
+  reproducir YouTube en segundo plano es una función que YouTube cobra
+  aparte.
+- **Que el filtro de música local es una apuesta** y puede equivocarse en
+  los dos sentidos. Por eso la app dice cuántos archivos salteó.
+
+Una documentación que miente es peor que no tenerla: la primera hace
+tomar decisiones equivocadas con confianza.
+
+`flutter analyze` limpio, **529 tests** en verde y APK de 40,5 MB.
