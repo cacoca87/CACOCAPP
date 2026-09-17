@@ -3,6 +3,8 @@ package com.caco.musicapp
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
+import android.os.Build
+import android.provider.MediaStore
 import androidx.annotation.NonNull
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -23,6 +25,11 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : AudioServiceActivity() {
     private val channelName = "com.caco.musicapp/audio_effects"
+
+    /** Canal aparte: leer la música del celular no tiene nada que ver
+     * con los efectos de audio, y mezclarlos en el mismo canal haría
+     * que el nombre "audio_effects" dejara de querer decir algo. */
+    private val channelMusicaLocal = "com.caco.musicapp/musica_local"
 
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
@@ -73,6 +80,109 @@ class MainActivity : AudioServiceActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelMusicaLocal).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "listar" -> result.success(listarMusicaDelCelular())
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * Devuelve TODO el audio que Android tiene indexado, con los datos
+     * crudos y sin filtrar nada.
+     *
+     * Lo de "sin filtrar" es a propósito y es importante: decidir qué
+     * es música de verdad y qué es una nota de voz de WhatsApp se hace
+     * del lado de Dart (`utils/filtro_musica_local.dart`), donde está
+     * cubierto por tests que se pueden correr sin un celular. Acá solo
+     * se leen los datos y se los pasa tal cual.
+     *
+     * Android mantiene este índice solo: cuando llega un archivo nuevo
+     * al teléfono --por WhatsApp, por cable, desde otra app-- lo agrega
+     * sin que nadie tenga que pedírselo. Por eso alcanza con volver a
+     * consultar para ver lo nuevo.
+     */
+    private fun listarMusicaDelCelular(): List<Map<String, Any?>> {
+        val encontradas = mutableListOf<Map<String, Any?>>()
+
+        val columnas = mutableListOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DATA,
+            MediaStore.Audio.Media.IS_RINGTONE,
+            MediaStore.Audio.Media.IS_NOTIFICATION,
+            MediaStore.Audio.Media.IS_ALARM,
+            MediaStore.Audio.Media.IS_PODCAST
+        )
+        // Estas dos columnas no existen en las versiones viejas de
+        // Android: preguntarlas ahí hace fallar la consulta entera.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            columnas.add(MediaStore.Audio.Media.IS_AUDIOBOOK)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            columnas.add(MediaStore.Audio.Media.IS_RECORDING)
+        }
+
+        try {
+            val cursor = contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                columnas.toTypedArray(),
+                "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+                null,
+                "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
+            ) ?: return encontradas
+
+            cursor.use { c ->
+                fun texto(nombre: String): String {
+                    val i = c.getColumnIndex(nombre)
+                    return if (i == -1) "" else (c.getString(i) ?: "")
+                }
+                fun bandera(nombre: String): Boolean {
+                    val i = c.getColumnIndex(nombre)
+                    return i != -1 && c.getInt(i) != 0
+                }
+
+                while (c.moveToNext()) {
+                    val ruta = texto(MediaStore.Audio.Media.DATA)
+                    // Sin ruta no se puede reproducir ni leer la
+                    // carátula: no sirve de nada mostrarla.
+                    if (ruta.isEmpty()) continue
+
+                    val iDuracion = c.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                    val iId = c.getColumnIndex(MediaStore.Audio.Media._ID)
+
+                    encontradas.add(
+                        mapOf(
+                            "id" to if (iId == -1) 0L else c.getLong(iId),
+                            "titulo" to texto(MediaStore.Audio.Media.TITLE),
+                            "artista" to texto(MediaStore.Audio.Media.ARTIST),
+                            "album" to texto(MediaStore.Audio.Media.ALBUM),
+                            "duracionMs" to if (iDuracion == -1) 0L else c.getLong(iDuracion),
+                            "ruta" to ruta,
+                            "esTimbre" to bandera(MediaStore.Audio.Media.IS_RINGTONE),
+                            "esNotificacion" to bandera(MediaStore.Audio.Media.IS_NOTIFICATION),
+                            "esAlarma" to bandera(MediaStore.Audio.Media.IS_ALARM),
+                            "esPodcast" to bandera(MediaStore.Audio.Media.IS_PODCAST),
+                            "esAudiolibro" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                                bandera(MediaStore.Audio.Media.IS_AUDIOBOOK) else false,
+                            "esGrabacion" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+                                bandera(MediaStore.Audio.Media.IS_RECORDING) else false
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            // Sin permiso, o el fabricante cambió algo: se devuelve lo
+            // que se haya juntado en vez de tirar la app abajo. La
+            // biblioteca del servidor sigue funcionando igual.
+        }
+
+        return encontradas
     }
 
     private fun attachEffects(sessionId: Int) {

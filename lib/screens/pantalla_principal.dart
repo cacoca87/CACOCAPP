@@ -11,6 +11,7 @@ import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../services/drive_service.dart';
 import '../services/id3_cover_service.dart';
+import '../services/musica_local_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/barra_lateral.dart';
 import '../widgets/boton_volver.dart';
@@ -58,6 +59,38 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     _buscadorController.addListener(() => setState(() {}));
   }
 
+  /// La música que está guardada en el propio celular. Se guarda aparte
+  /// de `canciones` para no perderla cuando se refresca la biblioteca
+  /// del servidor, pero SE MUESTRA MEZCLADA con ella: no hay ninguna
+  /// "sección de música local".
+  List<Song> _delCelular = [];
+
+  /// Cuántos archivos se dejaron afuera por no ser música (notas de voz
+  /// de WhatsApp, grabaciones, tonos). Se muestra al actualizar.
+  int _descartadosDelCelular = 0;
+
+  /// La biblioteca completa: lo del servidor más lo del celular, en un
+  /// solo orden alfabético.
+  ///
+  /// Todo lo demás de la app trabaja con esta lista y no sabe --ni le
+  /// importa-- de dónde salió cada canción. Por eso la búsqueda, los
+  /// favoritos, las playlists, Artistas, Álbumes y las estadísticas
+  /// mezclan las dos cosas sin una línea de código extra.
+  ///
+  /// NO se sacan repetidas, a propósito. Si tenés la misma canción en
+  /// el servidor y además guardada en el celular, son dos archivos
+  /// distintos y las dos aparecen. Adivinar cuáles son "la misma" por
+  /// el título terminaría escondiendo temas que no lo son --dos
+  /// versiones, un vivo y un estudio-- y eso es peor que ver una
+  /// repetida.
+  List<Song> get _bibliotecaCompleta {
+    if (_delCelular.isEmpty) return canciones;
+    final todas = [...canciones, ..._delCelular];
+    todas
+        .sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    return todas;
+  }
+
   Future<void> _cargarCanciones() async {
     final list = await _driveService.obtenerCanciones();
     // La comprobación va ANTES del `setState`, no después: si la pantalla
@@ -69,6 +102,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       canciones = list;
       cargando = false;
     });
+    // La del celular se busca DESPUÉS de mostrar la del servidor: pide
+    // un permiso, y que lo primero que haga la app al abrirse sea tirar
+    // un cartel del sistema encima de una pantalla vacía es desagradable.
+    await _buscarMusicaDelCelular();
+    if (!mounted) return;
     final player = context.read<PlayerProvider>();
     await player.restoreSession(list);
     if (!mounted) return;
@@ -80,8 +118,27 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     if (!mounted) return;
     await context
         .read<PlaylistProvider>()
-        .loadFromPrefs([...list, ...player.downloadedSongs]);
+        .loadFromPrefs([...list, ..._delCelular, ...player.downloadedSongs]);
     _resolverMetadataReal(list);
+  }
+
+  /// Busca la música guardada en el celular y la suma a la biblioteca.
+  ///
+  /// Se puede llamar cuantas veces haga falta. Android mantiene su
+  /// propio índice de música al día solo --cuando llega un archivo
+  /// nuevo por WhatsApp, por cable o desde otra app, lo agrega sin que
+  /// nadie se lo pida--, así que volver a preguntar es TODO lo que hay
+  /// que hacer para ver lo que se agregó después. Por eso también
+  /// cuelga del botón de "Actualizar".
+  Future<void> _buscarMusicaDelCelular({bool pedirPermiso = true}) async {
+    if (!MusicaLocalService.disponible) return;
+    final resultado = await MusicaLocalService.instance
+        .buscar(pedirPermisoSiFalta: pedirPermiso);
+    if (!mounted) return;
+    setState(() {
+      _delCelular = resultado.canciones;
+      _descartadosDelCelular = resultado.descartadas;
+    });
   }
 
   Future<void> _actualizarCanciones() async {
@@ -96,9 +153,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       final player = context.read<PlayerProvider>();
       await player.whenDownloadsLoaded;
       if (!mounted) return;
+      // La música del celular se busca ANTES de restaurar las
+      // playlists: las playlists se guardan como una lista de ids y al
+      // cargarlas hay que poder resolver cada id contra una canción de
+      // verdad. Si esto fuera después, una canción del celular metida
+      // en una playlist no se encontraría y quedaría "sin resolver"
+      // hasta la próxima vez que se abriera la app.
+      await _buscarMusicaDelCelular(pedirPermiso: true);
+      if (!mounted) return;
       await context
           .read<PlaylistProvider>()
-          .loadFromPrefs([...list, ...player.downloadedSongs]);
+          .loadFromPrefs([...list, ..._delCelular, ...player.downloadedSongs]);
       _resolverMetadataReal(list);
       if (!mounted) return;
       // `refrescarCanciones` nunca falla hacia afuera: cuando el
@@ -107,13 +172,29 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       // actualizada" igual, asi que no habia forma de darse cuenta de
       // que el servidor estaba caido.
       final vinoDelServidor = _driveService.listaVieneDelWorker;
+
+      // Lo del celular se cuenta aparte en el aviso, y se dice cuántos
+      // archivos se saltearon.
+      //
+      // Ese segundo número es a propósito: el filtro que deja afuera
+      // las notas de voz y las grabaciones es una apuesta, y si algún
+      // día se lleva puesta una canción de verdad, no hay forma de
+      // darse cuenta salvo que la app lo diga. Mostrarlo convierte "me
+      // falta un tema" en "se saltearon 47, alguno era mío".
+      final delCelular = _delCelular.length;
+      final salteados = _descartadosDelCelular;
+      final extra = delCelular == 0
+          ? ''
+          : ' · ${contarCanciones(delCelular)} del celular'
+              '${salteados > 0 ? " (se saltearon $salteados que no son música)" : ""}';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             vinoDelServidor
-                ? "Biblioteca actualizada: ${contarCanciones(list.length)}"
+                ? "Biblioteca actualizada: ${contarCanciones(list.length)}$extra"
                 : "No se pudo consultar el servidor. Se muestra la lista "
-                    "guardada: ${contarCanciones(list.length)}",
+                    "guardada: ${contarCanciones(list.length)}$extra",
             // Crema sobre ambar no se lee al sol; sobre el rojo de error
             // si. Ver `AppTheme.textoSobreAmbar`.
             style: vinoDelServidor ? AppTheme.textoSobreAmbar : null,
@@ -500,6 +581,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       ...playlistProvider.playlists.map((p) => p.name),
     ];
 
+    // DE ACÁ PARA ABAJO, "la biblioteca" es una sola cosa.
+    //
+    // `canciones` es lo que vino del servidor y `_delCelular` lo que ya
+    // estaba en el teléfono, pero esa diferencia se termina justo acá:
+    // todo lo que sigue --la búsqueda, Artistas, Álbumes, Favoritos,
+    // Recientes, las playlists, las recomendaciones-- trabaja con esta
+    // lista única y no sabe de dónde salió cada canción.
+    //
+    // Es lo que hace que no haya "una cosa en un lado y otra en otro"
+    // sin tener que tocar ninguna de esas pantallas.
+    final biblioteca = _bibliotecaCompleta;
+
     // El índice de canciones por id, para resolver "Recientes" y "Más
     // Escuchadas", que se guardan como listas de ids.
     //
@@ -507,12 +600,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // aunque lo lean los dos. Antes cada uno se armaba el suyo: dos
     // recorridas completas de la biblioteca por cada dibujado, y la
     // pantalla de Inicio los pide a los dos.
-    late final Map<String, Song> porId = {for (final c in canciones) c.id: c};
+    late final Map<String, Song> porId = {for (final c in biblioteca) c.id: c};
 
     List<Song> cancionesParaNombre(String nombre) {
-      if (nombre == "Principal (Drive)") return canciones;
+      if (nombre == "Principal (Drive)") return biblioteca;
       if (nombre == "Favoritos") {
-        return canciones
+        return biblioteca
             .where((c) => playlistProvider.isFavorite(c.id))
             .toList();
       }
@@ -540,7 +633,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     /// carátula como portada del grupo.
     Map<String, Song> primeraPorClave(String Function(Song) clave) {
       final mapa = <String, Song>{};
-      for (final c in canciones) {
+      for (final c in biblioteca) {
         mapa.putIfAbsent(clave(c), () => c);
       }
       return mapa;
@@ -556,9 +649,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // aviso del reproductor -- incluso estando en Juegos o Noticias,
     // donde no se usan para nada.
     late final List<String> listaArtistas =
-        canciones.map((c) => c.artist).toSet().toList();
+        biblioteca.map((c) => c.artist).toSet().toList();
     late final List<String> listaAlbumes =
-        canciones.map((c) => c.album).toSet().toList();
+        biblioteca.map((c) => c.album).toSet().toList();
     late final Map<String, Song> representativaPorArtista =
         primeraPorClave((c) => c.artist);
     late final Map<String, Song> representativaPorAlbum =
@@ -569,7 +662,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       widgetCentral = StatisticsScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Recomendaciones") {
       widgetCentral =
-          RecommendationsScreen(allSongs: canciones, onVolver: _volverAInicio);
+          RecommendationsScreen(allSongs: biblioteca, onVolver: _volverAInicio);
     } else if (seccionActiva == "Descubrir") {
       widgetCentral = DescubrirScreen(onVolver: _volverAInicio);
     } else if (seccionActiva == "Buscador Online") {
@@ -594,10 +687,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         }
       } else if (seccionActiva == "Artistas" && subFiltroSeleccionado != null) {
         cancionesBase =
-            canciones.where((c) => c.artist == subFiltroSeleccionado).toList();
+            biblioteca.where((c) => c.artist == subFiltroSeleccionado).toList();
       } else if (seccionActiva == "Álbumes" && subFiltroSeleccionado != null) {
         cancionesBase =
-            canciones.where((c) => c.album == subFiltroSeleccionado).toList();
+            biblioteca.where((c) => c.album == subFiltroSeleccionado).toList();
       } else if (seccionActiva == "Playlists" &&
           subFiltroSeleccionado != null) {
         cancionesBase = cancionesParaNombre(subFiltroSeleccionado!);
@@ -692,11 +785,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               child: InicioTab(
                 player: player,
                 esPantallaPequena: esPantallaPequena,
-                totalCanciones: canciones.length,
+                totalCanciones: biblioteca.length,
                 recientes: cancionesParaNombre("Recientes"),
                 masEscuchadas: cancionesParaNombre("Más Escuchadas"),
                 favoritos: cancionesParaNombre("Favoritos"),
-                recomendaciones: player.getRecommendations(canciones),
+                recomendaciones: player.getRecommendations(biblioteca),
                 playlists: playlistProvider.playlists,
                 onRefrescar: _actualizarCanciones,
                 onVerBibliotecaCompleta: () =>

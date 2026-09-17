@@ -9,6 +9,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
+    <!-- Leer la música que ya está en el celular.
+         Android cambió cómo se pide: desde la versión 13 hay un permiso
+         solo para audio (READ_MEDIA_AUDIO), y antes se usaba el de todo
+         el almacenamiento. Se declaran los dos, y el viejo con
+         `maxSdkVersion` para que en los celulares nuevos NO se pida un
+         permiso de "acceder a todos tus archivos" que ya no hace falta
+         y que asusta con razón. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
     <application
         android:label="CACOCAPP"
         android:name="${applicationName}"
