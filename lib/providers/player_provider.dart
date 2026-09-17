@@ -90,6 +90,26 @@ class PlayerProvider extends ChangeNotifier {
 
   PlayerProvider(this.audioHandler, {this.onPausarVideoOnline}) {
     audioHandler.playbackState.listen((state) {
+      // Mientras suena un VIDEO de YouTube, esta notificación no habla
+      // de la biblioteca: la comparte el video, que la usa para poner
+      // sus controles en la pantalla de bloqueo.
+      //
+      // Sin esta salvedad, este provider la leía como si la canción de
+      // la biblioteca hubiera empezado a sonar, y pasaban dos cosas
+      // feas:
+      //
+      //  * el reloj de "tiempo escuchado" se ponía en marcha y le sumaba
+      //    a la ÚLTIMA canción de la biblioteca cada minuto de video que
+      //    mirabas. Las Estadísticas mostraban horas dedicadas a
+      //    canciones que en ese rato no sonaron ni un segundo.
+      //  * si esa canción venía restaurada de la sesión anterior y
+      //    todavía no se había contado, se le anotaba una reproducción
+      //    que nunca ocurrió.
+      //
+      // El video lleva su propia cuenta en su propia barra; acá no
+      // tiene nada que hacer.
+      if (audioHandler.modoVideo) return;
+
       final sonando = state.playing;
       var hayQueAvisar = false;
 
@@ -129,6 +149,13 @@ class PlayerProvider extends ChangeNotifier {
     });
 
     audioHandler.mediaItem.listen((item) {
+      // Por el mismo motivo: en modo video lo que se anuncia ahí es el
+      // video, no una canción de la biblioteca. Sin esto, con la cola
+      // vacía se fabricaba una `Song` falsa con los datos del video y
+      // el mini reproductor de la biblioteca aparecía mostrándolo, como
+      // si fuera un tema tuyo.
+      if (audioHandler.modoVideo) return;
+
       if (item != null) {
         // Se busca por posición y no solo por contenido porque hacen
         // falta las dos cosas: cuál es la canción Y en qué lugar de la
