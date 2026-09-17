@@ -4,6 +4,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../providers/online_video_provider.dart';
 import '../providers/player_provider.dart';
 import '../services/lyrics_service.dart';
+import '../utils/geometria_del_video.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import 'letra_sincronizada.dart';
@@ -59,11 +60,11 @@ class OnlineVideoOverlay extends StatefulWidget {
 }
 
 class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
-  // Medidas de la barra chica de abajo.
-  static const double _altoBarra = 64;
-  static const double _altoVideoChico = 48;
-  static const double _anchoVideoChico = _altoVideoChico * 16 / 9;
-  static const double _margenLateral = 8;
+  // Las medidas viven en `utils/geometria_del_video.dart`, junto con
+  // las cuentas que las usan. Acá estaban repetidas, y tener el mismo
+  // número en dos lugares es exactamente lo que causó el fallo de la
+  // barra montándose encima del mini reproductor: uno cambió y el otro
+  // no.
 
   // Ver la regla 1 del comentario de arriba.
   static const _claveReproductor = ValueKey('reproductor-youtube');
@@ -135,49 +136,27 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final anchoPantalla = constraints.maxWidth;
-        final altoPantalla = constraints.maxHeight;
-
-        // Modo chico: barra fija justo arriba del mini reproductor, con
-        // el video a la izquierda y los controles a la derecha.
-        final topBarra = altoPantalla -
-            padding.bottom -
-            // El alto sale del propio mini reproductor y no de un número
-            // escrito acá: crece con la escala de texto del sistema, y si
-            // los dos no salieran del mismo lugar, en un celular con la
-            // letra grande esta barra se le montaría encima.
-            (hayMiniPlayer ? MiniPlayer.altoTotal(context) : 0) -
-            _margenLateral -
-            _altoBarra;
-        final rectBarra = Rect.fromLTWH(
-          _margenLateral,
-          topBarra.clamp(0.0, altoPantalla),
-          (anchoPantalla - _margenLateral * 2).clamp(0.0, anchoPantalla),
-          _altoBarra,
+        // Las cuentas de dónde va cada cosa viven en
+        // `utils/geometria_del_video.dart`, con sus tests: son
+        // aritmética pura, y es la parte de este archivo que de verdad
+        // puede salir mal. Ya salió mal una vez --la barra chica se le
+        // montaba encima al mini reproductor con la letra agrandada-- y
+        // acá adentro no había forma de comprobarlo, porque el widget
+        // entero lleva un WebView que no arranca fuera de un celular.
+        //
+        // El alto del mini reproductor sale del PROPIO mini reproductor
+        // y no de un número escrito a mano: crece con la escala de
+        // texto del sistema, y si los dos no salieran del mismo lugar,
+        // volvería justo ese fallo.
+        final geo = calcularGeometriaDelVideo(
+          pantalla: Size(constraints.maxWidth, constraints.maxHeight),
+          margenesDelSistema: padding,
+          altoDelMiniReproductor:
+              hayMiniPlayer ? MiniPlayer.altoTotal(context) : 0,
         );
-        final rectVideoChico = Rect.fromLTWH(
-          rectBarra.left + 8,
-          rectBarra.top + (_altoBarra - _altoVideoChico) / 2,
-          _anchoVideoChico,
-          _altoVideoChico,
-        );
-
-        // Pantalla completa: el video ocupa buena parte del alto y
-        // debajo va la letra.
-        final altoHeader = 64.0 + padding.top;
-        final altoDisponible = altoPantalla - altoHeader - 90;
-        var altoVideoCompleto = altoDisponible.clamp(0.0, altoPantalla * 0.55);
-        var anchoVideoCompleto = altoVideoCompleto * 16 / 9;
-        if (anchoVideoCompleto > anchoPantalla) {
-          anchoVideoCompleto = anchoPantalla;
-          altoVideoCompleto = anchoVideoCompleto * 9 / 16;
-        }
-        final rectCompleto = Rect.fromLTWH(
-          (anchoPantalla - anchoVideoCompleto) / 2,
-          altoHeader,
-          anchoVideoCompleto,
-          altoVideoCompleto,
-        );
+        final rectBarra = geo.barra;
+        final rectVideoChico = geo.videoChico;
+        final rectCompleto = geo.videoCompleto;
 
         final rectActual = minimizado ? rectVideoChico : rectCompleto;
 
@@ -264,9 +243,12 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
               if (minimizado)
                 Positioned(
                   left: rectVideoChico.right + 10,
-                  right: _margenLateral + 8,
+                  // El borde derecho sale de la barra y no de un número
+                  // suelto: si los dos no salen del mismo lugar, se
+                  // desfasan en cuanto uno cambie.
+                  right: constraints.maxWidth - rectBarra.right + 8,
                   top: rectBarra.top,
-                  height: _altoBarra,
+                  height: altoDeLaBarraDelVideo,
                   child: _ControlesBarra(provider: provider),
                 ),
 
@@ -274,11 +256,11 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
               // negro enorme. Ahora se llena con la letra, si se
               // encuentra.
               if (!minimizado)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: rectCompleto.bottom + 12,
-                  bottom: 0,
+                Positioned.fromRect(
+                  // Sale de la misma cuenta que el video, así nunca se
+                  // le monta encima ni pide un alto negativo --que no es
+                  // un aviso: es un error dibujado en la pantalla--.
+                  rect: geo.zonaDeLaLetra,
                   child: _PanelLetra(
                     futuro: _letraDe(provider),
                     controller: controller,
