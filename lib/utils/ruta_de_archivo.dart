@@ -35,3 +35,33 @@ String? rutaDeArchivoDe(String direccion) {
   // Ya venía como ruta pelada.
   return direccion;
 }
+
+/// `true` si esta dirección apunta a un archivo del celular que **ya no
+/// está**.
+///
+/// POR QUÉ IMPORTA DISTINGUIRLO
+///
+/// Cuando el reproductor falla, la app supone que se cortó internet:
+/// reintenta cinco veces esperando cada vez más, y si no lo logra dice
+/// "Se perdió la conexión, reintentá cuando tengas señal".
+///
+/// Con un archivo del propio celular eso está mal dos veces. Primero,
+/// reintentar no puede funcionar: el archivo no va a aparecer solo, así
+/// que son cinco esperas de hasta treinta segundos para nada. Y
+/// segundo, el mensaje es falso: no hay ningún problema de conexión.
+///
+/// Pasa de verdad y es fácil: borrás un MP3 del celular con el
+/// administrador de archivos, y esa canción sigue en una playlist o era
+/// la última que sonó. La app la intenta poner y no la encuentra.
+///
+/// [existe] se recibe de afuera para poder probar esto sin tocar el
+/// disco.
+bool esUnArchivoQueYaNoEsta(
+  String direccion,
+  bool Function(String ruta) existe,
+) {
+  final ruta = rutaDeArchivoDe(direccion);
+  // `null` es algo de internet: ahí sí puede ser la conexión.
+  if (ruta == null || ruta.isEmpty) return false;
+  return !existe(ruta);
+}

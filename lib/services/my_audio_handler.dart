@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
@@ -5,6 +6,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/song.dart';
 import '../utils/app_logger.dart';
+import '../utils/ruta_de_archivo.dart';
 import 'artwork_service.dart';
 import 'id3_cover_service.dart';
 
@@ -261,9 +263,39 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     });
   }
 
+  /// La canción que el motor está intentando poner ahora, o `null`.
+  Song? get _cancionEnCurso {
+    final songs = _lastSongs;
+    if (songs == null || songs.isEmpty) return null;
+    final i = player.currentIndex ?? _lastKnownIndex;
+    if (i < 0 || i >= songs.length) return null;
+    return songs[i];
+  }
+
   void _scheduleRetry() {
     if (_recovering) return;
     if (!_wantsToPlay) return;
+
+    // Antes de suponer que se cortó internet, mirar si el problema es
+    // que el archivo ya no está en el celular. Reintentar ahí no puede
+    // funcionar --no va a aparecer solo-- y el mensaje de "revisá tu
+    // conexión" sería mentira. Ver `utils/ruta_de_archivo.dart`.
+    final cancion = _cancionEnCurso;
+    if (cancion != null &&
+        esUnArchivoQueYaNoEsta(
+            cancion.url, (ruta) => File(ruta).existsSync())) {
+      _wantsToPlay = false;
+      _retryTimer?.cancel();
+      playbackState.add(playbackState.value.copyWith(
+        playing: false,
+        processingState: AudioProcessingState.ready,
+      ));
+      _mensajesController.add(
+        'No se encontró el archivo de "${cancion.title}". '
+        'Puede que lo hayas borrado del celular.',
+      );
+      return;
+    }
 
     if (_retryCount >= _maxRetries) {
       playbackState.add(playbackState.value.copyWith(

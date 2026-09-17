@@ -56,4 +56,42 @@ void main() {
       );
     });
   });
+
+  group('esUnArchivoQueYaNoEsta', () {
+    // Lo que decide si el reproductor reintenta o no. Cuando falla,
+    // la app supone que se cortó internet: reintenta ocho veces
+    // esperando cada vez más y termina diciendo "revisá tu señal".
+    // Con un archivo del propio celular eso está mal dos veces:
+    // reintentar no puede funcionar --no va a aparecer solo-- y el
+    // mensaje es falso.
+    bool nadaExiste(String _) => false;
+    bool todoExiste(String _) => true;
+
+    test('un archivo del celular que se borró: SÍ', () {
+      // Pasa de verdad y es fácil: borrás un MP3 con el administrador
+      // de archivos y esa canción seguía en una playlist.
+      expect(esUnArchivoQueYaNoEsta('file:///Music/a.mp3', nadaExiste), isTrue);
+    });
+
+    test('un archivo del celular que sigue ahí: no', () {
+      expect(esUnArchivoQueYaNoEsta('file:///Music/a.mp3', todoExiste), isFalse);
+    });
+
+    test('algo de internet: NUNCA, aunque no responda', () {
+      // Ahí sí puede ser la conexión, y reintentar es lo correcto.
+      expect(esUnArchivoQueYaNoEsta('https://r2.test/a.mp3', nadaExiste),
+          isFalse);
+      expect(
+          esUnArchivoQueYaNoEsta('http://r2.test/a.mp3', nadaExiste), isFalse);
+    });
+
+    test('una dirección vacía no rompe nada', () {
+      expect(esUnArchivoQueYaNoEsta('', nadaExiste), isFalse);
+    });
+
+    test('una ruta pelada también cuenta como archivo', () {
+      expect(
+          esUnArchivoQueYaNoEsta('/storage/Music/a.mp3', nadaExiste), isTrue);
+    });
+  });
 }
