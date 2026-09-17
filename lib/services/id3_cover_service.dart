@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:id3/id3.dart';
 import 'package:path_provider/path_provider.dart';
+import '../utils/huella_de_texto.dart';
 import '../utils/id3_tags.dart';
 import '../utils/ruta_de_archivo.dart';
 import '../utils/una_sola_vez.dart';
@@ -124,15 +125,35 @@ class Id3CoverService {
     }
   }
 
-  /// Nombre de archivo seguro derivado de la URL (usamos el último
-  /// segmento, que ya es único por canción — el propio nombre del
-  /// archivo mp3).
+  /// Con qué nombre se guarda en la caché lo que se sacó de esta
+  /// canción: el nombre de su archivo, limpio de caracteres raros, y
+  /// para las del celular además una huella de la ruta completa (ver
+  /// el porqué abajo).
   String _claveArchivo(String url) {
     final uri = Uri.tryParse(url);
     final ultimo = (uri != null && uri.pathSegments.isNotEmpty)
         ? uri.pathSegments.last
         : url;
-    return ultimo.replaceAll(RegExp(r'[^\w.\-]'), '_');
+    final limpio = ultimo.replaceAll(RegExp(r'[^\w.\-]'), '_');
+
+    // Para los archivos DEL CELULAR se agrega una huella de la ruta
+    // completa.
+    //
+    // Las canciones del servidor viven todas juntas en un mismo lugar,
+    // así que su nombre de archivo ya las distingue. Las del celular
+    // no: están repartidas en carpetas, y es de lo más común tener
+    // "/Music/Rock/01 - Intro.mp3" y "/Music/Jazz/01 - Intro.mp3". Con
+    // el nombre solo, las dos caían en el mismo lugar de la caché y la
+    // segunda terminaba mostrando la carátula, el álbum y el artista de
+    // la primera.
+    //
+    // La huella se agrega SOLO a las locales a propósito: si se le
+    // pusiera a todas, las carátulas del servidor que ya están
+    // guardadas dejarían de encontrarse y habría que volver a bajarlas
+    // --medio megabyte por canción de datos móviles-- sin ninguna
+    // necesidad.
+    if (rutaDeArchivoDe(url) == null) return limpio;
+    return '${limpio}_${huellaCorta(url)}';
   }
 
   /// Obtiene los bytes del MP3 (archivo local si es una canción
