@@ -13,6 +13,7 @@ import '../services/drive_service.dart';
 import '../services/id3_cover_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/barra_lateral.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/inicio_tab.dart';
 import '../widgets/indicador_sonando.dart';
 import '../widgets/mini_player.dart';
@@ -620,11 +621,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           Row(
             children: [
               if (subFiltroSeleccionado != null) ...[
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new,
-                      color: AppTheme.paper, size: 18),
-                  tooltip: "Volver",
-                  onPressed: () => setState(() => subFiltroSeleccionado = null),
+                BotonVolver(
+                  compacto: true,
+                  onVolver: () => setState(() => subFiltroSeleccionado = null),
                 ),
                 const SizedBox(width: 8),
               ],

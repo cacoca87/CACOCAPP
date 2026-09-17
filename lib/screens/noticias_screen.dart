@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/noticia.dart';
 import '../services/noticias_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 
 /// Noticias por categoría: negocios internacionales, comercio global,
@@ -36,14 +37,6 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   void initState() {
     super.initState();
     _cargar();
-  }
-
-  void _volver() {
-    if (widget.onVolver != null) {
-      widget.onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
   }
 
   Future<void> _cargar({bool forzar = false}) async {
@@ -106,14 +99,7 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
         backgroundColor: AppTheme.ink,
         title:
             Text('Noticias', style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: 'Volver',
-          // Igual que en Descubrir y Estadisticas: si esta pantalla se
-          // abriera con Navigator en vez de insertada, sin este respaldo
-          // el boton quedaba apagado y no habia forma de salir.
-          onPressed: _volver,
-        ),
+        leading: BotonVolver(onVolver: widget.onVolver),
       ),
       body: Column(
         children: [

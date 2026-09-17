@@ -5,6 +5,7 @@ import '../providers/online_video_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
 import 'diagnostico_youtube_screen.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 
 class DualSearchScreen extends StatefulWidget {
@@ -103,14 +104,6 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
     });
   }
 
-  void _volver() {
-    if (widget.onVolver != null) {
-      widget.onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // Antes esta pantalla tenía su propio PopScope acá -- quedó
@@ -124,12 +117,7 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
         // Cabecera con botón de retroceso y título modificado
         Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new,
-                  color: AppTheme.paper, size: 18),
-              tooltip: "Volver",
-              onPressed: _volver,
-            ),
+            BotonVolver(onVolver: widget.onVolver, compacto: true),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

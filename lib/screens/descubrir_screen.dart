@@ -6,6 +6,7 @@ import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../services/jamendo_service.dart';
 import '../styles/app_theme.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
@@ -45,14 +46,6 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
   // La última consulta lanzada, para poder repetirla desde el botón
   // "Reintentar" sin que el usuario tenga que reescribir nada.
   Future<List<Song>> Function()? _ultimaConsulta;
-
-  void _volver() {
-    if (widget.onVolver != null) {
-      widget.onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  }
 
   /// Se llama en cada tecla. Espera 450ms de silencio antes de buscar
   /// de verdad — así no disparamos una búsqueda de red por cada letra
@@ -152,11 +145,7 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
         backgroundColor: AppTheme.ink,
         title: Text('Descubrir',
             style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: "Volver",
-          onPressed: _volver,
-        ),
+        leading: BotonVolver(onVolver: widget.onVolver),
       ),
       body: Column(
         children: [

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
+import '../widgets/boton_volver.dart';
 import 'carrera_screen.dart';
 import 'disparos_screen.dart';
 import 'snake_screen.dart';
 import 'tetris_screen.dart';
 
-/// Menú de los juegos. Los dos se abren con `Navigator.push` (a
+/// Menú de los juegos. Los cuatro se abren con `Navigator.push` (a
 /// diferencia del resto de las secciones, que se insertan en
 /// `PantallaPrincipal`) porque cada uno ocupa la pantalla entera con sus
 /// propios controles abajo, y ahí el mini reproductor estorbaría.
@@ -23,11 +24,7 @@ class JuegosScreen extends StatelessWidget {
         backgroundColor: AppTheme.ink,
         title:
             Text('Juegos', style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: 'Volver',
-          onPressed: onVolver,
-        ),
+        leading: BotonVolver(onVolver: onVolver),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

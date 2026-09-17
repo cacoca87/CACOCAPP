@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../styles/app_theme.dart';
 import '../utils/disparos_logica.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/controles_juego.dart';
 import '../widgets/tablero_juego.dart';
 
@@ -136,11 +137,7 @@ class _DisparosScreenState extends State<DisparosScreen>
         backgroundColor: AppTheme.ink,
         title:
             Text('Disparos', style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: 'Volver',
-          onPressed: widget.onVolver,
-        ),
+        leading: BotonVolver(onVolver: widget.onVolver),
         actions: [
           IconButton(
             icon: Icon(

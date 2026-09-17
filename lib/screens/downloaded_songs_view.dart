@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
@@ -23,18 +24,11 @@ class DownloadedSongsView extends StatelessWidget {
   /// se abre con Navigator.push), así que el botón "volver" no puede
   /// usar Navigator.pop -- no hay ninguna ruta apilada que sacar. En su
   /// lugar, quien construye esta pantalla pasa [onVolver] con lo que
-  /// realmente hay que hacer (volver a Inicio).
+  /// realmente hay que hacer (volver a Inicio). La explicación completa
+  /// vive en `widgets/boton_volver.dart`.
   final VoidCallback? onVolver;
 
   const DownloadedSongsView({super.key, this.onVolver});
-
-  void _volver(BuildContext context) {
-    if (onVolver != null) {
-      onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,11 +41,7 @@ class DownloadedSongsView extends StatelessWidget {
         backgroundColor: AppTheme.ink,
         title: Text('Música descargada',
             style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: "Volver",
-          onPressed: () => _volver(context),
-        ),
+        leading: BotonVolver(onVolver: onVolver),
       ),
       body: descargadas.isEmpty
           ? const EstadoVacio(

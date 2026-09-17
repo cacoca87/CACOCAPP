@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
@@ -14,19 +15,12 @@ class RecommendationsScreen extends StatelessWidget {
   /// dentro de PantallaPrincipal (no vía Navigator.push), así que
   /// Navigator.pop no tiene ninguna ruta real que sacar — vacía el
   /// Navigator entero y deja la pantalla en negro. [onVolver] es lo
-  /// que realmente hay que ejecutar (volver a Inicio).
+  /// que realmente hay que ejecutar (volver a Inicio). La explicación
+  /// completa vive en `widgets/boton_volver.dart`.
   final VoidCallback? onVolver;
 
   const RecommendationsScreen(
       {super.key, required this.allSongs, this.onVolver});
-
-  void _volver(BuildContext context) {
-    if (onVolver != null) {
-      onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +33,7 @@ class RecommendationsScreen extends StatelessWidget {
         backgroundColor: AppTheme.ink,
         title: Text('Recomendado para ti',
             style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: "Volver",
-          onPressed: () => _volver(context),
-        ),
+        leading: BotonVolver(onVolver: onVolver),
       ),
       body: recommendations.isEmpty
           ? const EstadoVacio(
@@ -78,7 +68,7 @@ class RecommendationsScreen extends StatelessWidget {
                   ),
                   onTap: () {
                     player.playSong(song, recommendations, index);
-                    _volver(context);
+                    volverAtras(context, onVolver);
                   },
                 );
               },

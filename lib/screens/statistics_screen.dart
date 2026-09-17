@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/player_provider.dart';
 import '../styles/app_theme.dart';
 import '../utils/formato_tiempo.dart';
+import '../widgets/boton_volver.dart';
 import '../widgets/estado_vacio.dart';
 
 class StatisticsScreen extends StatelessWidget {
@@ -13,17 +14,10 @@ class StatisticsScreen extends StatelessWidget {
   /// hacerlo vacía el Navigator entero (pantalla negra, hay que
   /// reabrir la app). En su lugar, quien construye esta pantalla pasa
   /// [onVolver] con lo que realmente hay que hacer (volver a Inicio).
+  /// La explicación completa vive en `widgets/boton_volver.dart`.
   final VoidCallback? onVolver;
 
   const StatisticsScreen({super.key, this.onVolver});
-
-  void _volver(BuildContext context) {
-    if (onVolver != null) {
-      onVolver!();
-    } else if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +32,7 @@ class StatisticsScreen extends StatelessWidget {
         backgroundColor: AppTheme.ink,
         title: Text('Estadísticas de escucha',
             style: AppTheme.subheading.copyWith(fontSize: 18)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppTheme.paper),
-          tooltip: "Volver",
-          onPressed: () => _volver(context),
-        ),
+        leading: BotonVolver(onVolver: onVolver),
       ),
       body: top.isEmpty
           ? const EstadoVacio(
