@@ -88,7 +88,26 @@ class SongOptionsMenu extends StatelessWidget {
               ],
             ),
           ),
-          if (estaDescargada)
+          // Una canción que ya vive en el celular no se descarga ni se
+          // "elimina la descarga": las dos opciones sobran, y la de
+          // descargar además fallaba siempre con "revisá tu conexión",
+          // porque descargar es bajar algo de internet y esta no está
+          // en internet. Para borrarla de verdad está el administrador
+          // de archivos del teléfono, que es donde corresponde.
+          if (cancion.estaEnElCelular)
+            const PopupMenuItem<String>(
+              enabled: false,
+              child: Row(
+                children: [
+                  Icon(Icons.smartphone_rounded,
+                      color: AppTheme.mutedInk, size: 18),
+                  SizedBox(width: 10),
+                  Text('Ya está en tu celular',
+                      style: TextStyle(color: AppTheme.mutedInk, fontSize: 13)),
+                ],
+              ),
+            )
+          else if (estaDescargada)
             PopupMenuItem(
               value: "eliminar_descarga",
               child: Row(

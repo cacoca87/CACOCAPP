@@ -83,12 +83,33 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   /// el título terminaría escondiendo temas que no lo son --dos
   /// versiones, un vivo y un estudio-- y eso es peor que ver una
   /// repetida.
-  List<Song> get _bibliotecaCompleta {
-    if (_delCelular.isEmpty) return canciones;
+  ///
+  /// SE GUARDA ARMADA, no se arma al dibujar.
+  ///
+  /// Nació como una propiedad que juntaba y ordenaba las dos listas
+  /// cada vez que alguien la leía, y eso es una vez por DIBUJADO: o
+  /// sea, con cada tecla del buscador y con cada aviso del reproductor,
+  /// copiar y ordenar cientos de canciones para que den exactamente lo
+  /// mismo. Las dos listas de las que sale cambian un puñado de veces
+  /// en toda la sesión, así que se rearma ahí y no acá.
+  List<Song> _biblioteca = [];
+
+  /// Vuelve a juntar las dos listas. Hay que llamarla cada vez que
+  /// cambia alguna de las dos.
+  ///
+  /// El orden se fija UNA vez, al juntarlas, y no se retoca cuando el
+  /// repaso de metadatos corrige un título. Si se reordenara, las filas
+  /// saltarían de lugar solas mientras la persona está mirando la
+  /// lista, que es peor que un orden imperfecto.
+  void _rearmarBiblioteca() {
+    if (_delCelular.isEmpty) {
+      _biblioteca = canciones;
+      return;
+    }
     final todas = [...canciones, ..._delCelular];
     todas
         .sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-    return todas;
+    _biblioteca = todas;
   }
 
   Future<void> _cargarCanciones() async {
@@ -101,6 +122,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     setState(() {
       canciones = list;
       cargando = false;
+      _rearmarBiblioteca();
     });
     // La del celular se busca DESPUÉS de mostrar la del servidor: pide
     // un permiso, y que lo primero que haga la app al abrirse sea tirar
@@ -108,7 +130,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     await _buscarMusicaDelCelular();
     if (!mounted) return;
     final player = context.read<PlayerProvider>();
-    await player.restoreSession(list);
+    // Se restaura contra la biblioteca COMPLETA, no solo contra lo del
+    // servidor. La sesión anterior se guarda como el id de la canción
+    // que estaba sonando: si esa era una del celular y acá se buscara
+    // solo entre las del servidor, no se encontraría y la app abriría
+    // en la primera canción de la lista en vez de donde la dejaste.
+    await player.restoreSession(_biblioteca);
     if (!mounted) return;
     // Esperamos a que las descargas (que pueden incluir canciones de
     // Jamendo/buscador online que NO están en `list`) terminen de leerse
@@ -138,6 +165,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     setState(() {
       _delCelular = resultado.canciones;
       _descartadosDelCelular = resultado.descartadas;
+      _rearmarBiblioteca();
     });
   }
 
@@ -149,6 +177,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       setState(() {
         canciones = list;
         actualizando = false;
+        _rearmarBiblioteca();
       });
       final player = context.read<PlayerProvider>();
       await player.whenDownloadsLoaded;
@@ -591,7 +620,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     //
     // Es lo que hace que no haya "una cosa en un lado y otra en otro"
     // sin tener que tocar ninguna de esas pantallas.
-    final biblioteca = _bibliotecaCompleta;
+    final biblioteca = _biblioteca;
 
     // El índice de canciones por id, para resolver "Recientes" y "Más
     // Escuchadas", que se guardan como listas de ids.

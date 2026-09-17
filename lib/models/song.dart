@@ -25,4 +25,17 @@ class Song {
     required this.url,
     required this.coverUrl,
   });
+
+  /// `true` si el archivo ya estaba guardado en el celular y la app
+  /// solo lo encontró (ver `services/musica_local_service.dart`).
+  ///
+  /// El prefijo del id es lo que distingue de dónde salió cada canción:
+  /// `r2_` del servidor, `jamendo_` de Descubrir, `local_` del propio
+  /// teléfono.
+  ///
+  /// Hace falta saberlo en un solo lugar: el menú de opciones. A una
+  /// canción que ya está en el celular no tiene sentido ofrecerle
+  /// "Descargar offline" --y encima no funcionaría, porque descargar es
+  /// bajar algo de internet y esta no está en internet--.
+  bool get estaEnElCelular => id.startsWith('local_');
 }

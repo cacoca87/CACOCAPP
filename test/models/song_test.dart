@@ -65,5 +65,26 @@ void main() {
         expect(cancion.title, 'Te Quiero');
       },
     );
+
+    test('se sabe de dónde salió cada canción por su id', () {
+      // El prefijo del id es lo que distingue el origen. Lo usa el menú
+      // de opciones: a una canción que ya está en el celular no se le
+      // ofrece "Descargar offline", porque no tiene sentido y encima
+      // fallaba siempre (descargar es bajar de internet, y esa no está
+      // en internet).
+      Song conId(String id) => Song(
+            id: id,
+            title: 'x',
+            artist: 'x',
+            album: '',
+            url: '',
+            coverUrl: '',
+          );
+
+      expect(conId('local_42').estaEnElCelular, isTrue);
+      expect(conId('r2_Bohemian Rhapsody.mp3').estaEnElCelular, isFalse);
+      expect(conId('jamendo_123').estaEnElCelular, isFalse);
+      expect(conId('yt_abc').estaEnElCelular, isFalse);
+    });
   });
 }
