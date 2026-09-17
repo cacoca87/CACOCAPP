@@ -141,26 +141,41 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
   VoidCallback? onVideoPause;
   VoidCallback? onVideoNext;
 
+  /// Si queda algún video después de este en la lista de resultados.
+  ///
+  /// Decide si la notificación muestra el botón de "siguiente". Antes lo
+  /// mostraba SIEMPRE, así que al poner el último resultado de una
+  /// búsqueda quedaba un botón que no hacía absolutamente nada --y
+  /// encima en la pantalla de bloqueo, donde no hay forma de entender
+  /// por qué--. Es el mismo botón que en la app ya se apagaba solo.
+  bool _hayVideoSiguiente = false;
+
   /// Empieza a mostrar la sesión de medios de un video.
   void iniciarSesionDeVideo({
     required String id,
     required String titulo,
     required String autor,
+    bool haySiguiente = false,
   }) {
     _modoVideo = true;
     mediaItem.add(MediaItem(id: id, title: titulo, artist: autor));
-    publicarEstadoDeVideo(sonando: true);
+    publicarEstadoDeVideo(sonando: true, haySiguiente: haySiguiente);
   }
 
-  void publicarEstadoDeVideo({required bool sonando}) {
+  void publicarEstadoDeVideo({required bool sonando, bool? haySiguiente}) {
     if (!_modoVideo) return;
+    if (haySiguiente != null) _hayVideoSiguiente = haySiguiente;
     playbackState.add(PlaybackState(
       controls: [
         if (sonando) MediaControl.pause else MediaControl.play,
-        MediaControl.skipToNext,
+        if (_hayVideoSiguiente) MediaControl.skipToNext,
       ],
       systemActions: const {MediaAction.playPause},
-      androidCompactActionIndices: const [0, 1],
+      // Cuáles de esos controles entran en la notificación chica. Tiene
+      // que coincidir con cuántos hay de verdad: pedir el índice 1
+      // cuando solo existe el 0 es un error en tiempo de ejecución.
+      androidCompactActionIndices:
+          _hayVideoSiguiente ? const [0, 1] : const [0],
       processingState: AudioProcessingState.ready,
       playing: sonando,
     ));

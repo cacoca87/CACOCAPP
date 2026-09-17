@@ -222,12 +222,20 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
         id: 'yt_$id',
         titulo: titulo,
         autor: autor,
+        // Para que el botón de "siguiente" de la notificación aparezca
+        // solo cuando de verdad hay un video después. Antes estaba
+        // siempre, y con el último resultado de una búsqueda no hacía
+        // nada.
+        haySiguiente: _onlineVideoProvider.haySiguiente,
       );
     };
     _onlineVideoProvider.onTerminaVideo =
         widget.audioHandler.terminarSesionDeVideo;
-    _onlineVideoProvider.onEstadoDeVideo = (sonando) =>
-        widget.audioHandler.publicarEstadoDeVideo(sonando: sonando);
+    _onlineVideoProvider.onEstadoDeVideo =
+        (sonando) => widget.audioHandler.publicarEstadoDeVideo(
+              sonando: sonando,
+              haySiguiente: _onlineVideoProvider.haySiguiente,
+            );
     widget.audioHandler.onVideoPlay = _onlineVideoProvider.reanudar;
     widget.audioHandler.onVideoPause = _onlineVideoProvider.pausarSoloElVideo;
     widget.audioHandler.onVideoNext = _onlineVideoProvider.siguiente;
