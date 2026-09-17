@@ -27,12 +27,12 @@ void main() {
       },
     );
 
-    test(
-        'devuelve mp3 para una URL de streaming sin extensión real (ej. YouTube)',
+    test('devuelve mp3 para una dirección de streaming sin extensión real',
         () {
+      // Pasa con Jamendo: la dirección del audio no termina en ".mp3",
+      // así que hay que suponer el formato para poder guardarlo.
       expect(
-        adivinarExtensionDeUrl(
-            'https://proxy.onrender.com/stream?id=dQw4w9WgXcQ'),
+        adivinarExtensionDeUrl('https://ejemplo.test/stream?id=12345'),
         'mp3',
       );
     });
