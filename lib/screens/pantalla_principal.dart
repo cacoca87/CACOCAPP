@@ -49,7 +49,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   bool actualizando = false;
 
   String seccionActiva = "Tu Biblioteca";
-  String bibliotecaSeleccionada = "Principal (Drive)";
+  String bibliotecaSeleccionada = bibliotecaPrincipal;
   String? subFiltroSeleccionado;
 
   @override
@@ -343,16 +343,16 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   String _mensajeBibliotecaVacia() {
-    if (bibliotecaSeleccionada == "Favoritos") {
+    if (bibliotecaSeleccionada == bibliotecaFavoritos) {
       return "Todavía no tienes canciones favoritas.\nToca el corazón en cualquier canción para agregarla aquí.";
     }
-    if (bibliotecaSeleccionada == "Recientes") {
+    if (bibliotecaSeleccionada == bibliotecaRecientes) {
       return "Todavía no has reproducido ninguna canción.\nAparecerán aquí en cuanto empieces a escuchar.";
     }
-    if (bibliotecaSeleccionada == "Más Escuchadas") {
+    if (bibliotecaSeleccionada == bibliotecaMasEscuchadas) {
       return "Todavía no hay suficiente historial.\nEntre más escuches, más precisa será esta lista.";
     }
-    if (bibliotecaSeleccionada == "Principal (Drive)") {
+    if (bibliotecaSeleccionada == bibliotecaPrincipal) {
       return "No se encontraron canciones. Prueba actualizar con el botón de arriba.";
     }
     return 'La playlist "$bibliotecaSeleccionada" está vacía.\nAgrégale canciones desde el menú (⋮) de cualquier canción.';
@@ -563,7 +563,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     playlistProvider.deletePlaylist(playlistAEliminar.id);
     setState(() {
       if (bibliotecaSeleccionada == nombre) {
-        bibliotecaSeleccionada = "Principal (Drive)";
+        bibliotecaSeleccionada = bibliotecaPrincipal;
       }
       if (subFiltroSeleccionado == nombre) {
         subFiltroSeleccionado = null;
@@ -574,7 +574,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   void _volverAInicio() {
     setState(() {
       seccionActiva = "Tu Biblioteca";
-      bibliotecaSeleccionada = "Principal (Drive)";
+      bibliotecaSeleccionada = bibliotecaPrincipal;
       subFiltroSeleccionado = null;
     });
   }
@@ -588,7 +588,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       seccionActiva = seccion;
       subFiltroSeleccionado = null;
       if (seccion == "Tu Biblioteca") {
-        bibliotecaSeleccionada = "Principal (Drive)";
+        bibliotecaSeleccionada = bibliotecaPrincipal;
       }
     });
   }
@@ -632,19 +632,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     late final Map<String, Song> porId = {for (final c in biblioteca) c.id: c};
 
     List<Song> cancionesParaNombre(String nombre) {
-      if (nombre == "Principal (Drive)") return biblioteca;
-      if (nombre == "Favoritos") {
+      if (nombre == bibliotecaPrincipal) return biblioteca;
+      if (nombre == bibliotecaFavoritos) {
         return biblioteca
             .where((c) => playlistProvider.isFavorite(c.id))
             .toList();
       }
-      if (nombre == "Recientes") {
+      if (nombre == bibliotecaRecientes) {
         return player.historialIds
             .map((id) => porId[id])
             .whereType<Song>()
             .toList();
       }
-      if (nombre == "Más Escuchadas") {
+      if (nombre == bibliotecaMasEscuchadas) {
         return player.masEscuchadasIds
             .map((id) => porId[id])
             .whereType<Song>()
@@ -704,12 +704,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       widgetCentral = NoticiasScreen(onVolver: _volverAInicio);
     } else {
       final mostrarInicio = seccionActiva == "Tu Biblioteca" &&
-          bibliotecaSeleccionada == "Principal (Drive)" &&
+          bibliotecaSeleccionada == bibliotecaPrincipal &&
           subFiltroSeleccionado == null;
 
       List<Song> cancionesBase = [];
       if (seccionActiva == "Tu Biblioteca" && !mostrarInicio) {
-        if (bibliotecaSeleccionada == "Principal (Drive)") {
+        if (bibliotecaSeleccionada == bibliotecaPrincipal) {
           cancionesBase = cancionesParaNombre(subFiltroSeleccionado!);
         } else {
           cancionesBase = cancionesParaNombre(bibliotecaSeleccionada);
@@ -727,11 +727,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
       final nombreVistaActual =
           (seccionActiva == "Tu Biblioteca" && !mostrarInicio)
-              ? (bibliotecaSeleccionada == "Principal (Drive)"
+              ? (bibliotecaSeleccionada == bibliotecaPrincipal
                   ? subFiltroSeleccionado
                   : bibliotecaSeleccionada)
               : (seccionActiva == "Playlists" ? subFiltroSeleccionado : null);
-      final esVistaDeFavoritos = nombreVistaActual == "Favoritos";
+      final esVistaDeFavoritos = nombreVistaActual == bibliotecaFavoritos;
       Playlist? playlistDeVistaActual;
       if (nombreVistaActual != null &&
           !nombresReservadosDeBiblioteca.contains(nombreVistaActual)) {
@@ -759,15 +759,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       if (mostrarInicio) {
         tituloVista = "Inicio";
       } else if (subFiltroSeleccionado != null) {
-        tituloVista = (seccionActiva == "Tu Biblioteca" &&
-                bibliotecaSeleccionada == "Principal (Drive)")
-            ? (subFiltroSeleccionado == "Principal (Drive)"
-                ? "Toda tu música"
-                : subFiltroSeleccionado!)
-            : subFiltroSeleccionado!;
+        // Acá había tres condiciones anidadas cuyo único trabajo era
+        // cambiar el nombre de la biblioteca principal por "Toda tu
+        // música" al titular la pantalla. Ahora la biblioteca SE LLAMA
+        // así, con lo cual las tres ramas daban el mismo resultado: el
+        // nombre del filtro, tal cual.
+        tituloVista = subFiltroSeleccionado!;
       } else {
         tituloVista = seccionActiva == "Tu Biblioteca"
-            ? "Biblioteca: $bibliotecaSeleccionada"
+            ? bibliotecaSeleccionada
             : seccionActiva;
       }
 
@@ -815,28 +815,28 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 player: player,
                 esPantallaPequena: esPantallaPequena,
                 totalCanciones: biblioteca.length,
-                recientes: cancionesParaNombre("Recientes"),
-                masEscuchadas: cancionesParaNombre("Más Escuchadas"),
-                favoritos: cancionesParaNombre("Favoritos"),
+                recientes: cancionesParaNombre(bibliotecaRecientes),
+                masEscuchadas: cancionesParaNombre(bibliotecaMasEscuchadas),
+                favoritos: cancionesParaNombre(bibliotecaFavoritos),
                 recomendaciones: player.getRecommendations(biblioteca),
                 playlists: playlistProvider.playlists,
                 onRefrescar: _actualizarCanciones,
                 onVerBibliotecaCompleta: () =>
-                    setState(() => subFiltroSeleccionado = "Principal (Drive)"),
+                    setState(() => subFiltroSeleccionado = bibliotecaPrincipal),
                 onAbrirBuscadorOnline: () => setState(() {
                   seccionActiva = "Buscador Online";
                   subFiltroSeleccionado = null;
                 }),
                 onVerTodoRecientes: () =>
-                    setState(() => subFiltroSeleccionado = "Recientes"),
-                onVerTodoMasEscuchadas: () =>
-                    setState(() => subFiltroSeleccionado = "Más Escuchadas"),
+                    setState(() => subFiltroSeleccionado = bibliotecaRecientes),
+                onVerTodoMasEscuchadas: () => setState(
+                    () => subFiltroSeleccionado = bibliotecaMasEscuchadas),
                 onVerTodoPlaylists: () => setState(() {
                   seccionActiva = "Playlists";
                   subFiltroSeleccionado = null;
                 }),
                 onVerTodoFavoritos: () =>
-                    setState(() => subFiltroSeleccionado = "Favoritos"),
+                    setState(() => subFiltroSeleccionado = bibliotecaFavoritos),
                 onVerTodoRecomendaciones: () => setState(() {
                   seccionActiva = "Recomendaciones";
                   subFiltroSeleccionado = null;
@@ -855,7 +855,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 titulo: "Playlists",
                 tituloSingular: "Playlist",
                 elementos: nombresBibliotecas
-                    .where((b) => b != "Principal (Drive)")
+                    .where((b) => b != bibliotecaPrincipal)
                     .toList(),
                 icono: Icons.playlist_play_rounded,
                 esPantallaPequena: esPantallaPequena,
@@ -1178,7 +1178,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // de volver a la biblioteca.
     final enHome = seccionActiva == "Tu Biblioteca" &&
         subFiltroSeleccionado == null &&
-        bibliotecaSeleccionada == "Principal (Drive)";
+        bibliotecaSeleccionada == bibliotecaPrincipal;
     // Si el video de YouTube está en pantalla completa, "atrás" lo
     // minimiza en vez de navegar -- así nunca se pierde por accidente
     // al tocar atrás, tal como pasaba antes de este overlay.
@@ -1218,7 +1218,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     seccionActiva = seccion;
                     subFiltroSeleccionado = null;
                     if (seccion == "Tu Biblioteca") {
-                      bibliotecaSeleccionada = "Principal (Drive)";
+                      bibliotecaSeleccionada = bibliotecaPrincipal;
                     }
                   });
                   Navigator.pop(context);
