@@ -89,61 +89,68 @@ class PantallaPrincipalDesktop extends StatelessWidget {
                     mensaje: 'Elegí una canción de la lista y acá vas a ver '
                         'la carátula, el álbum y los controles.',
                   )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              player.currentSong!.album,
-                              style: AppTheme.subheading,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                // Se desliza: es una ventana de escritorio y se puede
+                // achicar a lo alto. Con la carátula de 260 más los dos
+                // textos --y más todavía con la letra del sistema
+                // agrandada-- una ventana baja dejaba este panel
+                // desbordado. Deslizándose, eso es imposible.
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                player.currentSong!.album,
+                                style: AppTheme.subheading,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          // Antes acá había un ícono de "más opciones"
-                          // que era solo decorativo: no se podía tocar
-                          // ni hacía nada. Ahora es el mismo menú real
-                          // que usan todas las listas de la app.
-                          SongOptionsMenu(
-                            cancion: player.currentSong!,
-                            bibliotecaSeleccionada: bibliotecaSeleccionada,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SongCover(
-                        title: player.currentSong!.title,
-                        artist: player.currentSong!.artist,
-                        url: player.currentSong!.url,
-                        coverUrlDirecto: player.currentSong!.coverUrl,
-                        size: 260,
-                        borderRadius: BorderRadius.circular(12),
-                        showShadow: true,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        player.currentSong!.title,
-                        style: AppTheme.heading.copyWith(fontSize: 18),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        player.currentSong!.artist,
-                        style: AppTheme.body,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      // Acá había una sección "Videos musicales
-                      // relacionados" que nunca se implementó: era un
-                      // recuadro vacío con un ícono de play que no
-                      // llevaba a ninguna parte. Se sacó porque hacía
-                      // ver la app a medio terminar; si algún día se
-                      // arma de verdad, vuelve con contenido real.
-                    ],
+                            // Antes acá había un ícono de "más opciones"
+                            // que era solo decorativo: no se podía tocar
+                            // ni hacía nada. Ahora es el mismo menú real
+                            // que usan todas las listas de la app.
+                            SongOptionsMenu(
+                              cancion: player.currentSong!,
+                              bibliotecaSeleccionada: bibliotecaSeleccionada,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SongCover(
+                          title: player.currentSong!.title,
+                          artist: player.currentSong!.artist,
+                          url: player.currentSong!.url,
+                          coverUrlDirecto: player.currentSong!.coverUrl,
+                          size: 260,
+                          borderRadius: BorderRadius.circular(12),
+                          showShadow: true,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          player.currentSong!.title,
+                          style: AppTheme.heading.copyWith(fontSize: 18),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          player.currentSong!.artist,
+                          style: AppTheme.body,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        // Acá había una sección "Videos musicales
+                        // relacionados" que nunca se implementó: era un
+                        // recuadro vacío con un ícono de play que no
+                        // llevaba a ninguna parte. Se sacó porque hacía
+                        // ver la app a medio terminar; si algún día se
+                        // arma de verdad, vuelve con contenido real.
+                      ],
+                    ),
                   ),
           ),
         ],
