@@ -3393,3 +3393,132 @@ está guardado en el celular.
 
 `flutter analyze`, `flutter test` (**269**) y `flutter build apk
 --release` salieron limpios.
+
+## 91. Vueltas 86 a 90: probar la app, no solo leerla
+
+Hasta acá todos los arreglos salieron de **leer** el código. Eso
+encuentra mucho, pero tiene un techo: hay fallas que solo se ven cuando
+la pantalla se dibuja de verdad. Estas cinco vueltas rompieron ese
+techo, y lo primero que hicieron fue encontrar tres bugs que llevaban
+vueltas enteras escondidos a plena vista.
+
+### Los 4 problemas del panel eran míos y eran tontos
+
+Se veían 4 problemas en el panel de abajo del editor y `flutter
+analyze` decía que estaba todo limpio. Los dos tenían razón: yo había
+escrito **"TODO" en mayúsculas** dentro de comentarios en español,
+queriendo decir "todo lo que...". El editor lee `TODO` en mayúsculas
+como un marcador de tarea pendiente. Reescritos los seis.
+
+### Lo que eso destapó sí era importante
+
+Si el editor mostraba cosas que el analizador no, era porque el
+analizador tenía **apagadas** reglas que sí valen la pena. Se
+encendieron siete, y no elegidas al azar: cada una corresponde a una
+clase de falla que **ya apareció en este proyecto** y que hubo que
+encontrar leyendo, de a una.
+
+Encontraron 41 avisos, revisados uno por uno y no silenciados.
+
+Una de las reglas se dejó **apagada a propósito**, con el motivo
+escrito al lado: `avoid_slow_async_io` recomienda preguntar por los
+archivos de forma que congelaría la pantalla mientras responde. Su
+consejo es peor que el problema que evita.
+
+### Los nombres de sección eran 68 textos escritos a mano
+
+Los nombres de las secciones —"Álbumes", "Estadísticas", "Música
+Descargada"— no son solo lo que se lee en la barra lateral: son las
+**claves** con las que la app decide qué pantalla dibujar. La barra
+manda un texto y la pantalla principal lo compara letra por letra.
+
+Una sola diferencia en cualquiera de los dos lados y esa sección deja
+de abrirse **sin ningún aviso**: tocás "Álbumes" y no pasa nada. Y no
+es un riesgo teórico: tres de esos nombres llevan tilde y uno son dos
+palabras. Son justo los que más fácil se escriben mal.
+
+Ahora son once constantes declaradas en un solo archivo.
+
+### Una canción descargada no aparecía en Favoritos ni en Recientes
+
+Favoritos, Recientes y Más Escuchadas se armaban mirando **solo** el
+listado de la biblioteca. Pero esas tres no son "parte de la
+biblioteca": son "cosas con las que hiciste algo", y una canción que
+encontraste en Descubrir, bajaste y escuchaste es exactamente eso.
+
+Resultado: la podías escuchar veinte veces y no aparecía en Recientes
+ni en Más Escuchadas, y marcarla como favorita no la mostraba en
+Favoritos. La app tenía su nombre, su artista y su carátula guardados;
+simplemente no los buscaba ahí.
+
+### Los primeros tests de pantalla, y los 3 bugs que encontraron
+
+La app tenía 270 tests y **ninguno** probaba una pantalla. Varios de
+los problemas de esta sesión eran justo de pantalla, y nada impedía que
+volvieran. Se escribieron los primeros 17, y encontraron tres cosas al
+instante:
+
+**1. Los carruseles de Inicio seguían desbordándose.** La vuelta 69 los
+"arregló" haciendo crecer el alto reservado según la escala de letra.
+No alcanzaba: las cuentas se hacen con una letra y el celular dibuja
+con otra, así que siempre quedaba algún caso por unos pocos píxeles. El
+test lo agarró **incluso con la letra normal**.
+
+Ahora la tapa cede el espacio que necesite el texto. El desbordado pasa
+a ser imposible **por cómo está armado**, no por haber acertado un
+número.
+
+**2. La cabecera del menú lateral se desbordaba 24 píxeles.** Arreglé
+las filas del menú y me dejé sin arreglar la de arriba: con la letra al
+doble, "CACOCAPP" no entra al lado de su ícono.
+
+**3. El destello al tocar una fila era invisible.** Este no lo hubiera
+encontrado nunca leyendo. Cuatro listas envolvían su fila en algo con
+color de fondo, y eso **tapa** el destello: se pinta en la capa de
+abajo. La fila respondía igual, pero se sentía muerta al tocarla. Una
+de esas cuatro es **la lista principal de canciones**, o sea lo que más
+se toca en toda la app.
+
+Flutter avisa de esto, pero el aviso **solo aparece al correr un test
+de pantalla**. Por eso estuvo ahí tanto tiempo.
+
+### La letra sincronizada y el tablero de los juegos
+
+Catorce tests más sobre las dos piezas más delicadas que quedaban sin
+probar. Las dos pasaron: no había bugs escondidos, y ahora están
+trabadas.
+
+De la letra, lo más importante que se comprueba es que **al cambiar de
+canción se deje de escuchar la anterior**. Si esa conexión quedara
+viva, la letra de la canción nueva se movería al ritmo de la vieja.
+
+Del tablero, lo delicado es cuándo decide volver a pintar: equivocarse
+ahí es pintar de más (gasta batería) o pintar de menos (el juego se
+congela).
+
+Los tres fallos que aparecieron escribiéndolos eran **míos, del test**:
+leía el estilo del widget equivocado, y medía el tamaño antes de que
+terminara una animación de 200 ms. Los widgets estaban bien.
+
+### El ecualizador, probado por fin en 8 y 10 bandas
+
+En la vuelta 69 arreglé un desborde del ecualizador **razonando, sin
+poder verlo**: cuántas bandas tiene no lo decide la app, lo informa el
+fabricante del celular. En el teléfono donde se programó son 5, que
+entran bien. En los que informan 8 o 10, el panel salía con las rayas
+amarillas y negras.
+
+El panel entero no se puede probar: necesita el motor de audio de
+Android, que no arranca fuera de un teléfono. Así que la fila de bandas
+se sacó a una pieza propia, que sí se puede probar sola.
+
+Y se comprobó que los tests **sirven**, que es algo que casi nunca se
+verifica: se volvió a poner el reparto viejo a propósito, y fallaron
+con 8 bandas (64 píxeles de desborde), con 10 (160) y con 10 más la
+letra al doble (283). Con el reparto actual pasan los diez.
+
+Es el primer arreglo de esta sesión que pasó de "creo que está bien" a
+"está comprobado".
+
+`flutter analyze` limpio y **311 tests** en verde, 41 de ellos de
+pantalla.
