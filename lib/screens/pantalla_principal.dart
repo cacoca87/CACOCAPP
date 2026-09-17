@@ -130,6 +130,25 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   Future<void> _cargarCanciones() async {
+    // Primero, lo que ya está guardado en el celular. Sale del disco,
+    // es instantáneo y no necesita señal.
+    //
+    // Antes la app arrancaba con la ruedita de "cargando" y no mostraba
+    // una sola canción hasta que el servidor contestara --o hasta que
+    // se cumplieran los diez segundos de espera máxima--. O sea: diez
+    // segundos mirando una ruedita con la biblioteca entera guardada
+    // ahí mismo, en el teléfono.
+    //
+    // Lo que venga del servidor la reemplaza un momento después.
+    final guardadas = await _driveService.cancionesGuardadas();
+    if (mounted && guardadas.isNotEmpty) {
+      setState(() {
+        canciones = guardadas;
+        cargando = false;
+        _rearmarBiblioteca();
+      });
+    }
+
     final list = await _driveService.obtenerCanciones();
     // La comprobación va ANTES del `setState`, no después: si la pantalla
     // se desmontó mientras la biblioteca venía de la red, actualizar el

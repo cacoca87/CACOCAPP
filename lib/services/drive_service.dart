@@ -53,6 +53,25 @@ class DriveService {
     return _cargar();
   }
 
+  /// La biblioteca guardada en el celular, **sin tocar la red**.
+  ///
+  /// Sirve para mostrar algo de entrada mientras se le pregunta al
+  /// servidor. Antes la app arrancaba con la ruedita de "cargando" y no
+  /// mostraba una sola canción hasta que el servidor contestara --o
+  /// hasta que se cumplieran los diez segundos de espera máxima--.
+  /// Con una conexión lenta eso son diez segundos mirando una ruedita
+  /// teniendo la lista entera guardada en el propio teléfono.
+  ///
+  /// Devuelve una lista vacía la primera vez, cuando todavía no se
+  /// guardó nada. No toca la memoria de `obtenerCanciones`: lo que se
+  /// muestra de entrada es provisional y lo reemplaza lo que venga del
+  /// servidor.
+  Future<List<Song>> cancionesGuardadas() async {
+    final guardada = await _leerListaGuardada();
+    if (guardada == null || guardada.isEmpty) return const [];
+    return _construirCanciones(guardada);
+  }
+
   Future<List<Song>> refrescarCanciones() async {
     _cache = null;
     return _cargar();

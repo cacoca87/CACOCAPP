@@ -165,4 +165,65 @@ void main() {
       expect(cancion.artist, "Guns N' Roses");
     });
   });
+
+  group('cancionesGuardadas: lo que se muestra de entrada', () {
+    test('la primera vez no hay nada guardado', () async {
+      // Recién instalada la app: no hay lista guardada todavía.
+      final servicio = DriveService(
+        client: MockClient((_) async => http.Response('[]', 500)),
+      );
+      expect(await servicio.cancionesGuardadas(), isEmpty);
+    });
+
+    test('devuelve la última lista del servidor SIN tocar la red', () async {
+      // Primera vuelta: se consulta el servidor y la lista queda
+      // guardada en el celular.
+      final primero = DriveService(
+        client: MockClient((_) async =>
+            http.Response(_respuesta(['Amén - Te Quiero.mp3']), 200)),
+      );
+      await primero.obtenerCanciones();
+      // La lista se guarda sin esperar, a propósito: hay que darle un
+      // instante antes de leerla del disco.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Segunda vuelta: un servicio nuevo, con un cliente que REVIENTA
+      // si alguien lo llama. Así se comprueba que no toca internet.
+      var seUsoLaRed = false;
+      final segundo = DriveService(
+        client: MockClient((_) async {
+          seUsoLaRed = true;
+          throw const SocketException('no debería pedir nada');
+        }),
+      );
+
+      final guardadas = await segundo.cancionesGuardadas();
+      expect(seUsoLaRed, isFalse,
+          reason: 'lo guardado sale del disco, no de internet');
+      expect(guardadas.length, 1);
+      // Se comprueba por el id, que es el nombre del archivo tal cual:
+      // cómo se parte en título y artista ya lo cubren otros tests.
+      expect(guardadas.first.id, 'r2_Amén - Te Quiero.mp3');
+    });
+
+    test('no pisa lo que después traiga el servidor', () async {
+      final primero = DriveService(
+        client: MockClient(
+            (_) async => http.Response(_respuesta(['Vieja.mp3']), 200)),
+      );
+      await primero.obtenerCanciones();
+      // La lista se guarda sin esperar, a propósito: hay que darle un
+      // instante antes de leerla del disco.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final segundo = DriveService(
+        client: MockClient((_) async =>
+            http.Response(_respuesta(['Vieja.mp3', 'Nueva.mp3']), 200)),
+      );
+      // Lo guardado se muestra de entrada...
+      expect((await segundo.cancionesGuardadas()).length, 1);
+      // ...y lo del servidor lo reemplaza con la lista completa.
+      expect((await segundo.obtenerCanciones()).length, 2);
+    });
+  });
 }
