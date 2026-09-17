@@ -5,7 +5,6 @@ import '../providers/online_video_provider.dart';
 import '../services/youtube_service.dart';
 import '../styles/app_theme.dart';
 import 'diagnostico_youtube_screen.dart';
-import 'youtube_escritorio_screen.dart';
 import '../widgets/estado_vacio.dart';
 
 class DualSearchScreen extends StatefulWidget {
@@ -54,28 +53,6 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
-  }
-
-  /// Abre el video en youtube.com de escritorio, dentro de la app.
-  ///
-  /// Es el modo pensado para escuchar con la pantalla bloqueada: la
-  /// versión de escritorio de YouTube no se pausa sola al quedar
-  /// oculta, a diferencia de la de celular que usa el reproductor
-  /// embebido. Ver `youtube_escritorio_screen.dart`.
-  void _abrirEnEscritorio(YoutubeVideoResult video) {
-    FocusScope.of(context).unfocus();
-    // Si había un video en el reproductor embebido, se cierra: si no,
-    // quedarían dos sonando a la vez.
-    context.read<OnlineVideoProvider>().cerrar();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => YoutubeEscritorioScreen(
-          videoId: video.videoId,
-          titulo: video.title,
-        ),
-      ),
-    );
   }
 
   void _onSearchChanged(String query) {
@@ -332,31 +309,10 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                                   "${video.author} • ${video.viewCount}",
                                   style: AppTheme.small.copyWith(fontSize: 11),
                                 ),
-                                // Dos formas de ver el mismo video:
-                                //
-                                // * El candado abre youtube.com en
-                                //   version de escritorio, que NO se
-                                //   pausa al bloquear la pantalla.
-                                // * El triangulo usa el reproductor
-                                //   embebido de siempre, que se ve
-                                //   mejor pero se calla al bloquear.
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                          Icons.screen_lock_portrait_rounded,
-                                          color: AppTheme.paper,
-                                          size: 22),
-                                      tooltip: 'Abrir en YouTube escritorio '
-                                          '(sigue sonando bloqueado)',
-                                      onPressed: () =>
-                                          _abrirEnEscritorio(video),
-                                    ),
-                                    const Icon(Icons.play_circle_fill_rounded,
-                                        color: AppTheme.amber, size: 28),
-                                  ],
-                                ),
+                                trailing: const Icon(
+                                    Icons.play_circle_fill_rounded,
+                                    color: AppTheme.amber,
+                                    size: 28),
                                 // El video se pone a sonar en el overlay persistente
                                 // (OnlineVideoProvider) -- NO se navega a una pantalla
                                 // nueva, así el video sobrevive si después tocás
