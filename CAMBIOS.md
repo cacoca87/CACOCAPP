@@ -3726,3 +3726,65 @@ Ahora, antes de suponer que es internet, se mira si el archivo sigue
 estando. Si no está, no se reintenta y el aviso dice la verdad.
 
 `flutter analyze` limpio, **374 tests** en verde y APK de 40,5 MB.
+
+## 94. Vueltas 99 y 100: buscar la FAMILIA del error, no el error
+
+Las vueltas anteriores dejaron una lección clara: casi todos los
+fallos que aparecían ya estaban arreglados en otro lado. Así que estas
+dos no salieron de mirar el código a ver qué encontraba, sino de tomar
+un error recién arreglado y **buscar a propósito a sus hermanos**.
+
+### Mensajes que mandan a buscar el problema donde no está
+
+La vuelta 98 arregló uno: borrar un MP3 del celular daba "revisá tu
+conexión". Buscando la misma familia apareció otro más grande, en
+descargar.
+
+`downloadSong` devolvía un simple sí/no, y ese "no" tapaba tres cosas
+que no se parecen en nada:
+
+| Qué pasó de verdad | Qué decía la app |
+|---|---|
+| No hay señal | "Revisá tu conexión" ✅ |
+| El servidor no tiene esa canción (404) | "Revisá tu conexión" ❌ |
+| No queda espacio en el celular | "Revisá tu conexión" ❌ |
+
+El tercero es el peor: en un teléfono lleno de fotos pasa seguido, y
+la persona se queda mirando la señal cuando lo que tiene que hacer es
+borrar cosas.
+
+Ahora cada uno dice lo suyo, y el del servidor aclara de frente **"No
+es tu conexión"** --sin esa aclaración la persona igual va a mirar el
+wifi--.
+
+De paso: que la canción *ya estuviera descargada* también contaba como
+fallo y se pintaba de rojo, estando perfectamente guardada.
+
+Hay un test que comprueba que los seis resultados posibles digan cosas
+**distintas**. Si dos dijeran lo mismo, volveríamos al problema de
+arranque sin que nadie se diera cuenta.
+
+### Comparaciones de texto que se hacen letra por letra
+
+La vuelta 92 arregló la búsqueda y el orden alfabético. Faltaba un
+tercer lugar donde la app compara texto que escribe la persona: los
+nombres de playlist.
+
+Se comparaban exactos, así que se colaban dos cosas:
+
+- una playlist llamada `favoritos` al lado de la vista "Favoritos" de
+  la app, o `Mas Escuchadas` sin tilde al lado de "Más Escuchadas";
+- dos playlists tuyas llamadas `Rock` y `rock`.
+
+En los dos casos terminás con dos entradas que parecen la misma y no
+lo son, y las canciones repartidas entre las dos sin entender por qué.
+
+Ahora usa la misma normalización que la búsqueda, así "igual" quiere
+decir lo mismo en toda la app.
+
+**Un detalle que casi rompo**: renombrar "Rock" a "rock" --cambiarle
+solo las mayúsculas-- tiene que seguir valiendo. Si el nombre viejo se
+compara exacto, la playlist choca consigo misma y la app te dice que
+ya existe. Tiene su test.
+
+`flutter analyze` limpio, **390 tests** en verde y APK de 40,5 MB.
