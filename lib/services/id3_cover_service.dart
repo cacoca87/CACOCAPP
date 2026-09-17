@@ -210,7 +210,7 @@ class Id3CoverService {
         // Ya que se parsearon los tags, se guardan álbum y artista
         // (memoria y disco) para que pedirlos después no vuelva a bajar
         // el archivo.
-        _recordarAlbumYArtista(url, tags);
+        _recordarTags(url, tags);
 
         final apic = tags?['APIC'];
         final base64Str = apic is Map ? apic['base64'] as String? : null;
@@ -266,18 +266,18 @@ class Id3CoverService {
     } catch (_) {}
   }
 
-  /// Guarda álbum Y artista de un mismo parseo de tags, en memoria y en
-  /// disco.
+  /// Guarda TODO lo que trae el MP3 -- carátula aparte: álbum, artista
+  /// y título -- de un mismo parseo, en memoria y en disco.
   ///
-  /// Existe porque los tres caminos que leen tags (carátula, álbum y
-  /// artista) salen del MISMO archivo descargado, pero cada uno guardaba
-  /// solo lo suyo. Resultado: escanear la biblioteca pedía el álbum de
-  /// una canción (512 KB por red), y enseguida el artista de la misma
-  /// canción, bajando otros 512 KB para releer exactamente los mismos
-  /// bytes. Con cientos de canciones eso es el doble de datos móviles en
-  /// el primer escaneo, y encima la carátula los guardaba solo en
-  /// memoria, así que al reabrir la app se volvían a bajar.
-  void _recordarAlbumYArtista(String url, Map<String, dynamic>? tags) {
+  /// Existe porque los cuatro caminos que leen tags (carátula, álbum,
+  /// artista y título) salen del MISMO archivo descargado, pero cada uno
+  /// guardaba solo lo suyo. Resultado: escanear la biblioteca pedía el
+  /// álbum de una canción (512 KB por red), y enseguida el artista de la
+  /// misma canción, bajando otros 512 KB para releer exactamente los
+  /// mismos bytes. Con cientos de canciones eso es el doble de datos
+  /// móviles en el primer escaneo, y encima la carátula los guardaba solo
+  /// en memoria, así que al reabrir la app se volvían a bajar.
+  void _recordarTags(String url, Map<String, dynamic>? tags) {
     final album = _extraerAlbum(tags);
     _cacheAlbum[url] = album;
     if (album != null) {
@@ -352,7 +352,7 @@ class Id3CoverService {
 
       final mp3 = MP3Instance(bytes);
       if (mp3.parseTagsSync()) {
-        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        _recordarTags(url, mp3.getMetaTags());
         return _cacheTitulo[url];
       }
     } catch (_) {
@@ -426,7 +426,7 @@ class Id3CoverService {
 
       final mp3 = MP3Instance(bytes);
       if (mp3.parseTagsSync()) {
-        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        _recordarTags(url, mp3.getMetaTags());
         return _cacheAlbum[url];
       }
     } catch (_) {
@@ -506,7 +506,7 @@ class Id3CoverService {
 
       final mp3 = MP3Instance(bytes);
       if (mp3.parseTagsSync()) {
-        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        _recordarTags(url, mp3.getMetaTags());
         return _cacheArtista[url];
       }
     } catch (_) {

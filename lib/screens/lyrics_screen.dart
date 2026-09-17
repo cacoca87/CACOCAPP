@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
+import '../services/id3_cover_service.dart';
 import '../services/lyrics_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/estado_vacio.dart';
@@ -26,7 +27,42 @@ class _LyricsScreenState extends State<LyricsScreen> {
   void _asegurarCargaParaCancion(Song? song) {
     if (song == null || _songIdCargado == song.id) return;
     _songIdCargado = song.id;
-    _future = LyricsService.instance.getLyrics(
+    _future = _buscarLetra(song);
+  }
+
+  /// Busca la letra, pero antes se asegura de saber cómo se llama de
+  /// verdad la canción.
+  ///
+  /// El nombre del archivo a veces no lo dice. Caso comprobado: tres
+  /// temas distintos del disco "Libre" de Amén llegaban los tres como
+  /// "Amén", que es la banda. Buscando "Amén" de "Amén" no se encuentra
+  /// nada, porque esa canción no existe: se llaman "Sé Que Tú No Estás
+  /// Solo" y "Te Quiero".
+  ///
+  /// El título verdadero está adentro del propio MP3 (tag TIT2). Se
+  /// pide acá, de a una canción, y no para toda la biblioteca de golpe:
+  /// los temas que ya tienen álbum y artista guardados no tienen el
+  /// título, así que pedirlo para todos obligaría a volver a bajar
+  /// medio megabyte de cada uno -- más de cien megas de datos móviles
+  /// sin que nadie lo pidiera.
+  Future<Lyrics> _buscarLetra(Song song) async {
+    try {
+      final tituloReal =
+          await Id3CoverService.instance.getEmbeddedTitle(song.url);
+      if (tituloReal != null &&
+          tituloReal.isNotEmpty &&
+          tituloReal != song.title) {
+        // `Song.title` es mutable a propósito: corregirlo acá lo corrige
+        // también en la lista de la biblioteca, porque es el mismo
+        // objeto.
+        song.title = tituloReal;
+        if (mounted) setState(() {});
+      }
+    } catch (_) {
+      // Sin el título real se busca con el que había, como antes.
+    }
+
+    return LyricsService.instance.getLyrics(
       title: song.title,
       artist: song.artist,
       urlCancion: song.url,

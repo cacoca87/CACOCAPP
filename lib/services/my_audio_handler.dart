@@ -521,10 +521,18 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
       await player.seekToNext();
       _wantsToPlay = true;
       await player.play();
-    } else if (queue.value.isNotEmpty) {
-      _wantsToPlay = false;
-      await player.pause();
     }
+    // Si NO hay siguiente, no se hace nada y la canción sigue sonando.
+    //
+    // Antes acá se pausaba, y se veía como un error: apretabas
+    // "siguiente" y la música se cortaba sin explicación. Pasaba sobre
+    // todo al buscar algo en la biblioteca, porque la cola queda
+    // reducida a los resultados de esa búsqueda -- con dos o tres
+    // canciones llegás al final en un toque, mientras que con la
+    // biblioteca entera (cientos) no llegabas nunca.
+    //
+    // Frenar la música que estabas escuchando es lo peor que puede
+    // hacer el botón: si no hay a dónde ir, lo correcto es quedarse.
   }
 
   @override

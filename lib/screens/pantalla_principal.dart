@@ -164,18 +164,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           huboCambios = true;
         }
 
-        // El título también sale del propio MP3 cuando lo trae. Sin
-        // esto, un archivo cuyo nombre no dice cómo se llama la canción
-        // se mostraba con el nombre de la banda: en la biblioteca había
-        // tres canciones distintas del disco "Libre" de Amén, las tres
-        // llamadas "Amén". Y con el título equivocado la letra tampoco
-        // aparecía nunca, porque se buscaba una canción inexistente.
-        final titulo =
-            await Id3CoverService.instance.getEmbeddedTitle(cancion.url);
-        if (titulo != null && titulo.isNotEmpty && titulo != cancion.title) {
-          cancion.title = titulo;
-          huboCambios = true;
-        }
+        // El título REAL (tag TIT2) no se pide acá a propósito, aunque
+        // se podría: las canciones que ya tienen álbum y artista
+        // guardados en el celular NO tienen el título, así que pedirlo
+        // para toda la biblioteca obligaría a volver a bajar medio
+        // megabyte de cada una. Con cientos de canciones eso es más de
+        // cien megas de datos móviles de golpe, sin que nadie lo haya
+        // pedido.
+        //
+        // En vez de eso se resuelve donde de verdad importa y de a una:
+        // al abrir la Letra de una canción (ver `lyrics_screen.dart`),
+        // que es justo donde el título equivocado hace daño.
       }));
     }
 
