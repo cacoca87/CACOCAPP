@@ -72,6 +72,13 @@ class _PintorTablero extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
+    // Estos dos se crean UNA vez y se les cambia el color adentro del
+    // bucle. Antes se creaba un `Paint` nuevo por cada casillero
+    // pintado: en un tablero de 12x20 son hasta 480 objetos nuevos por
+    // cuadro, y los juegos redibujan varias veces por segundo.
+    final relleno = Paint();
+    final borde = Paint()..color = AppTheme.ink.withValues(alpha: 0.55);
+
     for (var y = 0; y < filas; y++) {
       for (var x = 0; x < columnas; x++) {
         final rect =
@@ -82,20 +89,37 @@ class _PintorTablero extends CustomPainter {
         if (valor == 0) {
           canvas.drawRRect(rrect, vacia);
         } else {
-          final color =
+          relleno.color =
               TableroJuego.colores[valor % TableroJuego.colores.length];
-          canvas.drawRRect(rrect, Paint()..color = color);
+          canvas.drawRRect(rrect, relleno);
           // Un borde más oscuro le da el aspecto de ficha del juego
           // original, en vez de un cuadrado plano.
-          canvas.drawRRect(
-            rrect.deflate(lado * 0.18),
-            Paint()..color = AppTheme.ink.withValues(alpha: 0.55),
-          );
+          canvas.drawRRect(rrect.deflate(lado * 0.18), borde);
         }
       }
     }
   }
 
+  /// Se compara casillero por casillero en vez de devolver siempre
+  /// `true`.
+  ///
+  /// La vista del juego es una lista NUEVA en cada cuadro, así que
+  /// compararla por identidad no sirve de nada. Recorrer doscientos
+  /// números enteros es muchísimo más barato que volver a dibujar el
+  /// tablero entero, y hay rebujos que no lo necesitan: cuando cambia
+  /// solo el puntaje de arriba, por ejemplo, el tablero es idéntico.
   @override
-  bool shouldRepaint(_PintorTablero anterior) => true;
+  bool shouldRepaint(_PintorTablero anterior) {
+    final otras = anterior.celdas;
+    if (otras.length != celdas.length) return true;
+    for (var y = 0; y < celdas.length; y++) {
+      final fila = celdas[y];
+      final otraFila = otras[y];
+      if (fila.length != otraFila.length) return true;
+      for (var x = 0; x < fila.length; x++) {
+        if (fila[x] != otraFila[x]) return true;
+      }
+    }
+    return false;
+  }
 }
