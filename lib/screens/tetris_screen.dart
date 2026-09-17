@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/records_juegos.dart';
 import '../styles/app_theme.dart';
 import '../utils/tetris_logica.dart';
 import '../widgets/boton_volver.dart';
@@ -63,36 +63,16 @@ class _TetrisScreenState extends State<TetrisScreen>
   }
 
   Future<void> _cargarRecord() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (!mounted) return;
-      setState(() => _record = prefs.getInt(_claveRecord) ?? 0);
-    } catch (_) {
-      // Sin récord guardado se juega igual.
-    }
+    final guardado = await leerRecord(_claveRecord);
+    if (!mounted) return;
+    setState(() => _record = guardado);
   }
 
+  /// El detalle de por qué se compara contra el disco y no contra lo
+  /// que hay en pantalla está en `utils/records_juegos.dart`.
   Future<void> _guardarRecord(int puntaje) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      // Se compara contra lo GUARDADO, no contra lo que hay en memoria.
-      //
-      // El récord se lee del disco al abrir el juego, y esa lectura
-      // tarda. Si perdías antes de que terminara --en estos juegos se
-      // puede perder en dos segundos-- `_record` todavía valía 0, el
-      // puntaje nuevo parecía récord, y se escribía encima del récord
-      // de verdad. O sea que una partida mala te borraba la mejor.
-      final guardado = prefs.getInt(_claveRecord) ?? 0;
-      if (puntaje <= guardado) {
-        // Lo que había era mejor: se deja, y se corrige lo que muestra
-        // la pantalla.
-        if (mounted && guardado != _record) {
-          setState(() => _record = guardado);
-        }
-        return;
-      }
-      await prefs.setInt(_claveRecord, puntaje);
-    } catch (_) {}
+    final vigente = await guardarRecordSiEsMejor(_claveRecord, puntaje);
+    if (mounted && vigente != _record) setState(() => _record = vigente);
   }
 
   void _programarReloj() {

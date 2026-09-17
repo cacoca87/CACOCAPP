@@ -142,9 +142,15 @@ class SongOptionsMenu extends StatelessWidget {
                 children: [
                   const Icon(Icons.folder, color: AppTheme.primary, size: 18),
                   const SizedBox(width: 10),
-                  Text(p.name,
-                      style: AppTheme.body
-                          .copyWith(color: AppTheme.paper, fontSize: 13)),
+                  // El nombre lo escribe la persona y puede ser largo:
+                  // sin acotarlo, se desbordaba del ancho del menú.
+                  Expanded(
+                    child: Text(p.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.body
+                            .copyWith(color: AppTheme.paper, fontSize: 13)),
+                  ),
                 ],
               ),
             ),

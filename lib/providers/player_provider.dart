@@ -419,6 +419,31 @@ class PlayerProvider extends ChangeNotifier {
     _cancionesDescargadas.remove(songId);
     await _guardarDescargas();
     notifyListeners();
+
+    // La cola que está sonando se armó con la RUTA DEL ARCHIVO de las
+    // canciones descargadas, así que si se acaba de borrar una que está
+    // en esa cola, el motor de audio quedó apuntando a un archivo que
+    // ya no existe.
+    //
+    // Sin esto, seguir escuchando terminaba en un error raro: al llegar
+    // a esa canción, el reproductor fallaba y el sistema de reintentos
+    // la buscaba ocho veces seguidas antes de rendirse con "se perdió
+    // la conexión" -- un mensaje que no tiene nada que ver con lo que
+    // pasó, porque la conexión estaba perfecta.
+    //
+    // Se rearma la cola con las mismas canciones: `_queue` guarda los
+    // originales, con su dirección de internet, y ahora que la descarga
+    // no está, es esa la que se va a usar. Se conserva en qué canción
+    // ibas, en qué minuto, y si estaba sonando o en pausa. Hay un
+    // saltito, pero borrar una descarga es algo que se hace a
+    // propósito y de vez en cuando, no en medio de nada.
+    if (!_queue.any((s) => s.id == songId)) return;
+    await setQueue(
+      _queue,
+      initialIndex: _currentIndex,
+      initialPosition: audioHandler.player.position,
+      autoplay: _isPlaying,
+    );
   }
 
   String _urlParaReproducir(Song song) {
