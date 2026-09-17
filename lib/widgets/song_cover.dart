@@ -46,16 +46,32 @@ class SongCover extends StatefulWidget {
 }
 
 class _SongCoverState extends State<SongCover> {
+  /// La respuesta cuando ya se sabía de antemano, sin esperar nada.
+  ///
+  /// Sin esto, TODA carátula pasaba por una espera, incluso una que ya
+  /// estaba resuelta en memoria. Y hasta la espera más corta cuesta un
+  /// cuadro entero: el widget se dibuja primero con la ruedita de
+  /// "cargando" y recién en el cuadro siguiente pone la imagen. Al
+  /// desplazar una lista larga eso es un parpadeo de ruedas en cada
+  /// fila que entra en pantalla, aunque estén todas resueltas desde
+  /// hace rato. Y cada ruedita es una animación andando, o sea trabajo
+  /// de dibujo por nada.
+  ///
+  /// Lo peor era la pantalla de Descubrir: ahí la dirección de la tapa
+  /// viene junto con el resultado de la búsqueda, así que se conoce
+  /// desde el primer instante, y se parpadeaba igual.
+  _CoverResult? _yaResuelta;
+
   // Guardamos el Future una sola vez (no en build()) para que un
   // rebuild del padre (por ejemplo, un notifyListeners del provider)
   // no dispare un nuevo FutureBuilder "loading" -> "done" y el
   // consecuente parpadeo en listas largas.
-  late Future<_CoverResult> _future;
+  Future<_CoverResult>? _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _resolve();
+    _arrancar();
   }
 
   @override
@@ -67,15 +83,41 @@ class _SongCoverState extends State<SongCover> {
         oldWidget.title != widget.title ||
         oldWidget.artist != widget.artist ||
         oldWidget.coverUrlDirecto != widget.coverUrlDirecto) {
-      _future = _resolve();
+      _arrancar();
     }
   }
 
-  Future<_CoverResult> _resolve() async {
+  void _arrancar() {
+    _yaResuelta = _resolverSinEsperar();
+    _future = _yaResuelta == null ? _resolve() : null;
+  }
+
+  /// Lo que se puede contestar AHORA MISMO, o `null` si hay que ir a
+  /// buscarlo. No hace red ni disco: solo mira lo que ya está en
+  /// memoria.
+  _CoverResult? _resolverSinEsperar() {
     if (widget.coverUrlDirecto.isNotEmpty) {
       return _CoverResult(_CoverKind.url, widget.coverUrlDirecto);
     }
 
+    if (widget.url.isNotEmpty) {
+      if (!Id3CoverService.instance.seSabeLaRuta(widget.url)) return null;
+      final ruta = Id3CoverService.instance.rutaYaConocida(widget.url);
+      if (ruta != null) return _CoverResult(_CoverKind.archivo, ruta);
+      // Se sabe que NO trae tapa incrustada: sigue el camino de iTunes.
+    }
+
+    if (!ArtworkService.instance.seSabeLaUrl(widget.title, widget.artist)) {
+      return null;
+    }
+    final itunes =
+        ArtworkService.instance.urlYaConocida(widget.title, widget.artist);
+    return itunes != null
+        ? _CoverResult(_CoverKind.url, itunes)
+        : const _CoverResult(_CoverKind.none, null);
+  }
+
+  Future<_CoverResult> _resolve() async {
     if (widget.url.isNotEmpty) {
       // La RUTA del archivo, no sus bytes: así la imagen la maneja
       // Flutter y no esta pantalla. Ver la explicación larga en
@@ -94,86 +136,88 @@ class _SongCoverState extends State<SongCover> {
 
   @override
   Widget build(BuildContext context) {
+    final yaResuelta = _yaResuelta;
+    if (yaResuelta != null) return _dibujar(yaResuelta);
+
     return FutureBuilder<_CoverResult>(
       future: _future,
       builder: (context, snapshot) {
-        final result = snapshot.data;
-
         if (snapshot.connectionState != ConnectionState.done) {
           return _placeholder(loading: true);
         }
-
-        if (result == null || result.kind == _CoverKind.none) {
-          return _placeholder();
-        }
-
-        // Las caratulas vienen a 600x600 o mas. Sin `cacheWidth`,
-        // Flutter las decodifica a tamano completo en memoria aunque
-        // se dibujen en un cuadradito de 44 px: eso es ~1,4 MB de RAM
-        // por fila, y una biblioteca de cientos de canciones recorrida
-        // de punta a punta hacia trabar el scroll en celulares de
-        // gama media. Le pedimos que decodifique al tamano real de
-        // pantalla (logico x densidad del dispositivo).
-        //
-        // Va SOLO el ancho, sin el alto. Cuando se dan los dos, Flutter
-        // decodifica a esas medidas exactas y deja de respetar la
-        // proporcion de la imagen: una tapa que no sea cuadrada (las hay
-        // rectangulares, sobre todo las que vienen dentro del MP3) se
-        // aplastaba para entrar en el cuadrado, y despues `BoxFit.cover`
-        // ya no podia arreglarlo porque recibia la imagen deformada. Con
-        // el ancho solo, el alto sale proporcional y el recorte lo hace
-        // `cover`, que es su trabajo.
-        final densidad = MediaQuery.devicePixelRatioOf(context);
-        final ladoEnPixeles = (widget.size * densidad).round();
-
-        Widget image;
-        if (result.kind == _CoverKind.archivo) {
-          // `Image.file` y no `Image.memory`: Flutter reconoce dos
-          // pedidos del MISMO archivo como la misma imagen, así que al
-          // volver a subir la lista la tapa ya está decodificada y se
-          // dibuja al instante. Con bytes, cada reaparición de la fila
-          // era una imagen nueva y había que decodificarla otra vez --
-          // y en una biblioteca de cientos de canciones eso es lo que
-          // hacía que el desplazamiento se sintiera pesado.
-          image = Image.file(
-            File(result.data!),
-            width: widget.size,
-            height: widget.size,
-            cacheWidth: ladoEnPixeles,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _placeholder(),
-          );
-        } else {
-          image = Image.network(
-            result.data!,
-            width: widget.size,
-            height: widget.size,
-            cacheWidth: ladoEnPixeles,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _placeholder(),
-          );
-        }
-
-        Widget cover =
-            ClipRRect(borderRadius: widget.borderRadius, child: image);
-        if (widget.showShadow) {
-          cover = Container(
-            decoration: BoxDecoration(
-              borderRadius: widget.borderRadius,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: cover,
-          );
-        }
-        return cover;
+        return _dibujar(
+            snapshot.data ?? const _CoverResult(_CoverKind.none, null));
       },
     );
+  }
+
+  Widget _dibujar(_CoverResult result) {
+    if (result.kind == _CoverKind.none) return _placeholder();
+
+    // Las caratulas vienen a 600x600 o mas. Sin `cacheWidth`,
+    // Flutter las decodifica a tamano completo en memoria aunque
+    // se dibujen en un cuadradito de 44 px: eso es ~1,4 MB de RAM
+    // por fila, y una biblioteca de cientos de canciones recorrida
+    // de punta a punta hacia trabar el scroll en celulares de
+    // gama media. Le pedimos que decodifique al tamano real de
+    // pantalla (logico x densidad del dispositivo).
+    //
+    // Va SOLO el ancho, sin el alto. Cuando se dan los dos, Flutter
+    // decodifica a esas medidas exactas y deja de respetar la
+    // proporcion de la imagen: una tapa que no sea cuadrada (las hay
+    // rectangulares, sobre todo las que vienen dentro del MP3) se
+    // aplastaba para entrar en el cuadrado, y despues `BoxFit.cover`
+    // ya no podia arreglarlo porque recibia la imagen deformada. Con
+    // el ancho solo, el alto sale proporcional y el recorte lo hace
+    // `cover`, que es su trabajo.
+    final densidad = MediaQuery.devicePixelRatioOf(context);
+    final ladoEnPixeles = (widget.size * densidad).round();
+
+    Widget image;
+    if (result.kind == _CoverKind.archivo) {
+      // `Image.file` y no `Image.memory`: Flutter reconoce dos
+      // pedidos del MISMO archivo como la misma imagen, así que al
+      // volver a subir la lista la tapa ya está decodificada y se
+      // dibuja al instante. Con bytes, cada reaparición de la fila
+      // era una imagen nueva y había que decodificarla otra vez --
+      // y en una biblioteca de cientos de canciones eso es lo que
+      // hacía que el desplazamiento se sintiera pesado.
+      image = Image.file(
+        File(result.data!),
+        width: widget.size,
+        height: widget.size,
+        cacheWidth: ladoEnPixeles,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    } else {
+      image = Image.network(
+        result.data!,
+        width: widget.size,
+        height: widget.size,
+        cacheWidth: ladoEnPixeles,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    }
+
+    Widget cover = ClipRRect(borderRadius: widget.borderRadius, child: image);
+    if (widget.showShadow) {
+      cover = Container(
+        decoration: BoxDecoration(
+          borderRadius: widget.borderRadius,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: cover,
+      );
+    }
+    return cover;
   }
 
   Widget _placeholder({bool loading = false}) {

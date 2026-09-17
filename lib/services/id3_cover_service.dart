@@ -230,6 +230,25 @@ class Id3CoverService {
     return _juntarTapas.hacer(url, () => _resolverRutaDeTapa(url));
   }
 
+  /// `true` si YA se sabe, sin esperar nada, si esta canción tiene
+  /// carátula incrustada o no.
+  ///
+  /// Existe para que dibujar una tapa que ya se conoce no tenga que
+  /// pasar por una espera. Hasta la más corta cuesta: quien dibuja se
+  /// queda un cuadro entero mostrando la ruedita de "cargando" antes de
+  /// poder poner la imagen, y al desplazar una lista larga eso es un
+  /// parpadeo de ruedas en cada fila que aparece, aunque estén todas
+  /// resueltas desde hace rato.
+  ///
+  /// Se pregunta primero con esto, y solo si dice que no se sabe se
+  /// llama a [getEmbeddedCoverPath] y se espera.
+  bool seSabeLaRuta(String url) => _cacheRuta.containsKey(url);
+
+  /// La ruta ya conocida. Solo tiene sentido si [seSabeLaRuta] dijo que
+  /// sí: `null` acá significa "esta canción no trae carátula", no
+  /// "todavía no lo sé".
+  String? rutaYaConocida(String url) => _cacheRuta[url];
+
   Future<String?> _resolverRutaDeTapa(String url) async {
     if (_cacheRuta.containsKey(url)) return _cacheRuta[url];
 
@@ -256,14 +275,13 @@ class Id3CoverService {
     // 2) No estaba en disco: parseamos los tags del MP3.
     var seLeyoElArchivo = false;
     try {
+      // Acá NO hace falta volver a mirar el caché después de esperar,
+      // como sí hacen el álbum, el artista y el título más abajo: a
+      // esos pueden entrarles dos pedidos a la vez, pero a este no,
+      // porque `getEmbeddedCoverPath` ya los junta con `UnaSolaVez`.
+      // Llegó a estar puesto igual, con un comentario que explicaba una
+      // situación que no podía pasar.
       final lectura = await _obtenerBytesMp3(url);
-      // Mientras se esperaba la descarga, otro pedido de la MISMA
-      // canción pudo haber parseado ya los tags y dejado esto
-      // resuelto: la lista, el mini reproductor y la pantalla del
-      // reproductor piden la tapa de la canción que suena a la vez.
-      // Sin esta comprobación se volvía a parsear medio megabyte para
-      // llegar al mismo resultado.
-      if (_cacheRuta.containsKey(url)) return _cacheRuta[url];
       seLeyoElArchivo = lectura.seLeyo;
       final bytes = lectura.bytes;
       if (bytes == null) {

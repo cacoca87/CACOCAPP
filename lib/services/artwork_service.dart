@@ -74,11 +74,26 @@ class ArtworkService {
   /// iTunes exactamente lo mismo. Ver `utils/una_sola_vez.dart`.
   final UnaSolaVez<String?> _juntarPedidos = UnaSolaVez<String?>();
 
+  String _clave(String title, String artist) =>
+      '${title.toLowerCase()}|${artist.toLowerCase()}';
+
   Future<String?> getCoverUrl(String title, String artist) {
-    final key = '${title.toLowerCase()}|${artist.toLowerCase()}';
+    final key = _clave(title, artist);
     if (_cache.containsKey(key)) return Future.value(_cache[key]);
     return _juntarPedidos.hacer(key, () => _buscarCoverUrl(key, title, artist));
   }
+
+  /// `true` si ya se sabe, sin esperar nada, qué carátula le toca a
+  /// esta canción (o que no tiene). Mismo motivo que
+  /// `Id3CoverService.seSabeLaRuta`: evitar el cuadro de ruedita en
+  /// cada fila que aparece al desplazar la lista.
+  bool seSabeLaUrl(String title, String artist) =>
+      _cache.containsKey(_clave(title, artist));
+
+  /// La dirección ya conocida. Solo tiene sentido si [seSabeLaUrl] dijo
+  /// que sí: `null` acá significa "iTunes no tiene esta canción".
+  String? urlYaConocida(String title, String artist) =>
+      _cache[_clave(title, artist)];
 
   Future<String?> _buscarCoverUrl(
       String key, String title, String artist) async {
