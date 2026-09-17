@@ -181,6 +181,23 @@ MotivoDeDescarte? porQueNoEsMusica({
   // Los archivos de WhatsApp llevan su marca en el propio nombre
   // (AUD-20240115-WA0001.mp3), así que se reconocen aunque alguien los
   // haya movido a la carpeta de música.
+  //
+  // ESTO DEJA AFUERA MÚSICA A PROPÓSITO, Y ESTÁ DECIDIDO ASÍ.
+  //
+  // Una canción que te mandan por WhatsApp se guarda como `AUD-...` y
+  // conserva su formato (.mp3, .m4a); una nota de voz se guarda como
+  // `PTT-...` y es `.opus`. O sea que técnicamente se podrían separar y
+  // dejar pasar las canciones.
+  //
+  // Se preguntó y la respuesta fue que no: se prefiere perder la música
+  // que llega por ahí antes que arriesgarse a que un audio largo --uno
+  // que alguien grabó y mandó como archivo adjunto, que sí puede ser
+  // `.m4a` y durar minutos-- se cuele en la biblioteca y suene solo con
+  // el celular en el bolsillo.
+  //
+  // Si algún día se cambia de opinión, lo que hay que hacer es dejar
+  // pasar los `AUD-` en formato de música y de más de 45 segundos, y
+  // seguir bloqueando los `PTT-`.
   if (RegExp(r'-wa\d{4}').hasMatch(nombre)) {
     return MotivoDeDescarte.carpeta;
   }
