@@ -42,6 +42,7 @@ class Id3CoverService {
   final Map<String, Uint8List?> _cacheCaratula = {};
   final Map<String, String?> _cacheAlbum = {};
   final Map<String, String?> _cacheArtista = {};
+  final Map<String, String?> _cacheTitulo = {};
 
   // Las carátulas también quedan guardadas en disco, así que tener los
   // bytes en memoria es solo un atajo para no releer el archivo. Sin
@@ -99,7 +100,12 @@ class Id3CoverService {
       final yaSeHizo = File('${dir.path}/.marcas_revisadas_v2');
       if (await yaSeHizo.exists()) return;
 
-      const marcasDeNoHay = ['.nocover', '.noalbum', '.noartist'];
+      const marcasDeNoHay = [
+        '.nocover',
+        '.noalbum',
+        '.noartist',
+        '.notitle',
+      ];
       await for (final archivo in dir.list()) {
         if (archivo is! File) continue;
         if (marcasDeNoHay.any(archivo.path.endsWith)) {
@@ -287,6 +293,92 @@ class Id3CoverService {
     } else {
       _marcarSinArtista(url);
     }
+
+    final titulo = _extraerTitulo(tags);
+    _cacheTitulo[url] = titulo;
+    if (titulo != null) {
+      _guardarTituloEnDisco(url, titulo);
+    } else {
+      _marcarSinTitulo(url);
+    }
+  }
+
+  // ========== TÍTULO REAL (TIT2) ==========
+  //
+  // Se agregó porque el nombre del archivo a veces no dice cómo se
+  // llama la canción. Caso comprobado en la biblioteca: varios temas
+  // del disco "Libre" de Amén llegaban con el nombre de la BANDA, así
+  // que la app mostraba tres canciones distintas todas llamadas
+  // "Amén". Con el título equivocado la letra tampoco se puede buscar,
+  // porque se pide una canción que no existe.
+
+  String? _extraerTitulo(Map<String, dynamic>? tags) =>
+      leerTagDeTexto(tags, 'Title');
+
+  /// Devuelve el título REAL que trae el propio MP3 (tag ID3
+  /// "Title"/TIT2), o `null` si no lo trae.
+  Future<String?> getEmbeddedTitle(String url) async {
+    if (_cacheTitulo.containsKey(url)) return _cacheTitulo[url];
+
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      final archivoTitulo = File('${dir.path}/$clave.title');
+      final archivoSinTitulo = File('${dir.path}/$clave.notitle');
+
+      if (await archivoSinTitulo.exists()) {
+        _cacheTitulo[url] = null;
+        return null;
+      }
+      if (await archivoTitulo.exists()) {
+        final texto = await archivoTitulo.readAsString();
+        _cacheTitulo[url] = texto;
+        return texto;
+      }
+    } catch (_) {
+      // Si falla la lectura de disco, seguimos igual por red.
+    }
+
+    var seLeyoElArchivo = false;
+    try {
+      final lectura = await _obtenerBytesMp3(url);
+      seLeyoElArchivo = lectura.seLeyo;
+      final bytes = lectura.bytes;
+      if (bytes == null) {
+        _cacheTitulo[url] = null;
+        if (seLeyoElArchivo) _marcarSinTitulo(url);
+        return null;
+      }
+
+      final mp3 = MP3Instance(bytes);
+      if (mp3.parseTagsSync()) {
+        _recordarAlbumYArtista(url, mp3.getMetaTags());
+        return _cacheTitulo[url];
+      }
+    } catch (_) {
+      // El archivo no trae el tag, no hay red/archivo, o el servidor
+      // no soporta Range -- seguimos con el fallback en quien llame.
+    }
+
+    _cacheTitulo[url] = null;
+    if (seLeyoElArchivo) _marcarSinTitulo(url);
+    return null;
+  }
+
+  Future<void> _guardarTituloEnDisco(String url, String titulo) async {
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      await File('${dir.path}/$clave.title').writeAsString(titulo);
+    } catch (_) {}
+  }
+
+  Future<void> _marcarSinTitulo(String url) async {
+    try {
+      final dir = await _coverDir();
+      final clave = _claveArchivo(url);
+      await File('${dir.path}/$clave.notitle').writeAsBytes(const []);
+    } catch (_) {}
   }
   // ========== ÁLBUM REAL (TALB) ==========
 

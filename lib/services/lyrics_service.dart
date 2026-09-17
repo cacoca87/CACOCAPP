@@ -133,7 +133,7 @@ class LyricsService {
     // mundo con un título parecido y una duración parecida se colaba.
     // Pasó de verdad: "Amén" (188 s) trajo "AmEN!" de Bring Me the
     // Horizon (189,5 s), una letra en inglés llena de insultos, para
-    // una canción cristiana en español.
+    // una canción de pop-rock peruano.
     if (letra == null || !letra.hayAlgo) {
       letra = await _buscarEnLrclib(
         tituloLimpio,

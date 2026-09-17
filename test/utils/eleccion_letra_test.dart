@@ -115,7 +115,7 @@ void main() {
       // Amén dura 188 s, y en la base hay un "AmEN!" de Bring Me the
       // Horizon de 189,5 s. Segundo y medio de diferencia. Pasó el
       // filtro de duración y la app mostró una letra en inglés llena de
-      // insultos para una canción cristiana en español.
+      // insultos para una canción de pop-rock peruano.
       final resultados = [
         _resultado(
             track: 'AmEN!', artista: 'Bring Me the Horizon', duracion: 189.55),

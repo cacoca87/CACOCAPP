@@ -31,7 +31,7 @@ const int toleranciaDeDuracionEnSegundos = 7;
 /// "AmEN!" de Bring Me the Horizon que dura 189,5. Título parecido y
 /// segundo y medio de diferencia: pasó el filtro de duración y la app
 /// mostró, con total seguridad, una letra en inglés llena de insultos
-/// para una canción cristiana en español. Con el artista de por medio
+/// para una canción de pop-rock peruano. Con el artista de por medio
 /// eso no vuelve a pasar.
 Map<String, dynamic>? elegirLetraDeLrclib(
   List<dynamic> resultados, {

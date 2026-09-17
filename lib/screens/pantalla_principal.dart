@@ -163,6 +163,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           cancion.artist = artista;
           huboCambios = true;
         }
+
+        // El título también sale del propio MP3 cuando lo trae. Sin
+        // esto, un archivo cuyo nombre no dice cómo se llama la canción
+        // se mostraba con el nombre de la banda: en la biblioteca había
+        // tres canciones distintas del disco "Libre" de Amén, las tres
+        // llamadas "Amén". Y con el título equivocado la letra tampoco
+        // aparecía nunca, porque se buscaba una canción inexistente.
+        final titulo =
+            await Id3CoverService.instance.getEmbeddedTitle(cancion.url);
+        if (titulo != null && titulo.isNotEmpty && titulo != cancion.title) {
+          cancion.title = titulo;
+          huboCambios = true;
+        }
       }));
     }
 

@@ -2651,7 +2651,11 @@ Se agregó comparación por duración para no traer la letra equivocada
 el artista**, y eso dejó pasar algo peor: "Amén" dura 188 segundos y en
 la base hay un "AmEN!" de Bring Me the Horizon de 189,5. Segundo y medio
 de diferencia. La app mostró una letra en inglés llena de insultos para
-una canción cristiana en español, con total seguridad.
+una canción de pop-rock peruano, con total seguridad. (Nota: acá se
+escribió primero que Amén era un grupo cristiano, deducido de la tapa
+del disco. Era falso, y lo corrigió el dueño de la app. Deducir de una
+imagen y escribirlo como un hecho es la misma clase de error que
+tomar el primer resultado de una búsqueda como si fuera el correcto.)
 
 Corregido: la búsqueda solo-por-título ahora exige que el artista
 coincida, y si no coincide no se muestra nada. Se sacó además
