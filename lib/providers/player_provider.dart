@@ -90,8 +90,10 @@ class PlayerProvider extends ChangeNotifier {
 
   PlayerProvider(this.audioHandler, {this.onPausarVideoOnline}) {
     audioHandler.playbackState.listen((state) {
-      _isPlaying = state.playing;
-      if (_isPlaying) {
+      final sonando = state.playing;
+      var hayQueAvisar = false;
+
+      if (sonando) {
         _iniciarTemporizadorDeEscucha();
         // El historial y el contador de reproducciones se anotan ACA y
         // no al cambiar el `mediaItem`: al abrir la app se restaura la
@@ -99,13 +101,31 @@ class PlayerProvider extends ChangeNotifier {
         // sumaba una reproduccion sin que nadie escuchara nada. Abrir
         // la app diez veces contaba diez escuchas.
         final song = _currentSong;
-        if (song != null && song.id.isNotEmpty) {
-          _registrarEnHistorial(song.id);
+        if (song != null &&
+            song.id.isNotEmpty &&
+            _registrarEnHistorial(song.id)) {
+          // Cambió "Recientes" y "Más Escuchadas": eso sí se ve.
+          hayQueAvisar = true;
         }
       } else {
         _detenerTemporizadorDeEscucha();
       }
-      notifyListeners();
+
+      if (sonando != _isPlaying) {
+        _isPlaying = sonando;
+        hayQueAvisar = true;
+      }
+
+      // Solo se avisa a las pantallas cuando cambió algo que SE VE.
+      //
+      // Antes se avisaba en cada evento del reproductor, y esos llegan
+      // varias veces por segundo mientras se descarga la canción
+      // (cambia cuánto lleva bufferizado). O sea que la pantalla
+      // principal entera --con su lista de cientos de canciones-- se
+      // rehacía varias veces por segundo mientras sonaba música, sin
+      // que cambiara un solo pixel. En un celular de gama media eso se
+      // siente como que la app va pesada.
+      if (hayQueAvisar) notifyListeners();
     });
 
     audioHandler.mediaItem.listen((item) {
@@ -126,13 +146,16 @@ class PlayerProvider extends ChangeNotifier {
                   coverUrl: item.artUri?.toString() ?? '',
                 ),
         );
-        if (song.id.isNotEmpty) {
+        // Mismo criterio: el `mediaItem` se emite varias veces por
+        // canción (al armar la fuente, al llegar el índice, al conocerse
+        // la duración, al aparecer la carátula) y casi siempre es la
+        // MISMA canción. Avisar solo cuando de verdad cambió.
+        if (song.id.isNotEmpty && song.id != _currentSong?.id) {
           _currentSong = song;
           notifyListeners();
         }
       }
     });
-
     _cargarHistorial();
     _cargarTiempoEscuchado();
     _descargasListas = _cargarDescargas();
@@ -177,8 +200,12 @@ class PlayerProvider extends ChangeNotifier {
   // emisiones llegara a hacer cada cancion).
   String? _ultimaCancionContada;
 
-  void _registrarEnHistorial(String songId) {
-    if (songId == _ultimaCancionContada) return;
+  /// Devuelve `true` si de verdad se anotó algo. Sirve para que quien
+  /// llama sepa si tiene que refrescar la pantalla: "Recientes" y "Más
+  /// Escuchadas" salen de acá, y si no cambió nada no hay nada que
+  /// volver a dibujar.
+  bool _registrarEnHistorial(String songId) {
+    if (songId == _ultimaCancionContada) return false;
     _ultimaCancionContada = songId;
     _historial.remove(songId);
     _historial.insert(0, songId);
@@ -187,6 +214,7 @@ class PlayerProvider extends ChangeNotifier {
     }
     _conteoReproducciones[songId] = (_conteoReproducciones[songId] ?? 0) + 1;
     _guardarHistorial();
+    return true;
   }
 
   Future<void> _guardarHistorial() async {
