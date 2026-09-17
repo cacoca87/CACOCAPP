@@ -3522,3 +3522,136 @@ Es el primer arreglo de esta sesión que pasó de "creo que está bien" a
 
 `flutter analyze` limpio y **311 tests** en verde, 41 de ellos de
 pantalla.
+
+## 92. Vueltas 91 a 95: el mismo error, repetido en otros seis lugares
+
+La vuelta anterior terminó con los primeros tests que prueban la
+pantalla. Estas cinco vueltas son lo que esos tests destaparon, y un
+patrón que se repite: **casi todos los fallos que aparecieron ya
+estaban arreglados en otro lado**. El problema no era no saber la
+solución, era no haber buscado el mismo error en el resto de la app.
+
+### El destello al tocar estaba tapado en seis lugares más
+
+La vuelta 88 encontró este fallo en cuatro listas y lo arregló ahí.
+Justo ahí terminó: no busqué el mismo armado en el resto. Estaba en
+seis lugares más, y todos de los más tocados:
+
+- el acceso a "Toda tu música" en Inicio
+- el acceso al buscador de videos
+- los nueve accesos rápidos
+- las cuatro tarjetas de los juegos
+- cada noticia
+- cada tarjeta de Artistas y de Álbumes
+
+El destello que se expande bajo el dedo **no lo dibuja el botón**: lo
+dibuja la capa que está por debajo. Si la tarjeta tiene su propio color
+de fondo, tapa el destello. La tarjeta responde igual, pero se siente
+muerta: entre que apoyás el dedo y que cambia la pantalla no pasa nada.
+
+Los seis usaban el mismo armado equivocado copiado de uno a otro, así
+que ahora comparten una sola pieza que lo hace en el orden correcto.
+
+**El test que lo comprueba se equivocó primero.** Mi primera versión
+miraba hacia arriba buscando qué tapaba el destello, y lo que lo tapa
+está hacia abajo, así que no detectaba nada: habría dado "todo bien"
+con la app rota. Lo agarró el test que escribí para comprobar que la
+comprobación no fuera un test que siempre pasa. Ese test quedó.
+
+### Buscar "corazon" no encontraba "Corazón"
+
+Para la computadora la tilde es otra letra. Buscando `corazon` no
+aparecía "Corazón", buscando `amen` no aparecía "Amén", buscando `nino`
+no aparecía "El Niño".
+
+Y es al revés de lo que conviene: escribir la tilde en el teclado del
+celular cuesta más que no escribirla, así que **lo natural era justo lo
+que no funcionaba**. Es un fallo que no se nota programando --uno
+prueba con el nombre bien escrito-- y que en el uso diario aparece todo
+el tiempo, sobre todo en una biblioteca en castellano.
+
+De paso, ahora el orden de las palabras no importa: `stereo soda`
+encuentra "Soda Stereo". Nada de lo que antes aparecía dejó de
+aparecer: solo aparece más.
+
+Lo mismo pasaba con el **orden alfabético**: "Ángel" caía después de
+"Zeta", porque la "Á" no está cerca de la "A" sino después de todo el
+abecedario. Pasaba en la lista de canciones y en las grillas de
+Artistas y Álbumes.
+
+Y esas dos grillas, además, **no estaban ordenadas en absoluto**:
+salían en el orden en que aparecían en la biblioteca, que está ordenada
+por título de canción. Desde afuera eso parece al azar. Los MP3 sin
+álbum, encima, armaban una tarjeta **sin nombre**.
+
+**Una trampa que casi piso.** La primera versión recortaba los espacios
+de los nombres. Parece una mejora y rompe la app: al tocar la tarjeta
+se buscan las canciones cuyo artista sea *exactamente* ese texto, así
+que un nombre recortado no coincidiría con ninguna y la tarjeta abriría
+vacía. Quedó escrito en el código y hay un test que lo fija.
+
+### Agregar a una playlist no avisaba nada
+
+Tocabas una playlist en el menú de una canción, el menú se cerraba y no
+pasaba nada visible. La canción sí se agregaba, pero no había forma de
+saberlo sin ir a mirar. Las otras dos formas de agregar --"Nueva
+playlist" y Favoritos-- sí avisaban, así que esta era la rara.
+
+Y las playlists que **ya tenían** esa canción se veían igual que las
+demás, aunque tocarlas no hiciera nada. Ahora llevan un tilde y quedan
+en gris.
+
+### Los tests de desborde probaban una tablet
+
+El archivo entero decía probar "un celular angosto" y le pasaba el
+tamaño 320x640. Eso **no achica nada**: solo cambia el número que los
+widgets leen. La superficie donde se dibuja seguía siendo la de
+fábrica, 800 de ancho --más que cualquier teléfono--. O sea que trece
+tests estaban probando algo que no existe.
+
+Con la pantalla achicada de verdad apareció un desborde que llevaba ahí
+desde siempre: **el encabezado de los carruseles de Inicio**. El título
+va al lado del botón "Ver todo" sin ningún límite de ancho, así que con
+la letra del sistema agrandada "Escuchado recientemente" no entra y la
+fila se rompe.
+
+Es, otra vez, el mismo fallo que ya estaba arreglado en el menú
+lateral: en la misma pantalla y a la misma altura. Lo arreglé abajo y
+me dejé sin arreglar arriba.
+
+### El ecualizador, probado por fin en 8 y 10 bandas
+
+En la vuelta 69 arreglé un desborde del ecualizador **razonando, sin
+poder verlo**: cuántas bandas tiene no lo decide la app, lo informa el
+fabricante del celular. En el que se programó son 5, que entran bien.
+En los que informan 8 o 10, el panel salía con las rayas amarillas y
+negras.
+
+El panel entero no se puede probar: necesita el motor de audio de
+Android, que no arranca fuera de un teléfono. Así que la fila de bandas
+se sacó a una pieza propia, que sí se puede probar sola.
+
+Y se comprobó que los tests **sirven**, que es algo que casi nunca se
+verifica: se volvió a poner el reparto viejo a propósito, y fallaron
+con 8 bandas (64 píxeles de desborde), con 10 (160) y con 10 más la
+letra al doble (283). Con el reparto actual pasan los diez.
+
+### Dos veces que la app se quedaba callada
+
+**El filtro podía comerse toda tu música y no decirlo.** El cartel de
+"Actualizar" cuenta cuántos archivos del celular se saltearon por no
+ser música. Ese número existe para un solo motivo: el filtro que deja
+afuera las notas de voz es una apuesta, y si un día se lleva puesta una
+canción de verdad, no hay forma de darse cuenta salvo que la app lo
+diga. Pero el número **solo se mostraba si había entrado al menos una
+canción**. O sea que en el único caso donde de verdad importa --el
+filtro se llevó puesto todo-- el cartel no decía nada.
+
+**Decir que no al permiso dejaba la app muda para siempre.** El
+servicio ya calculaba si había permiso, y la pantalla tiraba ese dato.
+Si decías que no, la música del teléfono simplemente no aparecía: sin
+explicación y sin forma de arreglarlo, porque Android deja de preguntar
+después de dos "no" y la única salida son los ajustes del sistema.
+Ahora el cartel lo dice y trae un botón "Permitir" que los abre.
+
+`flutter analyze` limpio, **360 tests** en verde y APK de 41,5 MB.
