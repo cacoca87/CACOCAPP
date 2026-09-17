@@ -44,7 +44,8 @@ List<int> _mp3ConTapa({List<int> imagen = const [0xFF, 0xD8, 0xFF, 0xD9]}) {
     (cuerpo.length >> 16) & 0xFF,
     (cuerpo.length >> 8) & 0xFF,
     cuerpo.length & 0xFF,
-    0x00, 0x00,
+    0x00,
+    0x00,
     ...cuerpo,
   ];
 
@@ -266,6 +267,30 @@ void main() {
 
       expect(descargas, 1, reason: 'el mismo MP3 no se baja dos veces');
       expect(resultados.first, isNotNull);
+    });
+
+    test('cuatro filas pidiendo la misma tapa hacen el trabajo una vez',
+        () async {
+      // La canción que suena puede estar dibujada a la vez en la fila
+      // de la lista, en el mini reproductor de abajo y en dos
+      // carruseles de Inicio. Las cuatro piden su tapa en el mismo
+      // instante: sin juntarlas, eran cuatro descargas, cuatro lecturas
+      // de medio megabyte y cuatro escrituras del mismo archivo.
+      var descargas = 0;
+      final servicio = Id3CoverService.testable(MockClient((_) async {
+        descargas++;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return http.Response.bytes(_mp3ConTapa(), 206);
+      }));
+
+      final rutas = await Future.wait(List.generate(
+        4,
+        (_) => servicio.getEmbeddedCoverPath(url),
+      ));
+
+      expect(descargas, 1);
+      // Y todas apuntan al mismo archivo, no a cuatro copias.
+      expect(rutas.whereType<String>().toSet().length, 1);
     });
 
     test('la limpieza se hace una sola vez', () async {

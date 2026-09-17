@@ -122,6 +122,34 @@ void main() {
       expect(pidio, isTrue);
     });
 
+    test('la misma canción pedida desde varios lados consulta UNA vez',
+        () async {
+      // Pasa todo el tiempo en la pantalla de Inicio: la canción que
+      // está sonando puede estar dibujada a la vez en el mini
+      // reproductor de abajo y en los carruseles de "Recientes",
+      // "Favoritas" y "Recomendado". Los cuatro piden su carátula en el
+      // mismo instante, ninguno la encuentra guardada todavía, y los
+      // cuatro salían a preguntarle a iTunes exactamente lo mismo.
+      var consultas = 0;
+      final servicio = ArtworkService.testable(MockClient((_) async {
+        consultas++;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return http.Response(
+            _respuestaConCaratula('https://itunes.test/x/600x600bb.jpg'), 200);
+      }));
+
+      // A propósito sin `await` entre medio: se piden los cuatro juntos.
+      final resultados = await Future.wait([
+        servicio.getCoverUrl('Roxanne', 'The Police'),
+        servicio.getCoverUrl('Roxanne', 'The Police'),
+        servicio.getCoverUrl('Roxanne', 'The Police'),
+        servicio.getCoverUrl('Roxanne', 'The Police'),
+      ]);
+
+      expect(consultas, 1);
+      expect(resultados.toSet(), {'https://itunes.test/x/600x600bb.jpg'});
+    });
+
     test('lo guardado con la regla vieja además se borra del disco', () async {
       SharedPreferences.setMockInitialValues({
         'artwork_cache_vieja|banda': '',

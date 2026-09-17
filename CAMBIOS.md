@@ -2928,3 +2928,98 @@ en el celular: varias de las fallas de estas vueltas aparecen solo con
 la letra del sistema agrandada, con un ecualizador de diez bandas, o
 borrando una descarga en el momento justo. Se arreglaron razonando
 sobre por qué tienen que fallar, no viéndolas fallar.
+
+---
+
+## 86. Vuelta 73: lo más pesado que hace la app son las carátulas
+
+Pedido: *"dale más análisis, para que quede bien optimizado"*. Así que
+esta vuelta se midió en vez de suponer, y se fue a donde está el
+trabajo de verdad: dibujar carátulas. Es lo que la app hace cientos de
+veces seguidas al abrir la biblioteca.
+
+### La tapa de la pantalla de bloqueo no se usaba la primera vez
+
+Un bug, con un test que lo demuestra.
+
+La ruta del archivo de la tapa se conseguía así: guardar los bytes en
+disco **sin esperar la escritura**, y enseguida comprobar si el archivo
+existía. La comprobación ganaba la carrera casi siempre, así que la
+respuesta era "no hay", y la tapa de la pantalla de bloqueo terminaba
+buscándose en iTunes: **un pedido de red de más, para conseguir una
+imagen que ya estaba adentro del propio MP3**.
+
+El test nuevo arma un MP3 de verdad —una etiqueta ID3v2.3 con su cuadro
+APIC, construida byte por byte— y fallaba antes del arreglo. Se armó a
+mano en vez de meter un MP3 de ejemplo en el repositorio: así el test
+dice explícitamente qué formato se está leyendo, en vez de depender de
+un archivo binario que nadie puede revisar.
+
+### El mismo MP3 se bajaba dos veces
+
+Al abrir la app pasan dos cosas al mismo tiempo: la lista pide la
+carátula de cada canción que se ve, y por detrás corre el repaso que
+completa el álbum y el artista de toda la biblioteca. Las dos necesitan
+exactamente los **mismos 512 KB del mismo archivo**, y cada una los
+bajaba por su cuenta. Con decenas de canciones en pantalla, son varios
+megas de datos móviles de más en el primer arranque.
+
+Y hay otro caso igual: la canción que está sonando puede estar dibujada
+a la vez en la fila de la lista, en el mini reproductor de abajo y en
+los carruseles de "Recientes", "Favoritas" y "Recomendado". Los cuatro
+piden su carátula en el mismo instante, ninguno la encuentra guardada
+todavía, y los cuatro salían a preguntar lo mismo.
+
+Es el mismo agujero en todos los cachés de la app: *"¿lo tengo
+guardado? lo devuelvo; si no, lo busco y lo guardo"* funciona perfecto
+cuando los pedidos llegan de a uno, y falla justo cuando llegan juntos.
+
+Se resolvió con una sola pieza compartida (`utils/una_sola_vez.dart`,
+con 6 tests) que anota el trabajo en curso y le da la misma respuesta
+al segundo que pregunte. La usan las descargas de MP3, las carátulas
+incrustadas y las consultas a iTunes.
+
+### Las tapas se decodificaban una y otra vez al desplazar la lista
+
+Se le pasaban a Flutter como **bytes**. Flutter no puede reconocer dos
+montones de bytes como la misma imagen, así que cada vez que una fila
+volvía a aparecer al subir la lista, la decodificaba de cero. Encima
+los bytes se guardaban en memoria con un tope de 60 y una lista aparte
+para ir descartando los más viejos: al pasarse del tope había que
+releer del disco y decodificar otra vez.
+
+Ahora se le pasa el **archivo**. Flutter reconoce dos pedidos del mismo
+archivo como la misma imagen y descarta solo lo que ya no se ve, así
+que el tope y la lista de descarte se pudieron sacar enteros. Lo que
+queda en memoria son rutas: texto corto.
+
+### El APK pesaba 62 MB y 22 eran para emuladores de PC
+
+Un tercio del archivo que hay que pasarle al teléfono era código
+nativo para procesadores **x86_64**, que ningún celular Android usa:
+solo los emuladores que corren en una computadora.
+
+Compilando así:
+
+```
+flutter build apk --release --target-platform android-arm,android-arm64
+```
+
+sale **un solo APK de 41 MB** (medido), que anda igual en cualquier
+celular.
+
+Se intentó dejarlo automático desde `build.gradle.kts` con
+`abiFilters`, y **no funciona**: se comprobó compilando. Ese filtro
+alcanza a las librerías que arma el propio Android, pero las de Flutter
+—que son justo las grandes— las agrega después el plugin de Flutter por
+su cuenta y se cuelan igual. Queda documentado en el archivo para que
+nadie lo vuelva a intentar.
+
+### Y de paso
+
+La pantalla de Inicio armaba **dos veces** el mismo índice de canciones
+por id en cada dibujado: uno para "Recientes" y otro para "Más
+Escuchadas". Ahora se arma una sola vez, y solo si alguien lo lee.
+
+`flutter analyze`, `flutter test` (**227**) y `flutter build apk
+--release` salieron limpios.

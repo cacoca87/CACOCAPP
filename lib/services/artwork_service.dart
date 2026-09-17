@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/una_sola_vez.dart';
 
 /// Busca la carátula real de una canción por título + artista usando la
 /// API pública de iTunes Search (gratuita, sin API key).
@@ -63,8 +64,26 @@ class ArtworkService {
     } catch (_) {}
   }
 
-  Future<String?> getCoverUrl(String title, String artist) async {
+  /// Junta los pedidos simultáneos de la misma canción.
+  ///
+  /// La misma canción puede estar dibujada en cuatro lugares a la vez:
+  /// la fila de la lista, el mini reproductor de abajo, y los carruseles
+  /// de "Recientes", "Favoritas" y "Recomendado" de la pantalla de
+  /// Inicio. Las cuatro piden su carátula en el mismo instante, ninguna
+  /// la encuentra guardada todavía, y las cuatro salían a preguntarle a
+  /// iTunes exactamente lo mismo. Ver `utils/una_sola_vez.dart`.
+  final UnaSolaVez<String?> _juntarPedidos = UnaSolaVez<String?>();
+
+  Future<String?> getCoverUrl(String title, String artist) {
     final key = '${title.toLowerCase()}|${artist.toLowerCase()}';
+    if (_cache.containsKey(key)) return Future.value(_cache[key]);
+    return _juntarPedidos.hacer(key, () => _buscarCoverUrl(key, title, artist));
+  }
+
+  Future<String?> _buscarCoverUrl(
+      String key, String title, String artist) async {
+    // Otro pedido de la misma canción pudo resolverla mientras este
+    // esperaba su turno.
     if (_cache.containsKey(key)) return _cache[key];
 
     // 1) ¿Ya lo buscamos en una sesión anterior?

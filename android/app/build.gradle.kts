@@ -49,6 +49,35 @@ android {
             // propia, generada con `keytool` y guardada FUERA del
             // repositorio (en un `key.properties` ignorado por git).
             signingConfig = signingConfigs.getByName("debug")
+
+            // COMO ACHICAR EL APK A LA MITAD (leer antes de compilar)
+            //
+            // Por defecto, `flutter build apk --release` pesa 62 MB, y
+            // 22 de esos son codigo nativo para procesadores x86_64:
+            // los de una computadora. NINGUN celular Android usa esa
+            // arquitectura -- solo los emuladores que corren en una PC.
+            // O sea que un tercio del archivo que hay que pasarle al
+            // telefono es peso muerto que el telefono nunca va a poder
+            // ejecutar.
+            //
+            // Para dejarlo afuera hay que compilar asi:
+            //
+            //     flutter build apk --release ^
+            //         --target-platform android-arm,android-arm64
+            //
+            // Eso da UN solo APK de 41 MB (medido), que anda igual en
+            // cualquier celular: quedan arm64-v8a (todos los de los
+            // ultimos años) y armeabi-v7a (los viejos, de 32 bits).
+            //
+            // SE INTENTO dejarlo automatico desde aca, con
+            // `ndk { abiFilters += ... }` en este mismo bloque. NO
+            // FUNCIONA, y se comprobo compilando: `abiFilters` filtra
+            // las librerias que arma el propio Android, pero las de
+            // Flutter (libflutter.so y libapp.so, que son justo las
+            // grandes) las agrega despues el plugin de Flutter por su
+            // cuenta, y se cuelan igual. El APK salia de 62 MB con el
+            // filtro puesto. Si alguien lo vuelve a intentar: ya se
+            // probo, y el camino es la bandera de arriba.
         }
     }
 }

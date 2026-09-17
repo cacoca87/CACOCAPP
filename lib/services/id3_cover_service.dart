@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:id3/id3.dart';
 import 'package:path_provider/path_provider.dart';
 import '../utils/id3_tags.dart';
+import '../utils/una_sola_vez.dart';
 
 /// Extrae metadata REAL incrustada en el propio MP3 (tags ID3v2):
 /// carátula (frame APIC), nombre de álbum (TALB) y artista (TPE1) --
@@ -155,18 +156,17 @@ class Id3CoverService {
   /// varios megas de más en el primer arranque.
   ///
   /// Anotando la descarga que ya está en curso, el segundo que la pida
-  /// espera la misma en vez de abrir otra.
-  final Map<String, Future<({Uint8List? bytes, bool seLeyo})>> _enVuelo = {};
+  /// espera la misma en vez de abrir otra. Se usa `UnaSolaVez`, que es
+  /// el mismo mecanismo que junta los pedidos de tapa y los de iTunes.
+  ///
+  /// Ojo con esto: la anotación se borra al terminar. Si quedara, los
+  /// bytes de TODA la biblioteca se acumularían en memoria, que es
+  /// justo lo que se quiere evitar.
+  final UnaSolaVez<({Uint8List? bytes, bool seLeyo})> _juntarDescargas =
+      UnaSolaVez<({Uint8List? bytes, bool seLeyo})>();
 
-  Future<({Uint8List? bytes, bool seLeyo})> _obtenerBytesMp3(String url) {
-    final enCurso = _enVuelo[url];
-    if (enCurso != null) return enCurso;
-    final pedido = _bajarBytesMp3(url);
-    _enVuelo[url] = pedido;
-    // Se saca al terminar: si quedara, los bytes de TODA la biblioteca
-    // se acumularían en memoria, que es justo lo que se quería evitar.
-    return pedido.whenComplete(() => _enVuelo.remove(url));
-  }
+  Future<({Uint8List? bytes, bool seLeyo})> _obtenerBytesMp3(String url) =>
+      _juntarDescargas.hacer(url, () => _bajarBytesMp3(url));
 
   Future<({Uint8List? bytes, bool seLeyo})> _bajarBytesMp3(String url) async {
     try {
@@ -218,7 +218,19 @@ class Id3CoverService {
   /// la respuesta era `null` y la tapa del bloqueo terminaba
   /// buscándose en iTunes -- un pedido de red de más, para conseguir
   /// una imagen que ya estaba adentro del propio MP3.
-  Future<String?> getEmbeddedCoverPath(String url) async {
+  /// Junta los pedidos simultáneos de la misma canción, que en esta app
+  /// son la norma: la fila de la lista, el mini reproductor de abajo y
+  /// los carruseles de Inicio pueden estar mostrando la misma canción a
+  /// la vez, y los cuatro piden su tapa en el mismo instante. Ver
+  /// `utils/una_sola_vez.dart`.
+  final UnaSolaVez<String?> _juntarTapas = UnaSolaVez<String?>();
+
+  Future<String?> getEmbeddedCoverPath(String url) {
+    if (_cacheRuta.containsKey(url)) return Future.value(_cacheRuta[url]);
+    return _juntarTapas.hacer(url, () => _resolverRutaDeTapa(url));
+  }
+
+  Future<String?> _resolverRutaDeTapa(String url) async {
     if (_cacheRuta.containsKey(url)) return _cacheRuta[url];
 
     final clave = _claveArchivo(url);
