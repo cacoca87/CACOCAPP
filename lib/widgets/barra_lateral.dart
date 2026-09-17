@@ -162,12 +162,22 @@ class BarraLateral extends StatelessWidget {
             Icon(icon,
                 color: active ? AppTheme.amber : AppTheme.mutedInk, size: 20),
             const SizedBox(width: 14),
-            Text(
-              etiqueta ?? title,
-              style: AppTheme.body.copyWith(
-                fontSize: 14,
-                color: active ? AppTheme.paper : AppTheme.mutedInk,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+            // `Expanded` + una sola línea: el menú vive en una barra de
+            // ancho fijo (240 o 260), y con la letra del sistema
+            // agrandada "Música Descargada" no entraba al lado del
+            // ícono. Una fila que no entra en Flutter no se acomoda
+            // sola: sale con las rayas amarillas y negras de
+            // desbordado.
+            Expanded(
+              child: Text(
+                etiqueta ?? title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTheme.body.copyWith(
+                  fontSize: 14,
+                  color: active ? AppTheme.paper : AppTheme.mutedInk,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                ),
               ),
             ),
           ],

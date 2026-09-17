@@ -107,6 +107,15 @@ class _SongCoverState extends State<SongCover> {
         // de punta a punta hacia trabar el scroll en celulares de
         // gama media. Le pedimos que decodifique al tamano real de
         // pantalla (logico x densidad del dispositivo).
+        //
+        // Va SOLO el ancho, sin el alto. Cuando se dan los dos, Flutter
+        // decodifica a esas medidas exactas y deja de respetar la
+        // proporcion de la imagen: una tapa que no sea cuadrada (las hay
+        // rectangulares, sobre todo las que vienen dentro del MP3) se
+        // aplastaba para entrar en el cuadrado, y despues `BoxFit.cover`
+        // ya no podia arreglarlo porque recibia la imagen deformada. Con
+        // el ancho solo, el alto sale proporcional y el recorte lo hace
+        // `cover`, que es su trabajo.
         final densidad = MediaQuery.devicePixelRatioOf(context);
         final ladoEnPixeles = (widget.size * densidad).round();
 
@@ -117,7 +126,6 @@ class _SongCoverState extends State<SongCover> {
             width: widget.size,
             height: widget.size,
             cacheWidth: ladoEnPixeles,
-            cacheHeight: ladoEnPixeles,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _placeholder(),
           );
@@ -127,7 +135,6 @@ class _SongCoverState extends State<SongCover> {
             width: widget.size,
             height: widget.size,
             cacheWidth: ladoEnPixeles,
-            cacheHeight: ladoEnPixeles,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _placeholder(),
           );

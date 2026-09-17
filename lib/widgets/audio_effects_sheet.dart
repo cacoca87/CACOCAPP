@@ -98,15 +98,28 @@ class _PanelDeAudio extends StatelessWidget {
                 child: SizedBox(
                   height: 180,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    // Cada banda ocupa una fracción igual del ancho, en
+                    // vez de su ancho natural repartido con
+                    // `spaceEvenly`.
+                    //
+                    // Con las 5 bandas que reporta la mayoría de los
+                    // celulares se ve igual, pero cuántas bandas hay lo
+                    // decide el fabricante y hay equipos que informan 8
+                    // o 10. Con el ancho natural, esas diez columnas no
+                    // entraban en la pantalla y el panel salía con las
+                    // rayas amarillas y negras de desbordado. Es un
+                    // fallo que no se puede ver en el celular donde se
+                    // programó: depende del aparato de cada uno.
                     children: fx.info.bandas.map((banda) {
-                      return _BandaSlider(
-                        etiqueta: _formatearFrecuencia(banda.frecuenciaHz),
-                        valor: fx.nivelBanda(banda.indice),
-                        min: fx.info.nivelMinimo,
-                        max: fx.info.nivelMaximo,
-                        habilitado: fx.eqActivo,
-                        onCambiar: (v) => fx.setNivelBanda(banda.indice, v),
+                      return Expanded(
+                        child: _BandaSlider(
+                          etiqueta: _formatearFrecuencia(banda.frecuenciaHz),
+                          valor: fx.nivelBanda(banda.indice),
+                          min: fx.info.nivelMinimo,
+                          max: fx.info.nivelMaximo,
+                          habilitado: fx.eqActivo,
+                          onCambiar: (v) => fx.setNivelBanda(banda.indice, v),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -239,7 +252,14 @@ class _BandaSlider extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(etiqueta, style: AppTheme.small.copyWith(fontSize: 10)),
+        // Con muchas bandas cada columna es angosta y "12.5kHz" no
+        // entra: sin esto el texto se desbordaba de su columna.
+        Text(
+          etiqueta,
+          style: AppTheme.small.copyWith(fontSize: 10),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
     );
   }

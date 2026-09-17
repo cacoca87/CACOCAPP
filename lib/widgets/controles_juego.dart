@@ -50,6 +50,10 @@ class _BotonJuegoState extends State<BotonJuego> {
   }
 
   void _presionar() {
+    // Por las dudas quedara uno andando de un toque anterior: dos
+    // temporizadores repitiendo a la vez movían la pieza al doble de
+    // velocidad y solo se podía frenar uno.
+    _repeticion?.cancel();
     HapticFeedback.selectionClick();
     widget.onTap();
     if (!widget.repetible) return;

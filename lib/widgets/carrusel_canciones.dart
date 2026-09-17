@@ -30,6 +30,19 @@ class CarruselCanciones extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ancho = esPantallaPequena ? 128.0 : 160.0;
+    // Cuánto alto se reserva DEBAJO de la tapa, para el título y el
+    // artista.
+    //
+    // Crece con la escala de letra del sistema en vez de ser un número
+    // fijo. Antes eran 66 píxeles a secas, calculados con la letra
+    // normal: con la letra grande --que es lo que traen de fábrica
+    // varios Samsung, y algo que mucha gente sube a mano-- los dos
+    // renglones dejaban de entrar y la fila salía con las rayas
+    // amarillas y negras de "desbordado", justo en la pantalla de
+    // Inicio, que es la primera que se ve al abrir la app. Mismo motivo
+    // que el alto de la barra en `mini_player.dart`.
+    final escala = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
+    final altoTexto = 66 * escala;
     return Padding(
       padding: const EdgeInsets.only(bottom: 28),
       child: Column(
@@ -49,7 +62,7 @@ class CarruselCanciones extends StatelessWidget {
             ],
           ),
           SizedBox(
-            height: ancho + 66,
+            height: ancho + altoTexto,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: canciones.length,

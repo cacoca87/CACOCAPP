@@ -30,6 +30,12 @@ class CarruselPlaylists extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ancho = esPantallaPequena ? 128.0 : 160.0;
+    // Igual que en `carrusel_canciones.dart`: el alto que se reserva
+    // para el nombre y la cantidad de canciones crece con la escala de
+    // letra del sistema. Acá el número fijo era todavía más justo (56)
+    // y se desbordaba antes.
+    final escala = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
+    final altoTexto = 56 * escala;
     return Padding(
       padding: const EdgeInsets.only(bottom: 28),
       child: Column(
@@ -49,7 +55,7 @@ class CarruselPlaylists extends StatelessWidget {
             ],
           ),
           SizedBox(
-            height: ancho + 56,
+            height: ancho + altoTexto,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: playlists.length,
