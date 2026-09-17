@@ -3140,3 +3140,65 @@ Estadísticas.
 
 `flutter analyze`, `flutter test` (**234**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 88. Vueltas 80 y 81: lo que se hace cinco veces por segundo, y la biblioteca sin señal
+
+### La letra rehacía la lista entera cinco veces por segundo
+
+Es lo más caro que hacía la app mientras estás leyendo una letra, y se
+nota justo ahí: con el video de YouTube andando al lado.
+
+La posición de la reproducción llega unas cinco veces por segundo. La
+letra estaba envuelta en un `StreamBuilder` sobre esa posición, así que
+**cada uno de esos avisos rehacía la lista entera** —los diez renglones
+visibles, cada uno con su animación de tamaño y su detector de toques—
+para terminar pintando exactamente lo mismo. Un renglón dura varios
+segundos: de cada veinte o treinta redibujados, uno solo cambiaba algo.
+Encima se agendaba un trabajo para después de cada cuadro, también
+cinco veces por segundo.
+
+Ahora se escucha la posición con una suscripción propia y se redibuja
+**solo cuando cambia el renglón**.
+
+Un detalle que anulaba la mejora en el panel del video: ahí el flujo de
+la posición se armaba dentro del `build`, y `videoStateStream.map()`
+devuelve uno **nuevo** cada vez. Quien lo escucha compara si le
+cambiaron el flujo para saber si tiene que reengancharse, así que se
+desenganchaba y se reenganchaba por nada.
+
+Antes de cambiarlo se comprobó **en el código del paquete** que los dos
+flujos son de transmisión (broadcast), porque de eso depende que volver
+a escucharlos sea seguro: `videoStateController` es un
+`StreamController.broadcast()` y `positionStream` de just_audio es un
+`BehaviorSubject`. Lo segundo además hace que la letra se enganche al
+instante en la biblioteca, porque ese tipo de flujo repite el último
+valor al suscribirse.
+
+### Sin internet, la app mostraba OTRA biblioteca
+
+Cuando el servidor no contesta, la app cae en un respaldo. Ese respaldo
+era una **lista fija de 160 nombres escrita dentro del código**, armada
+una vez y congelada desde entonces.
+
+O sea que quedarse sin señal no te mostraba tu biblioteca con menos
+cosas: te mostraba otra. Los temas subidos después de esa lista —los de
+Amén, por ejemplo— desaparecían, y podían aparecer archivos que ya no
+están en el servidor.
+
+Ahora se recuerda la última lista que **sí** vino del servidor, y es esa
+la que se usa sin señal. La lista fija queda solo para la primerísima
+apertura sin internet, cuando todavía no hubo ninguna vez con conexión:
+ahí es eso o una pantalla vacía.
+
+De paso se emparejó ese servicio con los otros cinco: el cliente HTTP
+entra por el constructor (era el único que no lo tenía, y por eso el
+respaldo de la biblioteca —que es justo lo que se ve sin señal— no lo
+comprobaba ningún test), y el caché dejó de ser `static`, el mismo
+cambio que ya se había hecho en otros dos por el mismo motivo.
+
+Siete tests nuevos.
+
+`flutter analyze`, `flutter test` (**241**) y `flutter build apk
+--release` salieron limpios.
