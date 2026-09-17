@@ -3303,3 +3303,93 @@ El filtro está probado; **el puente nativo no**. Que la consulta al
 pida bien y que los archivos suenen, eso solo se ve en el celular. Lo
 que sí se comprobó es que el Kotlin compila y que los permisos quedaron
 en el manifiesto final del APK.
+
+---
+
+## 90. Vueltas 83 a 85: revisar lo recién hecho, que es donde más hay
+
+Después de agregar la música del celular, lo primero es revisar **eso**:
+el código nuevo es el que menos vueltas tiene encima. Aparecieron tres
+cosas, y las tres las había roto yo en la vuelta anterior.
+
+### La biblioteca se copiaba y ordenaba en cada dibujado
+
+Junté las dos listas —la del servidor y la del celular— en una
+propiedad que las ordenaba **cada vez que alguien la leía**. Y eso es
+una vez por dibujado: con cada tecla del buscador y con cada aviso del
+reproductor, copiar y ordenar cientos de canciones para dar exactamente
+lo mismo.
+
+Es justo el tipo de cosa que vengo sacando hace vueltas, y la metí yo
+en la misma sesión. Las dos listas cambian un puñado de veces en toda
+la sesión, así que ahora se rearma ahí y no al dibujar.
+
+El orden se fija **una** vez, al juntarlas, y no se retoca cuando el
+repaso de metadatos corrige un título: si se reordenara, las filas
+saltarían de lugar solas mientras la persona mira la lista.
+
+### Al reabrir la app no encontraba una canción del celular
+
+La sesión anterior se guarda como el id de la canción que estaba
+sonando, y al restaurar se buscaba ese id **solo entre las del
+servidor**. Si la última era del celular no aparecía, y la app abría en
+la primera de la lista en vez de donde la dejaste.
+
+### A una canción del celular se le ofrecía "Descargar offline"
+
+No tiene ningún sentido —ya está en el teléfono— y encima **fallaba
+siempre**: descargar es bajar algo de internet, y esa no está en
+internet. El intento moría con "no se pudo descargar, revisá tu
+conexión", que además es un mensaje falso.
+
+Ahora el menú dice "Ya está en tu celular", apagado.
+
+### Dos canciones del celular con el mismo nombre se pisaban
+
+En un celular es de lo más común tener `/Music/Rock/01 - Intro.mp3` y
+`/Music/Jazz/01 - Intro.mp3`. Lo que se saca de adentro del MP3
+—carátula, álbum, artista, título— se guarda con un nombre derivado del
+archivo, y ese nombre era **solo el último pedazo de la ruta**. Las dos
+caían en el mismo lugar, y la segunda terminaba mostrando los datos de
+la primera.
+
+Con las del servidor no pasa: viven todas juntas en un mismo lugar. Es
+un problema que **nació** con la música del celular, donde los archivos
+están repartidos en carpetas y los nombres genéricos abundan.
+
+Ahora a las locales se les agrega una huella de la ruta completa. Va
+solo a las locales a propósito: ponérsela a todas haría que las
+carátulas del servidor ya guardadas dejaran de encontrarse, y habría
+que volver a bajarlas —medio megabyte por canción— sin necesidad.
+
+La huella **no usa `hashCode`**: eso sirve dentro de una misma
+ejecución, pero no se garantiza que dé lo mismo la próxima vez que
+arranque la app, y esto forma parte del nombre de un archivo que hay
+que volver a encontrar mañana.
+
+### "Principal (Drive)", donde no hay ningún Drive
+
+Ese nombre decía dos cosas que no son ciertas:
+
+- **No hay ningún Drive.** La biblioteca vive en un bucket de
+  Cloudflare R2. Lo de "Drive" quedó de una versión anterior del
+  proyecto y nunca se corrigió, ni siquiera al cambiar de servicio.
+- **Ya no es solo eso.** Desde que la app lee la música del propio
+  teléfono, esa vista muestra las dos cosas mezcladas.
+
+Ahora se llama "Toda tu música" —que además es el nombre que la app
+**ya** usaba para titular esa misma pantalla: antes decían cosas
+distintas en la barra lateral y en el título—.
+
+Y el problema de fondo era peor que el nombre: esos textos son
+**claves**, la pantalla principal compara contra ellas para saber qué
+mostrar, y estaban escritos a mano **45 veces** entre todos los
+archivos. Una sola letra distinta en cualquiera rompía esa vista en
+silencio: sin error y sin aviso, simplemente dejaba de coincidir. Ahora
+son cuatro constantes declaradas en un solo lugar.
+
+Nada de eso se guarda en el disco, así que el cambio no toca lo que ya
+está guardado en el celular.
+
+`flutter analyze`, `flutter test` (**269**) y `flutter build apk
+--release` salieron limpios.
