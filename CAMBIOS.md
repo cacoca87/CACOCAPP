@@ -3976,3 +3976,66 @@ Ese arreglo quedó puesto igual --es correcto y no cuesta nada-- pero
 queda dicho que es defensivo y no está comprobado.
 
 `flutter analyze` limpio, **478 tests** en verde y APK de 40,5 MB.
+
+## 97. Vueltas 109 a 112: los gestos, que nadie había mirado
+
+Este tramo salió de una sola idea: **probar los widgets que reciben el
+toque del dedo**. Nunca se habían probado, y ahí estaba escondido el
+fallo más molesto de los juegos.
+
+### Mantener apretado el botón se cortaba a los 0,5 segundos
+
+En los cuatro juegos, mantener apretado un botón de dirección repite la
+acción cada vez más rápido. Eso funcionaba **medio segundo** y después
+se plantaba, con un cartelito de ayuda encima.
+
+El motivo es de los que no se ven leyendo: el botón lleva un `Tooltip`,
+y por defecto un tooltip aparece con una pulsación larga. Para eso
+**compite por el gesto** con el propio botón. A los 500 ms gana el
+tooltip, el toque se **cancela** y la repetición se corta --justo
+cuando el botón tendría que estar acelerando--.
+
+O sea que mover una pieza de un lado al otro seguía siendo a toques
+sueltos, que es exactamente lo que la repetición venía a resolver.
+
+**Cómo apareció.** No lo encontré leyendo. Apareció escribiendo el
+primer test de ese widget: manteniendo el dedo apretado un segundo, la
+acción se disparaba dos veces en vez de diez. Me llevó un rato entender
+que no era un problema del test.
+
+### Tocar el hueco de una tarjeta no hacía nada
+
+Las tarjetas de los carruseles responden al toque, pero solo **donde
+hay algo pintado**. Por defecto un detector de gestos le pregunta a su
+hijo si ese punto le corresponde, y un hueco --el espacio entre la tapa
+y el título-- contesta que no.
+
+La tarjeta se sentía rota justo en el medio: tocás ahí y no pasa nada.
+
+Lo mismo en el mini reproductor: la línea fina de progreso de arriba era
+el único lugar de la barra que no abría el reproductor.
+
+### La tecla del teclado no hacía nada en tres campos
+
+Tres campos de texto tenían puesta la tecla de acción del teclado
+--"buscar", "listo"-- y ninguno hacía nada al pulsarla:
+
+- **Crear biblioteca**: escribías el nombre, dabas enter y no pasaba
+  nada. Había que cerrar el teclado a mano y buscar el botón CREAR, que
+  con el teclado abierto queda tapado.
+- **Buscar en Descubrir**: ahora baja el teclado y busca ya, sin esperar
+  el medio segundo de pausa. Antes el teclado se quedaba abierto
+  tapando justo los resultados que acababas de pedir.
+- **Buscar en la biblioteca**: la lista ya se filtra con cada letra, así
+  que lo único que faltaba era bajar el teclado.
+
+Es de esas cosas que no rompen nada y hacen que la app se sienta a
+medio terminar: el teclado ofrece un botón y el botón no hace nada.
+
+### Y el panel de escritorio, que se desbordaba en ventana baja
+
+El panel de "ahora suena" lleva una carátula de 260 más dos textos, y no
+se deslizaba. En una ventana achicada a lo alto eso no entra. Ahora se
+desliza, así que desbordarse pasa a ser imposible.
+
+`flutter analyze` limpio, **498 tests** en verde y APK de 40,5 MB.
