@@ -213,6 +213,24 @@ class AudioEffectsProvider extends ChangeNotifier {
     _guardarPronto();
   }
 
+  /// Escribe en el disco YA lo que estuviera esperando.
+  ///
+  /// La escritura normal espera medio segundo, para no reescribir el
+  /// archivo entero cincuenta veces mientras se arrastra un slider. El
+  /// problema es lo que pasa en ese medio segundo si te vas de la app:
+  /// Android puede matarla en cualquier momento estando al fondo, y
+  /// entonces `dispose()` no llega a correr nunca. El último movimiento
+  /// del ecualizador se perdía.
+  ///
+  /// La llama `main.dart` cuando la app se va al fondo, junto con lo
+  /// que guarda el reproductor.
+  Future<void> guardarYa() async {
+    if (_guardadoPendiente == null) return;
+    _guardadoPendiente!.cancel();
+    _guardadoPendiente = null;
+    await _guardarPreferencias();
+  }
+
   @override
   void dispose() {
     _dispuesto = true;

@@ -294,6 +294,12 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
       // Guardamos qué canción sonaba y en qué posición, para poder
       // continuar exactamente ahí la próxima vez que se abra la app.
       _playerProvider.saveSession();
+      // Y lo del ecualizador que estuviera esperando para escribirse.
+      // Ese guardado espera medio segundo a propósito --para no
+      // reescribir el archivo cincuenta veces mientras se arrastra un
+      // slider-- y en ese medio segundo Android puede matar la app
+      // estando al fondo. El último movimiento se perdía.
+      unawaited(_audioEffectsProvider.guardarYa());
       // Y al video de YouTube se le insiste para que siga sonando: al
       // quedar oculta la página, su reproductor se pausa solo. Ver la
       // explicación larga en `online_video_provider.dart`.
