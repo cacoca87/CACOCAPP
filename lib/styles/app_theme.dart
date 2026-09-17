@@ -28,7 +28,23 @@ class AppTheme {
   static const Color ember = Color(0xFFB23B3B); // acento secundario, decorativo
   static const Color paper = Color(0xFFF2EDE6); // texto principal
   static const Color mutedInk = Color(0xFF9C9186); // texto secundario
-  static const Color faintInk = Color(0xFF6E6459); // texto terciario / captions
+  /// Texto terciario: pistas de los buscadores, y --lo importante-- los
+  /// renglones de la letra que todavía no están sonando.
+  ///
+  /// Era `0xFF6E6459`, y ese gris daba **3,3 de contraste** contra el
+  /// fondo. El mínimo para que un texto se lea cómodo es 4,5 (la regla
+  /// estándar de accesibilidad, WCAG AA), así que estaba por debajo.
+  ///
+  /// No es un detalle de manual: en la pantalla de la letra, los
+  /// renglones que vienen DESPUÉS del que suena se pintan con este
+  /// color, y son justo los que se leen para ir siguiendo la canción.
+  /// A 3,3 se leen mal, y al sol directamente no se leen.
+  ///
+  /// El valor nuevo da **5,1** sobre el fondo y **4,6** sobre una
+  /// tarjeta --los dos fondos donde se usa-- y sigue siendo un gris
+  /// apagado: la diferencia se nota leyendo, no mirando.
+  /// `test/styles/contraste_test.dart` comprueba la cuenta.
+  static const Color faintInk = Color(0xFF8D8275);
   static const Color hairline = Color(0xFF34291F); // divisores
   static const Color danger =
       Color(0xFFE0554F); // errores/eliminar — distinto del "ember" decorativo
