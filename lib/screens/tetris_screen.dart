@@ -184,44 +184,78 @@ class _TetrisScreenState extends State<TetrisScreen>
               // Mover a la izquierda de la pantalla, girar y bajar a la
               // derecha: así cada pulgar tiene lo suyo y no hay que
               // cruzar la mano, como en el aparatito original.
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      BotonJuego(
-                        icono: Icons.chevron_left_rounded,
-                        tooltip: 'Izquierda',
-                        onTap: () => _accion(_juego.moverIzquierda),
-                      ),
-                      const SizedBox(width: 12),
-                      BotonJuego(
-                        icono: Icons.chevron_right_rounded,
-                        tooltip: 'Derecha',
-                        onTap: () => _accion(_juego.moverDerecha),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      BotonJuego(
-                        icono: Icons.keyboard_arrow_down_rounded,
-                        tooltip: 'Bajar',
-                        onTap: () => _accion(() => _juego.bajar()),
-                      ),
-                      const SizedBox(width: 12),
-                      BotonJuego(
-                        icono: Icons.rotate_right_rounded,
-                        tooltip: 'Girar',
-                        // Girar NO se repite: mantener apretado haría
-                        // dar vueltas la pieza sin control.
-                        repetible: false,
-                        onTap: () => _accion(_juego.rotar),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              child: LayoutBuilder(builder: (context, restricciones) {
+                // Los cinco botones y sus cuatro huecos tienen que
+                // entrar en el ancho REAL del celular. Con el tamaño
+                // fijo de 62 entraban cuatro; el quinto se desbordaba
+                // en cualquier pantalla de menos de 390 px.
+                final tam =
+                    ((restricciones.maxWidth - 12 * 4) / 5).clamp(42.0, 62.0);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        BotonJuego(
+                          icono: Icons.chevron_left_rounded,
+                          tooltip: 'Izquierda',
+                          tamano: tam,
+                          onTap: () => _accion(_juego.moverIzquierda),
+                        ),
+                        const SizedBox(width: 12),
+                        BotonJuego(
+                          icono: Icons.chevron_right_rounded,
+                          tooltip: 'Derecha',
+                          tamano: tam,
+                          onTap: () => _accion(_juego.moverDerecha),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        BotonJuego(
+                          icono: Icons.keyboard_arrow_down_rounded,
+                          tooltip: 'Bajar',
+                          tamano: tam,
+                          onTap: () => _accion(() => _juego.bajar()),
+                        ),
+                        const SizedBox(width: 12),
+                        // Tirar la pieza al fondo de una vez.
+                        //
+                        // La lógica (`JuegoTetris.caidaRapida`) estaba
+                        // escrita y con su test desde siempre, pero
+                        // ningún botón la llamaba: era una función que
+                        // no se podía usar jugando. Hasta el comentario
+                        // de `BotonJuego.repetible` la nombraba como
+                        // ejemplo de un botón que no existía.
+                        //
+                        // Es el control que más se extraña en un Tetris:
+                        // sin él, para apoyar una pieza en un pozo hay
+                        // que martillar "Bajar" quince veces.
+                        BotonJuego(
+                          icono: Icons.vertical_align_bottom_rounded,
+                          tooltip: 'Tirar al fondo',
+                          tamano: tam,
+                          // NO se repite: mantenerlo apretado tiraría
+                          // una pieza tras otra sin dejarte acomodarlas.
+                          repetible: false,
+                          onTap: () => _accion(_juego.caidaRapida),
+                        ),
+                        const SizedBox(width: 12),
+                        BotonJuego(
+                          icono: Icons.rotate_right_rounded,
+                          tooltip: 'Girar',
+                          // Girar NO se repite: mantener apretado haría
+                          // dar vueltas la pieza sin control.
+                          repetible: false,
+                          tamano: tam,
+                          onTap: () => _accion(_juego.rotar),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }),
             ),
           ],
         ),

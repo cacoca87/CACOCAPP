@@ -2799,3 +2799,132 @@ use.
 
 `flutter analyze`, `flutter test` (**206**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 85. Vueltas 67 a 72: lo que se rompe en el celular de otro
+
+Estas vueltas salieron de un pedido corto: *"continúa de manera más
+exhaustiva compulsiva"*. Así que se leyó TODO lo que quedaba —cada
+widget, cada servicio, cada pantalla de juego, el tema visual, los
+modelos— en vez de ir a lo que parecía más probable.
+
+Lo que apareció tiene un patrón: casi nada de esto se rompe en el
+celular donde se programó la app. Se rompe en el de otro, con otra
+configuración. Que es exactamente el celular donde la iban a probar.
+
+### El botón de volver podía quedar apagado en cinco pantallas
+
+Estaba escrito de dos maneras. Seis pantallas se protegían de que el
+callback de volver fuera nulo cayendo en `Navigator.pop`; cinco —el
+menú de Juegos y los cuatro juegos— lo enchufaban crudo al botón. Y un
+`onPressed: null` en Flutter no es "no hace nada": **apaga el botón**.
+Si alguna de esas cinco se abriera sin pasarle el callback, el botón
+quedaba gris y no había forma de salir de la pantalla.
+
+Hoy siempre se lo pasan, así que no se rompía. Pero era una trampa
+puesta esperando a la próxima pantalla que alguien agregue. Ahora hay
+un solo `BotonVolver` con la decisión adentro, y lo usan las once
+pantallas que tienen botón de volver: 111 líneas menos, porque la misma
+función estaba copiada seis veces.
+
+### Cuatro cosas que se desbordan con otra configuración
+
+- **Los carruseles de Inicio.** Reservaban un alto FIJO para el título
+  y el artista debajo de cada tapa, calculado con la letra normal. Con
+  la letra del sistema agrandada —que es lo que traen de fábrica varios
+  Samsung— los dos renglones dejaban de entrar y la fila salía con las
+  rayas amarillas y negras de desbordado. En la primera pantalla que se
+  ve al abrir la app. El mini reproductor y los chips de Noticias ya
+  tenían este arreglo; a los carruseles no se les había aplicado.
+- **El ecualizador.** Ponía una columna por banda con su ancho natural.
+  Cuántas bandas hay lo decide el fabricante: la mayoría informa 5 y ahí
+  entra, pero hay equipos que informan 8 o 10 y esas columnas no
+  entraban en la pantalla.
+- **El menú lateral.** "Música Descargada" no entraba al lado de su
+  ícono con la letra grande.
+- **Los nombres de playlist** en el menú de tres puntitos, que los
+  escribe la persona y pueden ser largos.
+
+### Las carátulas que no son cuadradas se aplastaban
+
+Se decodificaban pidiendo ancho **y** alto. Cuando se dan los dos,
+Flutter deja de respetar la proporción de la imagen: una tapa
+rectangular —las hay, sobre todo las que vienen dentro del MP3— se
+achataba para entrar en el cuadrado, y `BoxFit.cover` ya no podía
+arreglarlo porque recibía la imagen ya deformada.
+
+### Borrar una descarga mientras sonaba dejaba la cola rota
+
+La cola que está sonando se arma con la RUTA DEL ARCHIVO de las
+canciones descargadas. Si borrabas una descarga que estaba en esa cola,
+el motor de audio quedaba apuntando a un archivo que ya no existe: al
+llegar a esa canción fallaba, y el sistema de reintentos la buscaba
+ocho veces antes de rendirse con **"se perdió la conexión"** —un
+mensaje que no tiene nada que ver, porque la conexión estaba perfecta.
+
+Ahora se rearma la cola con las mismas canciones (que guardan su
+dirección de internet), conservando en cuál ibas, en qué minuto y si
+estaba sonando o en pausa.
+
+### Noticias podía quedarse girando para siempre
+
+El servicio le promete a la pantalla devolver noticias o un error con
+mensaje, y la pantalla solo atrapa ese tipo de error. Pero el servicio
+solo convertía tres clases de fallo: sin red, lento, y cliente HTTP.
+Cualquier otra —un fallo de certificado, por ejemplo— se le escapaba,
+y la ruedita de "cargando" se quedaba girando para siempre sin decir
+nunca qué había pasado.
+
+### Una función del Tetris que no se podía usar jugando
+
+`JuegoTetris.caidaRapida()` —tirar la pieza al fondo de una vez— estaba
+escrita y con su test desde siempre, pero **ningún botón la llamaba**.
+Hasta el comentario de `BotonJuego.repetible` la nombraba como ejemplo
+de un botón que no existía. Es el control que más se extraña en un
+Tetris: sin él, para apoyar una pieza en un pozo hay que martillar
+"Bajar" quince veces. Ahora está, y los cinco botones se achican solos
+para entrar en pantallas angostas.
+
+### La lógica del récord estaba copiada cuatro veces
+
+Incluido el detalle delicado: el puntaje nuevo hay que compararlo
+contra el récord que está EN DISCO, no contra el que la pantalla tiene
+en memoria —si no, perder rápido al abrir el juego te borraba el récord
+bueno. Ese detalle se arregló una vez, y hubo que arreglarlo en los
+cuatro archivos.
+
+Ahora vive en `utils/records_juegos.dart` con 9 tests. Dentro de una
+pantalla no se podía probar; el quinto juego que se agregue lo hereda
+bien.
+
+### Textos que decían cosas que no eran
+
+- `app_theme.dart` se contradecía consigo mismo: arriba nombraba una
+  decoración como ejemplo de lo que se mantiene, y sesenta líneas más
+  abajo explicaba que se había sacado por no usarla nadie.
+- `tablero_juego.dart` y el menú de Juegos decían "los dos juegos"
+  cuando ya son cuatro.
+- `jamendo_service.dart` tenía un instructivo de tres pasos para
+  conseguir la clave de la API, escrito como si todavía hubiera que
+  hacerlos. Está puesta desde hace tiempo.
+
+### Lo que se revisó y estaba bien
+
+Decirlo también es parte del trabajo: los permisos y el manifiesto de
+Android, el puente nativo del ecualizador, todos los `dispose()`, las
+playlists y los favoritos, los cuatro motores de juego, los parsers de
+letras y de noticias, el servicio de búsqueda de YouTube, el de
+carátulas, el de compartir, y los archivos del proyecto —no hay
+ninguno que no se use.
+
+`flutter analyze`, `flutter test` (**217**) y `flutter build apk
+--release` salieron limpios.
+
+### Lo que sigue sin poder comprobarse leyendo
+
+Todo esto salió de leer el código. Leer no dice cómo se comporta la app
+en el celular: varias de las fallas de estas vueltas aparecen solo con
+la letra del sistema agrandada, con un ecualizador de diez bandas, o
+borrando una descarga en el momento justo. Se arreglaron razonando
+sobre por qué tienen que fallar, no viéndolas fallar.
