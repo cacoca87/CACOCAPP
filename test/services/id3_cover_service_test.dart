@@ -20,6 +20,51 @@ class _CarpetaFalsa extends PathProviderPlatform
   Future<String?> getTemporaryPath() async => raiz;
 }
 
+/// Arma un MP3 mínimo de verdad: una etiqueta ID3v2.3 con un cuadro
+/// APIC (la carátula incrustada) adentro.
+///
+/// Se construye a mano, byte por byte, en vez de meter un MP3 de
+/// ejemplo en el repositorio: así el test dice explícitamente qué
+/// formato se está leyendo, y no depende de un archivo binario que
+/// nadie puede revisar.
+List<int> _mp3ConTapa({List<int> imagen = const [0xFF, 0xD8, 0xFF, 0xD9]}) {
+  // Cuerpo del cuadro APIC, tal como lo define ID3v2.3.
+  final cuerpo = <int>[
+    0x00, // codificación del texto: ISO-8859-1
+    ...'image/jpeg'.codeUnits, 0x00, // tipo de imagen, terminado en cero
+    0x03, // 3 = "tapa del frente"
+    0x00, // descripción vacía, terminada en cero
+    ...imagen,
+  ];
+
+  // Cabecera del cuadro: identificador, tamaño (32 bits) y dos banderas.
+  final cuadro = <int>[
+    ...'APIC'.codeUnits,
+    (cuerpo.length >> 24) & 0xFF,
+    (cuerpo.length >> 16) & 0xFF,
+    (cuerpo.length >> 8) & 0xFF,
+    cuerpo.length & 0xFF,
+    0x00, 0x00,
+    ...cuerpo,
+  ];
+
+  // El tamaño de la etiqueta va "sincroseguro": siete bits por byte.
+  final n = cuadro.length;
+  final etiqueta = <int>[
+    ...'ID3'.codeUnits,
+    0x03, 0x00, // versión 2.3
+    0x00, // sin banderas
+    (n >> 21) & 0x7F,
+    (n >> 14) & 0x7F,
+    (n >> 7) & 0x7F,
+    n & 0x7F,
+    ...cuadro,
+  ];
+
+  // Un poco de relleno detrás, como tendría el audio de verdad.
+  return [...etiqueta, ...List<int>.filled(64, 0)];
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -170,6 +215,57 @@ void main() {
       expect(await servicio.getEmbeddedCover(url), [1, 2, 3]);
       expect(pidio, isFalse);
       expect(await guardada.exists(), isTrue);
+    });
+
+    test('la ruta de la carátula llega ya escrita, no a medio escribir',
+        () async {
+      // Lo usa la notificación de la pantalla de bloqueo, que necesita
+      // un archivo de verdad (no bytes sueltos) para mostrar la tapa.
+      //
+      // Acá había una carrera: los bytes se guardaban en disco SIN
+      // esperar la escritura, y enseguida se comprobaba si el archivo
+      // existía. Casi siempre la comprobación llegaba primero, así que
+      // la primera vez que ponías una canción la respuesta era `null`
+      // y la tapa del bloqueo se buscaba en iTunes -- un pedido de red
+      // de más, para conseguir una imagen que ya estaba adentro del
+      // propio MP3.
+      final servicio = Id3CoverService.testable(
+        MockClient((_) async => http.Response.bytes(_mp3ConTapa(), 206)),
+      );
+
+      final ruta = await servicio.getEmbeddedCoverPath(url);
+      expect(ruta, isNotNull,
+          reason: 'la ruta tiene que venir con el archivo ya escrito');
+      expect(await File(ruta!).exists(), isTrue);
+      expect((await File(ruta).readAsBytes()).isNotEmpty, isTrue);
+    });
+
+    test('dos pedidos a la vez comparten UNA sola descarga', () async {
+      // Al abrir la app pasan dos cosas al mismo tiempo: la lista pide
+      // la carátula de cada canción que se ve, y por detrás corre el
+      // repaso que completa el álbum y el artista de toda la
+      // biblioteca. Las dos necesitan los mismos 512 KB del mismo MP3.
+      //
+      // Cada una los bajaba por su cuenta: el doble de datos móviles,
+      // por nada. Con decenas de canciones en pantalla, varios megas de
+      // más en el primer arranque.
+      var descargas = 0;
+      final servicio = Id3CoverService.testable(MockClient((_) async {
+        descargas++;
+        // Un ratito, para que el segundo pedido llegue de verdad
+        // mientras el primero sigue en la red.
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        return http.Response.bytes(_mp3ConTapa(), 206);
+      }));
+
+      // A propósito SIN await entre medio: se piden los dos juntos.
+      final resultados = await Future.wait([
+        servicio.getEmbeddedCoverPath(url),
+        servicio.getEmbeddedAlbum(url),
+      ]);
+
+      expect(descargas, 1, reason: 'el mismo MP3 no se baja dos veces');
+      expect(resultados.first, isNotNull);
     });
 
     test('la limpieza se hace una sola vez', () async {

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,9 +42,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<ImageProvider?> _resolverImagenPortada(Song song) async {
     if (song.url.isNotEmpty) {
+      // `FileImage` y no `MemoryImage`: es el mismo archivo que ya está
+      // dibujando la carátula grande unos píxeles más abajo, así que
+      // Flutter lo reconoce y no vuelve a decodificar la imagen entera
+      // solo para sacarle el color de fondo.
       final embebida =
-          await Id3CoverService.instance.getEmbeddedCover(song.url);
-      if (embebida != null) return MemoryImage(embebida);
+          await Id3CoverService.instance.getEmbeddedCoverPath(song.url);
+      if (embebida != null) return FileImage(File(embebida));
     }
     final url =
         await ArtworkService.instance.getCoverUrl(song.title, song.artist);

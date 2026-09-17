@@ -39,42 +39,45 @@ class Id3CoverService {
 
   final http.Client _client;
 
-  final Map<String, Uint8List?> _cacheCaratula = {};
+  // Lo que se recuerda de cada canción entre pantalla y pantalla. Son
+  // todos textos cortos: la RUTA del archivo de la tapa, no la tapa.
+  //
+  // Antes acá se guardaban los bytes de las imágenes, con un tope de 60
+  // y una lista aparte para ir descartando las más viejas. Eso era
+  // necesario porque si no, recorrer una biblioteca de cientos de
+  // canciones acumulaba TODAS las imágenes en memoria (decenas de MB),
+  // que es la clase de cosa por la que Android termina matando la app
+  // sola.
+  //
+  // Guardando la ruta en vez de los bytes, el problema desaparece de
+  // raíz y además se gana algo mejor: quien dibuja la tapa le pasa el
+  // ARCHIVO a Flutter, y entonces la memoria de imágenes de Flutter
+  // --que ya sabe descartar lo que no se está viendo-- se encarga sola.
+  // Un mapa de rutas no necesita tope: mil canciones son unos pocos
+  // kilobytes de texto.
+  final Map<String, String?> _cacheRuta = {};
   final Map<String, String?> _cacheAlbum = {};
   final Map<String, String?> _cacheArtista = {};
   final Map<String, String?> _cacheTitulo = {};
 
-  // Las carátulas también quedan guardadas en disco, así que tener los
-  // bytes en memoria es solo un atajo para no releer el archivo. Sin
-  // tope, ese atajo se volvía un problema: recorriendo una biblioteca
-  // de cientos de canciones se acumulaban TODAS las imágenes en RAM
-  // para siempre (decenas de MB), que es la clase de cosa por la que
-  // Android termina matando la app sola. Al pasarse del tope se
-  // descartan las más viejas: la próxima vez que hagan falta se
-  // releen del disco, que es rápido y no vuelve a bajarlas.
-  static const int _maxCaratulasEnMemoria = 60;
-  final List<String> _ordenCaratulas = [];
+  // Se guarda la PROMESA de la carpeta, no la carpeta ya lista.
+  //
+  // La diferencia importa porque preparar la carpeta incluye una
+  // limpieza de marcas viejas, y al abrir la app hay decenas de
+  // canciones pidiendo su carátula al mismo tiempo. Guardando la
+  // carpeta terminada, todas las que llegaban ANTES de que la primera
+  // terminara se ponían a prepararla de nuevo por su cuenta, y algunas
+  // llegaban a leer marcas que la limpieza estaba justo borrando.
+  // Guardando la promesa, la preparan una sola vez y las demás esperan
+  // esa misma.
+  Future<Directory>? _prepararCarpeta;
 
-  void _recordarCaratula(String url, Uint8List bytes) {
-    _cacheCaratula[url] = bytes;
-    _ordenCaratulas.remove(url);
-    _ordenCaratulas.add(url);
-    while (_ordenCaratulas.length > _maxCaratulasEnMemoria) {
-      // `remove` (y no dejarla en null) a propósito: null significa
-      // "esta canción no tiene carátula", que es otra cosa muy distinta
-      // de "todavía no la tengo cargada".
-      _cacheCaratula.remove(_ordenCaratulas.removeAt(0));
-    }
-  }
+  Future<Directory> _coverDir() => _prepararCarpeta ??= _prepararCarpetaAhora();
 
-  Directory? _dirCache;
-
-  Future<Directory> _coverDir() async {
-    if (_dirCache != null) return _dirCache!;
+  Future<Directory> _prepararCarpetaAhora() async {
     final base = await getTemporaryDirectory();
     final dir = Directory('${base.path}/id3_covers');
     if (!await dir.exists()) await dir.create(recursive: true);
-    _dirCache = dir;
     await _borrarLasMarcasDeLaReglaVieja(dir);
     return dir;
   }
@@ -140,7 +143,32 @@ class Id3CoverService {
   /// los dos casos eran el mismo `null`, asi que abrir la app una sola
   /// vez con mala conexion dejaba la biblioteca entera marcada como
   /// "sin caratula" y "Artista Desconocido" de forma permanente.
-  Future<({Uint8List? bytes, bool seLeyo})> _obtenerBytesMp3(String url) async {
+  ///
+  /// SE COMPARTE LA MISMA DESCARGA ENTRE QUIENES LA PIDAN A LA VEZ
+  ///
+  /// Al abrir la app pasan dos cosas al mismo tiempo: la lista empieza a
+  /// pedir la carátula de cada canción que se ve, y por detrás corre el
+  /// repaso que completa el álbum y el artista de toda la biblioteca.
+  /// Las dos cosas necesitan exactamente los mismos 512 KB del mismo
+  /// MP3, y cada una los bajaba por su cuenta: el doble de datos
+  /// móviles, por nada. Con decenas de canciones en pantalla eso son
+  /// varios megas de más en el primer arranque.
+  ///
+  /// Anotando la descarga que ya está en curso, el segundo que la pida
+  /// espera la misma en vez de abrir otra.
+  final Map<String, Future<({Uint8List? bytes, bool seLeyo})>> _enVuelo = {};
+
+  Future<({Uint8List? bytes, bool seLeyo})> _obtenerBytesMp3(String url) {
+    final enCurso = _enVuelo[url];
+    if (enCurso != null) return enCurso;
+    final pedido = _bajarBytesMp3(url);
+    _enVuelo[url] = pedido;
+    // Se saca al terminar: si quedara, los bytes de TODA la biblioteca
+    // se acumularían en memoria, que es justo lo que se quería evitar.
+    return pedido.whenComplete(() => _enVuelo.remove(url));
+  }
+
+  Future<({Uint8List? bytes, bool seLeyo})> _bajarBytesMp3(String url) async {
     try {
       final esArchivoLocal =
           !url.startsWith('http://') && !url.startsWith('https://');
@@ -168,24 +196,46 @@ class Id3CoverService {
 
   // ========== CARÁTULA (APIC) ==========
 
-  Future<Uint8List?> getEmbeddedCover(String url) async {
-    if (_cacheCaratula.containsKey(url)) return _cacheCaratula[url];
+  /// La RUTA en disco de la carátula incrustada en el MP3, o `null` si
+  /// esa canción no trae ninguna.
+  ///
+  /// Es la forma PRINCIPAL de pedir una carátula, y devuelve una ruta y
+  /// no los bytes por dos motivos:
+  ///
+  ///  * La notificación de la pantalla de bloqueo necesita un archivo
+  ///    de verdad (`audio_service` quiere un `Uri`, no bytes).
+  ///  * Quien la dibuja en pantalla le puede pasar el ARCHIVO a
+  ///    Flutter. Flutter tiene su propia memoria de imágenes, que
+  ///    reconoce dos pedidos del mismo archivo como la misma imagen y
+  ///    descarta sola lo que ya no se ve. Pasándole bytes, cada vez que
+  ///    una fila volvía a aparecer al desplazar la lista era una imagen
+  ///    nueva para Flutter: la decodificaba de cero, otra vez.
+  ///
+  /// El archivo queda escrito ANTES de que esto devuelva la ruta.
+  /// Parece obvio y no lo era: la escritura se lanzaba sin esperarla, y
+  /// enseguida se comprobaba si el archivo existía. La comprobación
+  /// ganaba casi siempre, así que la primera vez que ponías una canción
+  /// la respuesta era `null` y la tapa del bloqueo terminaba
+  /// buscándose en iTunes -- un pedido de red de más, para conseguir
+  /// una imagen que ya estaba adentro del propio MP3.
+  Future<String?> getEmbeddedCoverPath(String url) async {
+    if (_cacheRuta.containsKey(url)) return _cacheRuta[url];
+
+    final clave = _claveArchivo(url);
 
     // 1) ¿Ya la teníamos guardada en disco de una sesión anterior?
     try {
       final dir = await _coverDir();
-      final clave = _claveArchivo(url);
       final archivoImagen = File('${dir.path}/$clave.jpg');
       final archivoSinCaratula = File('${dir.path}/$clave.nocover');
 
       if (await archivoSinCaratula.exists()) {
-        _cacheCaratula[url] = null;
+        _cacheRuta[url] = null;
         return null;
       }
       if (await archivoImagen.exists()) {
-        final bytes = await archivoImagen.readAsBytes();
-        _recordarCaratula(url, bytes);
-        return bytes;
+        _cacheRuta[url] = archivoImagen.path;
+        return archivoImagen.path;
       }
     } catch (_) {
       // Si falla la lectura de disco, seguimos igual por red.
@@ -195,10 +245,17 @@ class Id3CoverService {
     var seLeyoElArchivo = false;
     try {
       final lectura = await _obtenerBytesMp3(url);
+      // Mientras se esperaba la descarga, otro pedido de la MISMA
+      // canción pudo haber parseado ya los tags y dejado esto
+      // resuelto: la lista, el mini reproductor y la pantalla del
+      // reproductor piden la tapa de la canción que suena a la vez.
+      // Sin esta comprobación se volvía a parsear medio megabyte para
+      // llegar al mismo resultado.
+      if (_cacheRuta.containsKey(url)) return _cacheRuta[url];
       seLeyoElArchivo = lectura.seLeyo;
       final bytes = lectura.bytes;
       if (bytes == null) {
-        _cacheCaratula[url] = null;
+        _cacheRuta[url] = null;
         if (seLeyoElArchivo) _marcarSinCaratula(url);
         return null;
       }
@@ -207,18 +264,20 @@ class Id3CoverService {
       if (mp3.parseTagsSync()) {
         final tags = mp3.getMetaTags();
 
-        // Ya que se parsearon los tags, se guardan álbum y artista
-        // (memoria y disco) para que pedirlos después no vuelva a bajar
-        // el archivo.
+        // Ya que se parsearon los tags, se guardan álbum, artista y
+        // título (memoria y disco) para que pedirlos después no vuelva
+        // a bajar el archivo.
         _recordarTags(url, tags);
 
         final apic = tags?['APIC'];
         final base64Str = apic is Map ? apic['base64'] as String? : null;
         if (base64Str != null && base64Str.isNotEmpty) {
           final imagenBytes = base64Decode(base64Str);
-          _recordarCaratula(url, imagenBytes);
-          _guardarEnDisco(url, imagenBytes); // no esperamos, no bloquea la UI
-          return imagenBytes;
+          // Se ESPERA la escritura: la ruta que se devuelve tiene que
+          // apuntar a un archivo que ya está completo.
+          final ruta = await _guardarEnDisco(clave, imagenBytes);
+          _cacheRuta[url] = ruta;
+          return ruta;
         }
       }
     } catch (_) {
@@ -226,35 +285,38 @@ class Id3CoverService {
       // el servidor no soporta Range — seguimos con el fallback.
     }
 
-    _cacheCaratula[url] = null;
+    _cacheRuta[url] = null;
     if (seLeyoElArchivo) _marcarSinCaratula(url);
     return null;
   }
 
-  /// Igual que [getEmbeddedCover], pero devuelve la RUTA en disco de la
-  /// imagen cacheada en vez de los bytes — útil para armar un
-  /// `Uri.file(...)` que la notificación / pantalla de bloqueo pueda
-  /// mostrar directamente (audio_service necesita un Uri, no bytes).
-  Future<String?> getEmbeddedCoverPath(String url) async {
-    final bytes = await getEmbeddedCover(url);
-    if (bytes == null) return null;
+  /// Los bytes de la carátula, para quien de verdad los necesite.
+  ///
+  /// Hoy no la usa nadie para DIBUJAR: para eso está
+  /// [getEmbeddedCoverPath], que deja que Flutter maneje la memoria de
+  /// la imagen. Se conserva porque es la forma más directa de
+  /// comprobar en un test que la carátula se leyó bien.
+  Future<Uint8List?> getEmbeddedCover(String url) async {
+    final ruta = await getEmbeddedCoverPath(url);
+    if (ruta == null) return null;
     try {
-      final dir = await _coverDir();
-      final clave = _claveArchivo(url);
-      final archivo = File('${dir.path}/$clave.jpg');
-      if (await archivo.exists()) return archivo.path;
-    } catch (_) {}
-    return null;
+      return await File(ruta).readAsBytes();
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> _guardarEnDisco(String url, Uint8List bytes) async {
+  /// Escribe la imagen y devuelve su ruta, o `null` si no se pudo.
+  Future<String?> _guardarEnDisco(String clave, Uint8List bytes) async {
     try {
       final dir = await _coverDir();
-      final clave = _claveArchivo(url);
-      await File('${dir.path}/$clave.jpg').writeAsBytes(bytes);
+      final archivo = File('${dir.path}/$clave.jpg');
+      await archivo.writeAsBytes(bytes);
+      return archivo.path;
     } catch (_) {
       // Si no se pudo guardar, no pasa nada grave: solo se re-buscará
       // la próxima vez.
+      return null;
     }
   }
 
@@ -342,6 +404,13 @@ class Id3CoverService {
     var seLeyoElArchivo = false;
     try {
       final lectura = await _obtenerBytesMp3(url);
+      // Mientras se esperaba la descarga, otro pedido de la MISMA
+      // canción pudo haber parseado ya los tags y dejado esto
+      // resuelto: la lista, el mini reproductor y la pantalla del
+      // reproductor piden la tapa de la canción que suena a la vez.
+      // Sin esta comprobación se volvía a parsear medio megabyte para
+      // llegar al mismo resultado.
+      if (_cacheTitulo.containsKey(url)) return _cacheTitulo[url];
       seLeyoElArchivo = lectura.seLeyo;
       final bytes = lectura.bytes;
       if (bytes == null) {
@@ -416,6 +485,13 @@ class Id3CoverService {
     var seLeyoElArchivo = false;
     try {
       final lectura = await _obtenerBytesMp3(url);
+      // Mientras se esperaba la descarga, otro pedido de la MISMA
+      // canción pudo haber parseado ya los tags y dejado esto
+      // resuelto: la lista, el mini reproductor y la pantalla del
+      // reproductor piden la tapa de la canción que suena a la vez.
+      // Sin esta comprobación se volvía a parsear medio megabyte para
+      // llegar al mismo resultado.
+      if (_cacheAlbum.containsKey(url)) return _cacheAlbum[url];
       seLeyoElArchivo = lectura.seLeyo;
       final bytes = lectura.bytes;
       if (bytes == null) {
@@ -496,6 +572,13 @@ class Id3CoverService {
     var seLeyoElArchivo = false;
     try {
       final lectura = await _obtenerBytesMp3(url);
+      // Mientras se esperaba la descarga, otro pedido de la MISMA
+      // canción pudo haber parseado ya los tags y dejado esto
+      // resuelto: la lista, el mini reproductor y la pantalla del
+      // reproductor piden la tapa de la canción que suena a la vez.
+      // Sin esta comprobación se volvía a parsear medio megabyte para
+      // llegar al mismo resultado.
+      if (_cacheArtista.containsKey(url)) return _cacheArtista[url];
       seLeyoElArchivo = lectura.seLeyo;
       final bytes = lectura.bytes;
       if (bytes == null) {

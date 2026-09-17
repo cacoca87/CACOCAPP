@@ -1,13 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/artwork_service.dart';
 import '../services/id3_cover_service.dart';
 import '../styles/app_theme.dart';
 
-enum _CoverKind { bytes, url, none }
+/// De dónde sale la imagen: un archivo del propio celular (la carátula
+/// que venía adentro del MP3, ya guardada), una dirección de internet
+/// (iTunes o Jamendo), o nada.
+enum _CoverKind { archivo, url, none }
 
 class _CoverResult {
   final _CoverKind kind;
-  final dynamic data;
+  final String? data;
   const _CoverResult(this.kind, this.data);
 }
 
@@ -73,9 +77,12 @@ class _SongCoverState extends State<SongCover> {
     }
 
     if (widget.url.isNotEmpty) {
-      final embedded =
-          await Id3CoverService.instance.getEmbeddedCover(widget.url);
-      if (embedded != null) return _CoverResult(_CoverKind.bytes, embedded);
+      // La RUTA del archivo, no sus bytes: así la imagen la maneja
+      // Flutter y no esta pantalla. Ver la explicación larga en
+      // `Id3CoverService.getEmbeddedCoverPath`.
+      final embebida =
+          await Id3CoverService.instance.getEmbeddedCoverPath(widget.url);
+      if (embebida != null) return _CoverResult(_CoverKind.archivo, embebida);
     }
 
     final itunesUrl =
@@ -120,9 +127,16 @@ class _SongCoverState extends State<SongCover> {
         final ladoEnPixeles = (widget.size * densidad).round();
 
         Widget image;
-        if (result.kind == _CoverKind.bytes) {
-          image = Image.memory(
-            result.data,
+        if (result.kind == _CoverKind.archivo) {
+          // `Image.file` y no `Image.memory`: Flutter reconoce dos
+          // pedidos del MISMO archivo como la misma imagen, así que al
+          // volver a subir la lista la tapa ya está decodificada y se
+          // dibuja al instante. Con bytes, cada reaparición de la fila
+          // era una imagen nueva y había que decodificarla otra vez --
+          // y en una biblioteca de cientos de canciones eso es lo que
+          // hacía que el desplazamiento se sintiera pesado.
+          image = Image.file(
+            File(result.data!),
             width: widget.size,
             height: widget.size,
             cacheWidth: ladoEnPixeles,
@@ -131,7 +145,7 @@ class _SongCoverState extends State<SongCover> {
           );
         } else {
           image = Image.network(
-            result.data as String,
+            result.data!,
             width: widget.size,
             height: widget.size,
             cacheWidth: ladoEnPixeles,

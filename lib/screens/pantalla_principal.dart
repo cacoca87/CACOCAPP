@@ -473,6 +473,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       ...playlistProvider.playlists.map((p) => p.name),
     ];
 
+    // El índice de canciones por id, para resolver "Recientes" y "Más
+    // Escuchadas", que se guardan como listas de ids.
+    //
+    // `late` para que solo se arme si alguien lo lee, y UNA sola vez
+    // aunque lo lean los dos. Antes cada uno se armaba el suyo: dos
+    // recorridas completas de la biblioteca por cada dibujado, y la
+    // pantalla de Inicio los pide a los dos.
+    late final Map<String, Song> porId = {for (final c in canciones) c.id: c};
+
     List<Song> cancionesParaNombre(String nombre) {
       if (nombre == "Principal (Drive)") return canciones;
       if (nombre == "Favoritos") {
@@ -481,14 +490,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             .toList();
       }
       if (nombre == "Recientes") {
-        final porId = {for (final c in canciones) c.id: c};
         return player.historialIds
             .map((id) => porId[id])
             .whereType<Song>()
             .toList();
       }
       if (nombre == "Más Escuchadas") {
-        final porId = {for (final c in canciones) c.id: c};
         return player.masEscuchadasIds
             .map((id) => porId[id])
             .whereType<Song>()
