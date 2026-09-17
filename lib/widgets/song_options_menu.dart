@@ -7,6 +7,7 @@ import '../providers/player_provider.dart';
 import '../providers/playlist_provider.dart';
 import '../styles/app_theme.dart';
 import '../utils/bibliotecas_reservadas.dart';
+import '../utils/resultado_de_descarga.dart';
 
 /// Menú (⋮) de "más opciones" para una canción: favoritos, descargar
 /// offline, agregar/quitar de playlists. Extraído de
@@ -305,14 +306,16 @@ Future<void> mostrarDialogoNuevaPlaylist(
 Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
   final provider = context.read<PlayerProvider>();
 
-  // `downloadSong` devuelve `false` tanto si falló como si esa canción
-  // ya se está bajando. Sin esta comprobación, tocar descargar dos veces
-  // mostraba "No se pudo descargar, revisá tu conexión" mientras la
-  // descarga andaba perfecto.
+  // Tocar descargar dos veces seguidas antes mostraba "No se pudo
+  // descargar, revisá tu conexión" mientras la descarga andaba
+  // perfecto. Ahora `downloadSong` distingue cada caso por su nombre,
+  // pero el atajo se queda igual: así no se abre el diálogo de
+  // confirmación de algo que ya está en marcha.
   if (provider.isDownloading(cancion.id)) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('"${cancion.title}" ya se está descargando.'),
+        content: Text(mensajeDeDescarga(
+            ResultadoDeDescarga.yaSeEstaBajando, cancion.title)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -355,21 +358,25 @@ Future<void> confirmarYDescargar(BuildContext context, Song cancion) async {
     ),
   );
 
-  final exito = await provider.downloadSong(cancion);
+  final resultado = await provider.downloadSong(cancion);
   if (!context.mounted) return;
 
+  // El mensaje sale de `utils/resultado_de_descarga.dart`, que dice el
+  // motivo de verdad. Antes los tres fallos posibles --sin señal, el
+  // servidor no tiene la canción, no queda espacio en el celular--
+  // mostraban todos "revisá tu conexión", y los dos últimos mandaban a
+  // mirar el wifi cuando el problema estaba en otro lado.
+  final fallo = esUnFallo(resultado);
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text(
-        exito
-            ? '"${cancion.title}" descargada ✓'
-            : 'No se pudo descargar "${cancion.title}". Revisa tu conexión.',
+        mensajeDeDescarga(resultado, cancion.title),
         // Crema sobre ambar no se lee al sol: sobre ambar el texto va
         // oscuro. Ver `AppTheme.textoSobreAmbar`.
-        style: exito ? AppTheme.textoSobreAmbar : null,
+        style: fallo ? null : AppTheme.textoSobreAmbar,
       ),
-      backgroundColor: exito ? AppTheme.amber : AppTheme.danger,
-      duration: const Duration(seconds: 3),
+      backgroundColor: fallo ? AppTheme.danger : AppTheme.amber,
+      duration: const Duration(seconds: 4),
     ),
   );
 }

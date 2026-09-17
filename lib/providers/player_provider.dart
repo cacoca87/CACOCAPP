@@ -10,6 +10,7 @@ import '../models/song.dart';
 import '../services/my_audio_handler.dart';
 import '../utils/app_logger.dart';
 import '../utils/extension_guesser.dart';
+import '../utils/resultado_de_descarga.dart';
 import 'recommendation_engine.dart';
 
 class PlayerProvider extends ChangeNotifier {
@@ -400,14 +401,27 @@ class PlayerProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<bool> downloadSong(Song song, {String? extensionForzada}) async {
-    if (_rutasDescargadas.containsKey(song.id)) return true;
-    if (_descargando.contains(song.id)) return false;
+  /// Baja una canción para escucharla sin conexión.
+  ///
+  /// Devuelve POR QUÉ salió como salió, y no un simple sí/no. Antes
+  /// devolvía `false` para tres cosas muy distintas --no hay señal, el
+  /// servidor no tiene esa canción, no entra en el celular-- y las tres
+  /// mostraban "revisá tu conexión". Las dos últimas mandaban a la
+  /// persona a mirar el wifi cuando el problema estaba en otro lado.
+  /// Ver `utils/resultado_de_descarga.dart`.
+  Future<ResultadoDeDescarga> downloadSong(Song song,
+      {String? extensionForzada}) async {
+    if (_rutasDescargadas.containsKey(song.id)) {
+      return ResultadoDeDescarga.yaEstaba;
+    }
+    if (_descargando.contains(song.id)) {
+      return ResultadoDeDescarga.yaSeEstaBajando;
+    }
 
     _descargando.add(song.id);
     notifyListeners();
 
-    var exito = false;
+    var resultado = ResultadoDeDescarga.sinConexion;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final carpeta = Directory('${dir.path}/descargas');
@@ -419,12 +433,28 @@ class PlayerProvider extends ChangeNotifier {
       final respuesta = await http
           .get(Uri.parse(song.url))
           .timeout(const Duration(minutes: 5));
-      if (respuesta.statusCode == 200) {
-        await archivo.writeAsBytes(respuesta.bodyBytes);
+
+      if (respuesta.statusCode != 200) {
+        // El servidor contestó: la conexión anda. Lo que no está es la
+        // canción.
+        AppLogger.w('El servidor devolvió ${respuesta.statusCode} '
+            'para ${song.title}');
+        resultado = ResultadoDeDescarga.noEstaEnElServidor;
+      } else {
+        // Escribir en el disco se separa a propósito: si esto falla, el
+        // motivo es el celular y no la red, y el mensaje tiene que
+        // decirlo. En un teléfono lleno de fotos pasa seguido.
+        try {
+          await archivo.writeAsBytes(respuesta.bodyBytes);
+        } catch (e) {
+          AppLogger.e('No se pudo guardar ${song.title} en el disco', error: e);
+          resultado = ResultadoDeDescarga.noEntraEnElCelular;
+          return resultado;
+        }
         _rutasDescargadas[song.id] = archivo.path;
         _cancionesDescargadas[song.id] = song;
         await _guardarDescargas();
-        exito = true;
+        resultado = ResultadoDeDescarga.lista;
       }
     } catch (e) {
       AppLogger.e('Error descargando ${song.title}', error: e);
@@ -432,7 +462,7 @@ class PlayerProvider extends ChangeNotifier {
       _descargando.remove(song.id);
       notifyListeners();
     }
-    return exito;
+    return resultado;
   }
 
   Future<void> deleteDownload(String songId) async {
