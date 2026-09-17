@@ -142,12 +142,38 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   /// (ej. "Runnin' Down A Dream.mp3"), `DriveService` no tiene forma
   /// de adivinarlo y queda como "Artista Desconocido" para siempre --
   /// aunque el MP3 sí traiga el artista real en su tag (TPE1).
+  /// Se incrementa con cada repaso lanzado, para poder abandonar el
+  /// anterior.
+  ///
+  /// Hace falta porque "Actualizar" arma canciones NUEVAS: si tocás ese
+  /// botón mientras el repaso inicial sigue corriendo, el repaso viejo
+  /// se quedaba completando los datos de unas canciones que ya no se
+  /// muestran en ninguna parte -- bajando medio megabyte por cada una,
+  /// para nada. Es el mismo contador que ya usan las tres pantallas de
+  /// búsqueda por el mismo motivo.
+  int _generacionEscaneo = 0;
+
   Future<void> _resolverMetadataReal(List<Song> lista) async {
     const concurrencia = 6;
-    var huboCambios = false;
+    final generacion = ++_generacionEscaneo;
 
     for (var i = 0; i < lista.length; i += concurrencia) {
-      if (!mounted) return;
+      if (!mounted || generacion != _generacionEscaneo) return;
+      // Cambia por lote, y se refresca la pantalla al terminar CADA
+      // uno.
+      //
+      // Antes se refrescaba una sola vez, recién al terminar la
+      // biblioteca entera. La primera vez que se abre la app no hay
+      // nada guardado, así que cada tanda tiene que bajar medio
+      // megabyte de seis canciones: con cientos de temas eso es medio
+      // minuto largo mirando una lista que dice "Artista Desconocido"
+      // en todas las filas, y de golpe se arregla entera. El dato de
+      // las primeras ya estaba desde el principio y no se mostraba.
+      //
+      // Son unas pocas decenas de refrescos repartidos en ese medio
+      // minuto: no se nota en rendimiento y cambia por completo cómo se
+      // ve arrancar la app.
+      var huboCambios = false;
       final lote = lista.skip(i).take(concurrencia);
       await Future.wait(lote.map((cancion) async {
         final album =
@@ -193,9 +219,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         // al abrir la Letra de una canción (ver `lyrics_screen.dart`),
         // que es justo donde el título equivocado hace daño.
       }));
-    }
 
-    if (mounted && huboCambios) setState(() {});
+      if (!mounted || generacion != _generacionEscaneo) return;
+      if (huboCambios) setState(() {});
+    }
   }
 
   @override
