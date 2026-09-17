@@ -3886,3 +3886,93 @@ Y se agregó el caso que faltaba: una noticia de hace ocho meses decía
 "hace 213 días", que no se lee, se calcula. Ahora dice "hace 7 meses".
 
 `flutter analyze` limpio, **471 tests** en verde y APK de 40,5 MB.
+
+## 96. Vueltas 104 a 108: lo que quedaba, y dos cosas que no sirvieron
+
+### Tres pantallas podían borrarte canciones de una playlist
+
+Es el fallo que más me preocupó de este tramo.
+
+El menú de opciones de cada canción recibe "qué playlist estoy
+mirando", para poder ofrecer "Quitar de esta carpeta". Tres pantallas
+que **no son playlists** le pasaban un texto inventado con su propio
+nombre: `Descargadas`, `Descubrir` y `Recomendaciones`.
+
+Esos nombres no están reservados. O sea que si tenés una playlist
+llamada "Descargadas" --que es un nombre de lo más normal-- al abrir el
+menú desde Música Descargada te aparecía "Quitar de esta carpeta", y
+tocarlo **te la sacaba de verdad de tu playlist**. Desde una pantalla
+que no tiene nada que ver con ella.
+
+### Más restos del caso de la letra con insultos
+
+Buscando hermanos de ese fallo aparecieron dos más:
+
+**La comparación de artistas distinguía tildes.** Para la computadora
+"Amén" y "Amen" son dos artistas distintos, y la base de letras casi
+nunca las escribe. O sea que la regla del artista --la que existe
+justamente para que no se cuele una letra ajena-- podía rechazar la
+letra **correcta**.
+
+**Sin saber cuánto dura la canción, se devolvía el primer resultado a
+ciegas.** Y eso pasa de verdad: se abre la letra apenas arranca el
+tema, antes de que el reproductor sepa la duración. Es exactamente la
+forma del fallo que puso una letra con insultos en pantalla. Ahí la
+duración no puede descartar nada, pero el artista sí, y ahora se usa.
+
+### La app arranca al instante en vez de esperar al servidor
+
+Al abrirse, la app mostraba la ruedita de "cargando" y **no mostraba
+una sola canción hasta que el servidor contestara**. Con la conexión
+lenta eso puede ser hasta diez segundos --el tope de espera-- mirando
+una ruedita con la biblioteca entera guardada ahí mismo, en el
+teléfono.
+
+Ahora primero se lee lo guardado, que sale del disco y es instantáneo,
+y lo del servidor lo reemplaza un momento después.
+
+### El buscador rehacía la pantalla de más
+
+Un campo de texto avisa también cuando se mueve el cursor o cambia lo
+seleccionado, no solo cuando cambia el texto. El buscador escuchaba
+todos esos avisos y rehacía la pantalla principal entera en cada uno.
+
+Tocar dentro del campo para corregir una letra rehacía cientos de
+widgets para mostrar exactamente lo mismo.
+
+### Los cuatro juegos despertaban el procesador en pausa
+
+El reloj de cada juego seguía latiendo en pausa. El tic se salía por la
+primera línea y no hacía nada, pero el temporizador despertaba al
+procesador varias veces por segundo igual --hasta dieciocho, en los
+niveles rápidos--.
+
+Y eso pasaba también con la app **al fondo**, porque el juego se pausa
+solo al irse. O sea justo cuando estás escuchando música con la
+pantalla apagada y lo único que importa es la batería.
+
+### Dos cosas que se probaron y NO sirvieron
+
+Quedan escritas para que nadie las vuelva a intentar a ciegas.
+
+**Achicar el APK con R8.** Se activó y se midió:
+
+| | Antes | Con R8 |
+|---|---|---|
+| APK | 40,5 MB | **40,6 MB** (creció) |
+| Compilar | 40 s | **242 s** |
+
+El motivo es el mismo que ya estaba anotado para los `abiFilters`: lo
+que pesa en este APK son las librerías nativas de Flutter, y R8 no las
+toca. Revertido y anotado al lado del otro intento fallido.
+
+**Un test que no probaba nada.** Escribí un test para una carrera entre
+el disco y el cambio de canción, y pasaba igual con el arreglo y sin
+él: en el test las preferencias falsas contestan demasiado rápido y la
+carrera no llega a darse. Lo saqué en vez de dejarlo. Un test que pasa
+siempre es peor que ninguno, porque da confianza falsa.
+
+Ese arreglo quedó puesto igual --es correcto y no cuesta nada-- pero
+queda dicho que es defensivo y no está comprobado.
+
+`flutter analyze` limpio, **478 tests** en verde y APK de 40,5 MB.
