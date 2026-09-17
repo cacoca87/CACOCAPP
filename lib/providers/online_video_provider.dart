@@ -91,6 +91,10 @@ class OnlineVideoProvider extends ChangeNotifier {
     _cola = cola;
     _indiceEnCola = indice;
     _videoYaTerminado = null;
+    // El estado del video ANTERIOR no vale para el nuevo: si quedaba
+    // en "terminado", el temporizador de seguir sonando se cortaba
+    // solo apenas arrancaba el siguiente.
+    _ultimoEstado = null;
     _duracionSegundos = duracionSegundos;
 
     if (_controller != null) {

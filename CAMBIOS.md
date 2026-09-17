@@ -2556,3 +2556,132 @@ Queda documentado en `android/app/build.gradle.kts`, sin cambiarlo.
 
 `flutter analyze`, `flutter test` (**161**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 83. Vueltas 40 a 56: YouTube en segundo plano, y por qué no se pudo
+
+Esta tanda tiene un hilo distinto a las anteriores. No son fallos
+escondidos que aparecieron leyendo: es el intento de resolver una cosa
+concreta —que la Búsqueda Online siga sonando con la pantalla
+bloqueada— y el registro honesto de por dónde se intentó y dónde está
+la pared.
+
+Queda escrito con detalle porque es información cara: cada camino costó
+horas de medición, y sin esto alguien los vuelve a recorrer.
+
+### El problema
+
+El reproductor embebido de YouTube es una vista web. Al bloquear la
+pantalla se calla. La música de la biblioteca propia no se calla, y esa
+diferencia fue la pista que ordenó todo el trabajo.
+
+### Lo que se intentó, en orden
+
+**1. Sacar el audio suelto del video** (`youtube_explode_dart`), para
+mandarlo al motor de audio de la app, que ya corre como servicio del
+sistema. Se implementó entero y se compiló.
+
+Y acá va el error más caro de todos, que fue de método: la prueba que
+lo respaldaba pedía **los primeros 2 KB** del archivo. Dio "6 de 6" y
+era falsa, porque esos primeros kilobytes son justo la única parte que
+YouTube entrega. En el celular fallaba con "No se pudo cargar el audio".
+
+Medido bien después: la URL se consigue sin problema, el primer
+megabyte llega (206), y **cualquier otro pedazo da 403**. Da igual la
+cabecera `Range` o el parámetro `range=`; da igual pedir el archivo
+entero de una; da igual sacar una URL nueva para cada pedazo; da igual
+la versión de la librería (2.5.3 y 3.1.0, idéntico); da igual cuál de
+los **once clientes** de YouTube se use (nueve ni consiguen la URL, los
+dos que la consiguen dan 403 en el segundo pedazo).
+
+`tool/probar_audio_youtube.dart` quedó como diagnóstico, y pide el
+SEGUNDO pedazo a propósito, con el motivo explicado adentro.
+
+**2. Insistirle al reproductor embebido con `playVideo()`** al irse al
+fondo, por si YouTube se pausaba solo. No alcanzó.
+
+**3. Cargar youtube.com en versión de escritorio** dentro de la app.
+Esto no es cosmético: la versión para celulares de YouTube se pausa
+sola al detectar que su página quedó oculta, y la de escritorio no trae
+esa lógica. Además, al cargar la página nosotros, se le puede inyectar
+JavaScript: se le mintió sobre `document.hidden` para que nunca se
+entere de que la pantalla se bloqueó.
+
+Funcionó a medias: **la página carga y el video suena**. Se sigue
+cortando al bloquear.
+
+**4. Darle al video el servicio en primer plano** que ya tenía el
+audio. Esto sí era un agujero real y valía la pena: cuando sonaba solo
+un video, la app no tenía ningún servicio corriendo, así que Android la
+congelaba. Verificado en el código de `audio_service` que la sesión
+levanta el servicio y toma el bloqueo de energía. No alcanzó tampoco.
+
+### Dónde está la pared, exactamente
+
+**El WebView de Android suspende su propio audio cuando su ventana deja
+de ser visible.** Eso vive dentro de Chromium. No lo decide YouTube, ni
+el servicio en primer plano, ni el fabricante del teléfono. Y
+`webview_flutter` no expone ninguna forma de desactivarlo: se puede
+mentirle a YouTube sobre la visibilidad de su página, pero no al WebView
+sobre la suya.
+
+Salir de ahí pide **código nativo de Android**: una versión propia del
+WebView que ignore ese aviso. Es lo que hacen las apps que sí lo logran.
+No se hizo.
+
+El modo escritorio se quitó después: un botón que no cumple lo que
+promete es peor que no tenerlo.
+
+### Lo que sí quedó de todo esto
+
+- **El video tiene su propia notificación** con controles en la pantalla
+  de bloqueo, y la sesión de medios que levanta el servicio en primer
+  plano. Se usa igual para el reproductor embebido.
+- **Una pantalla de diagnóstico dentro de la app** (ícono en la cabecera
+  de Búsqueda Online) que corre la prueba desde el propio celular y dice
+  si se puede o no, con los códigos a la vista y un botón para copiar el
+  resultado. Todas las mediciones anteriores se habían hecho desde una
+  computadora, y eso era un hueco.
+
+### El otro error caro: letras de otra canción
+
+Se agregó comparación por duración para no traer la letra equivocada
+(el caso "Amén" → "Refuse Amen", en inglés). Pero faltaba **verificar
+el artista**, y eso dejó pasar algo peor: "Amén" dura 188 segundos y en
+la base hay un "AmEN!" de Bring Me the Horizon de 189,5. Segundo y medio
+de diferencia. La app mostró una letra en inglés llena de insultos para
+una canción cristiana en español, con total seguridad.
+
+Corregido: la búsqueda solo-por-título ahora exige que el artista
+coincida, y si no coincide no se muestra nada. Se sacó además
+`lyrics.ovh`, que solo hace coincidir texto y no permite comprobar nada.
+Tres tests nuevos con los números exactos del caso.
+
+### Y la lección que se repitió tres veces
+
+Corregir la regla no alcanza: **lo que se guardó mal sigue guardado en
+el celular**, y se lee antes de consultar nada. Pasó con las carátulas,
+con los tags ID3 y con las letras. Cada corrección de ese tipo necesita
+además subir la versión del nombre con el que se guarda, para que lo
+viejo se descarte una vez.
+
+### Bugs encontrados revisando lo recién hecho
+
+Lo agregado a las apuradas es lo que menos vueltas tiene encima:
+
+- Si un video terminaba y no había siguiente, la notificación quedaba
+  en "reproduciendo" para siempre, con el servicio y el bloqueo de
+  energía tomados: gastaba batería hasta cerrar la app.
+- Pausar con los controles de YouTube dejaba la notificación diciendo
+  que seguía sonando.
+- El temporizador de "seguir sonando" insistía con play sobre un video
+  ya terminado y lo arrancaba de nuevo, bloqueado y sin que nadie lo
+  pidiera. Y si pausabas desde la notificación, lo reanudaba al segundo:
+  ese botón no servía.
+- El estado del video anterior quedaba pegado al pasar al siguiente.
+- La pantalla de diagnóstico tocaba el estado después de salirse de
+  ella.
+
+`flutter analyze`, `flutter test` (**194**) y `flutter build apk
+--release` salieron limpios.

@@ -79,7 +79,7 @@ class _DiagnosticoYoutubeScreenState extends State<DiagnosticoYoutubeScreen> {
       final soloAudio = manifiesto.audioOnly;
       if (soloAudio.isEmpty) {
         _anotar('Este video no tiene pista de audio suelta.');
-        setState(() => _sePuede = false);
+        if (mounted) setState(() => _sePuede = false);
         return;
       }
       final pista = soloAudio.withHighestBitrate();
@@ -98,7 +98,7 @@ class _DiagnosticoYoutubeScreenState extends State<DiagnosticoYoutubeScreen> {
       _anotar('   respuesta ${dos.$1} · ${dos.$2} bytes');
 
       final anduvo = (dos.$1 == 200 || dos.$1 == 206) && dos.$2 > 0;
-      setState(() => _sePuede = anduvo);
+      if (mounted) setState(() => _sePuede = anduvo);
       _anotar('');
       _anotar(anduvo
           ? 'El segundo pedazo LLEGÓ. Desde este celular sí se puede bajar '
@@ -109,7 +109,7 @@ class _DiagnosticoYoutubeScreenState extends State<DiagnosticoYoutubeScreen> {
               'No es un problema de la app ni de la conexión.');
     } catch (e) {
       _anotar('Se cortó: $e');
-      setState(() => _sePuede = false);
+      if (mounted) setState(() => _sePuede = false);
     } finally {
       yt.close();
       if (mounted) setState(() => _corriendo = false);
