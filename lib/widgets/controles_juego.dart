@@ -80,6 +80,18 @@ class _BotonJuegoState extends State<BotonJuego> {
   Widget build(BuildContext context) {
     return Tooltip(
       message: widget.tooltip,
+      // MANUAL, o sea: el texto de ayuda queda para el lector de
+      // pantalla pero NO se muestra al mantener apretado.
+      //
+      // Por defecto un `Tooltip` aparece con una pulsación larga, y para
+      // eso compite por el gesto con el botón. A los 500 ms gana el
+      // tooltip, el toque se CANCELA y la repetición se corta --justo
+      // cuando el botón tendría que estar acelerando--.
+      //
+      // O sea que mantener apretado para mover la pieza funcionaba
+      // medio segundo y después se plantaba, con un cartelito encima.
+      // En los cuatro juegos.
+      triggerMode: TooltipTriggerMode.manual,
       child: Material(
         color: AppTheme.surfaceRaised,
         shape: const CircleBorder(),
