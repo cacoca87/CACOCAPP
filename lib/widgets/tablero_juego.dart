@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
 
-/// Dibuja la cuadrícula de los dos juegos.
+/// Dibuja la cuadrícula de los cuatro juegos.
 ///
 /// Se pinta con `CustomPaint` y no con widgets: un tablero de Tetris son
 /// 200 celdas, y rehacer 200 widgets en cada paso del juego (varias
@@ -106,8 +106,9 @@ class _PintorTablero extends CustomPainter {
   /// La vista del juego es una lista NUEVA en cada cuadro, así que
   /// compararla por identidad no sirve de nada. Recorrer doscientos
   /// números enteros es muchísimo más barato que volver a dibujar el
-  /// tablero entero, y hay rebujos que no lo necesitan: cuando cambia
-  /// solo el puntaje de arriba, por ejemplo, el tablero es idéntico.
+  /// tablero entero, y hay redibujados que no lo necesitan: cuando
+  /// cambia solo el puntaje de arriba, por ejemplo, el tablero es
+  /// idéntico.
   @override
   bool shouldRepaint(_PintorTablero anterior) {
     final otras = anterior.celdas;

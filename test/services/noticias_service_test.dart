@@ -140,6 +140,34 @@ void main() {
       expect(llamadas, 2);
     });
 
+    test('un fallo inesperado también llega como ErrorNoticias', () async {
+      // La pantalla solo atrapa `ErrorNoticias`. Antes, cualquier
+      // excepción que no fuera de los tres tipos previstos (sin red,
+      // lento, cliente HTTP) se le escapaba, y la ruedita de "cargando"
+      // se quedaba girando para siempre sin decir qué había pasado.
+      // Un fallo de certificado, por ejemplo, no es ninguno de los tres.
+      final servicio = NoticiasService.testable(
+        MockClient((_) async => throw const HandshakeException('certificado')),
+      );
+      await expectLater(
+        servicio.obtener(_categoria),
+        throwsA(isA<ErrorNoticias>()),
+      );
+    });
+
+    test('un error con mensaje propio no se pierde al envolverlo', () async {
+      // El `catch` general no tiene que comerse los errores que ya
+      // traen su explicación escrita.
+      final servicio = NoticiasService.testable(
+        MockClient((_) async => http.Response('', 503)),
+      );
+      await expectLater(
+        servicio.obtener(_categoria),
+        throwsA(isA<ErrorNoticias>()
+            .having((e) => e.mensaje, 'mensaje', contains('503'))),
+      );
+    });
+
     test('están las siete categorías que pidió el profesor, más música', () {
       final nombres = NoticiasService.categorias.map((c) => c.nombre).toList();
       expect(nombres, contains('Negocios internacionales'));

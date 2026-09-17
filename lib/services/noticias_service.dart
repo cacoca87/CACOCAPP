@@ -126,6 +126,12 @@ class NoticiasService {
         _cacheFecha[categoria.nombre] = DateTime.now();
       }
       return noticias;
+    } on ErrorNoticias {
+      // Los dos `throw` de más arriba ya traen su mensaje escrito: no
+      // hay que volver a envolverlos. Va PRIMERO porque si no, el
+      // `catch` general del final se los comería y perderían su
+      // explicación.
+      rethrow;
     } on SocketException {
       throw const ErrorNoticias(
         'No hay conexión a internet. Conectate y volvé a intentar.',
@@ -140,6 +146,19 @@ class NoticiasService {
       throw const ErrorNoticias(
         'No se pudo conectar con el servicio de noticias. Revisá tu conexión.',
         sinConexion: true,
+      );
+    } catch (_) {
+      // Cualquier otra cosa.
+      //
+      // Los tres casos de arriba son los que se esperan, pero no son
+      // todos los que existen: un fallo de certificado, por ejemplo, no
+      // es ninguno de los tres. Esta función le promete a la pantalla
+      // que va a devolver noticias o un `ErrorNoticias`, y la pantalla
+      // solo atrapa `ErrorNoticias`. Cualquier otra excepción se le
+      // escapaba, así que la ruedita de "cargando" se quedaba girando
+      // para siempre sin decir nunca qué había pasado.
+      throw const ErrorNoticias(
+        'No se pudieron cargar las noticias. Probá de nuevo en un rato.',
       );
     }
   }

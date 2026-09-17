@@ -10,10 +10,14 @@ import 'package:google_fonts/google_fonts.dart';
 /// de verde, un rojo vino profundo como secundario, y una slab-serif
 /// con carácter para los títulos en vez de la tipografía default.
 ///
-/// Los nombres públicos (AppTheme.primary, AppTheme.heading,
-/// AppTheme.cardDecoration, etc.) se mantienen sin cambios a propósito
-/// para no tener que tocar cada pantalla que ya los usa — solo cambian
-/// los valores por debajo.
+/// Los nombres públicos (AppTheme.primary, AppTheme.heading, etc.) se
+/// mantienen sin cambios a propósito para no tener que tocar cada
+/// pantalla que ya los usa — solo cambian los valores por debajo.
+///
+/// (Acá se nombraba también `AppTheme.cardDecoration` como ejemplo.
+/// Esa decoración se sacó porque no la usaba nadie, según explica el
+/// comentario de la sección de decoraciones más abajo: el archivo se
+/// contradecía consigo mismo.)
 class AppTheme {
   // ===== Paleta base =====
   static const Color ink = Color(0xFF14100E); // fondo base

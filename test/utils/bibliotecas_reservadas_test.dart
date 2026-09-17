@@ -55,8 +55,7 @@ void main() {
 
     test('los espacios de los costados no cambian el resultado', () {
       expect(
-        errorDeNombreDeBiblioteca('  Favoritos  ',
-            nombresExistentes: const []),
+        errorDeNombreDeBiblioteca('  Favoritos  ', nombresExistentes: const []),
         contains('reservado'),
       );
     });

@@ -16,14 +16,14 @@ import '../models/song.dart';
 /// a una playlist, o descargar para escuchar offline sin código
 /// aparte, porque para el resto de la app es un [Song] más.
 ///
-/// Para usar esto hace falta un client_id GRATUITO de Jamendo:
-/// 1. Entrá a https://devportal.jamendo.com y creá una cuenta (es
-///    inmediato, a diferencia de Spotify/SoundCloud que requieren
-///    aprobación manual).
-/// 2. Registrá una "aplicación" (podés poner cualquier nombre, ej.
-///    "Cacocapp"), aceptando los términos de uso de la API.
-/// 3. Copiá el "Client ID" que te dan y pegalo abajo, reemplazando
-///    _clientId.
+/// La clave de la API (`_clientId`) ya está puesta: es un "Client ID"
+/// gratuito de https://devportal.jamendo.com, que se saca creando una
+/// cuenta y registrando una aplicación. No hay nada que configurar para
+/// que esto funcione.
+///
+/// Se aclara porque acá había un instructivo de tres pasos escrito como
+/// si todavía hubiera que hacerlos, y era de la época en que la clave
+/// era un texto de relleno.
 class JamendoService {
   // Constructor privado: acepta un http.Client opcional para poder
   // testear esta clase sin red real (ver JamendoService.testable más
