@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
+import '../utils/aviso_de_actualizacion.dart';
 import '../utils/busqueda.dart';
 import '../utils/secciones.dart';
 import '../utils/bibliotecas_reservadas.dart';
@@ -210,28 +211,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       // que el servidor estaba caido.
       final vinoDelServidor = _driveService.listaVieneDelWorker;
 
-      // Lo del celular se cuenta aparte en el aviso, y se dice cuántos
-      // archivos se saltearon.
-      //
-      // Ese segundo número es a propósito: el filtro que deja afuera
-      // las notas de voz y las grabaciones es una apuesta, y si algún
-      // día se lleva puesta una canción de verdad, no hay forma de
-      // darse cuenta salvo que la app lo diga. Mostrarlo convierte "me
-      // falta un tema" en "se saltearon 47, alguno era mío".
-      final delCelular = _delCelular.length;
-      final salteados = _descartadosDelCelular;
-      final extra = delCelular == 0
-          ? ''
-          : ' · ${contarCanciones(delCelular)} del celular'
-              '${salteados > 0 ? " (se saltearon $salteados que no son música)" : ""}';
-
+      // El texto completo se arma en `utils/aviso_de_actualizacion.dart`,
+      // que tiene sus propios tests: son varias combinaciones y
+      // equivocarse en una es decirle algo falso a la persona.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            vinoDelServidor
-                ? "Biblioteca actualizada: ${contarCanciones(list.length)}$extra"
-                : "No se pudo consultar el servidor. Se muestra la lista "
-                    "guardada: ${contarCanciones(list.length)}$extra",
+            avisoDeActualizacion(
+              vinoDelServidor: vinoDelServidor,
+              delServidor: list.length,
+              delCelular: _delCelular.length,
+              salteados: _descartadosDelCelular,
+            ),
             // Crema sobre ambar no se lee al sol; sobre el rojo de error
             // si. Ver `AppTheme.textoSobreAmbar`.
             style: vinoDelServidor ? AppTheme.textoSobreAmbar : null,
