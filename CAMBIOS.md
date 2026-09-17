@@ -2689,3 +2689,113 @@ Lo agregado a las apuradas es lo que menos vueltas tiene encima:
 
 `flutter analyze`, `flutter test` (**194**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 84. Vueltas 57 a 66: la app nunca se enteraba de que se iba al fondo
+
+Estas vueltas no arrancaron de una queja concreta, sino del pedido de
+revisar todo de nuevo hasta que no quede nada roto. Lo que apareció fue
+peor de lo esperado: el bug más grande llevaba escondido desde siempre,
+en cuatro palabras que faltaban.
+
+### El bug grande: faltaba una línea en `main.dart`
+
+El widget principal de la app declaraba que quería enterarse de los
+cambios de estado del sistema (`WidgetsBindingObserver`), escribía qué
+hacer en cada caso (`didChangeAppLifecycleState`) y hasta se daba de
+baja al cerrarse (`removeObserver`). Pero **nunca se daba de alta**.
+Faltaba `WidgetsBinding.instance.addObserver(this)`.
+
+Sin esa línea ese método no se llama jamás. O sea que nada de esto
+pasaba:
+
+- **No se guardaba en qué minuto iba la canción al salir de la app.**
+  Todo el mecanismo de "seguí donde lo dejaste" estaba escrito y no
+  corría nunca: al volver a abrir la app siempre empezaba de cero.
+- **Al desbloquear la pantalla no corría `onAppResumed()`**, que es lo
+  que revive la reproducción cuando Android cortó la red o el motor de
+  audio con la pantalla apagada. Toda la lógica de recuperación estaba
+  ahí, esperando una llamada que no llegaba.
+- **Al video de YouTube no se le insistía para que siguiera sonando**
+  al irse al fondo, que es exactamente para lo que se escribió ese
+  mecanismo, y el motivo de varias vueltas anteriores.
+
+Las cuatro pantallas de juegos sí se daban de alta bien. Solo la
+pantalla principal se había quedado a medias.
+
+Duele especialmente porque varias vueltas anteriores se pasaron
+peleando con "la música se corta al bloquear la pantalla" sin mirar si
+el aviso de que la pantalla se había bloqueado llegaba siquiera.
+
+### La cola resaltaba la canción equivocada
+
+El índice de la canción actual solo se fijaba al armar la cola. En
+cuanto la música pasaba sola a la siguiente, quedaba viejo. "Cola de
+reproducción" usa ese índice para saber cuál marcar: te mostraba en
+ámbar, con el ícono de ecualizador al lado, una canción que había
+terminado hacía rato, y al abrirla te dejaba parado en ese lugar de la
+lista en vez de en la que estaba sonando.
+
+Ahora el índice se recalcula cada vez que cambia la canción, buscándola
+por su id dentro de la cola.
+
+### Mover la barra de progreso no siempre llevaba a donde pedía el dedo
+
+Si el motor de audio se había caído (sin red, o Android lo mató en
+segundo plano), `seek` primero reconstruía la fuente y después salía
+con un `return` sin hacer el salto. La fuente se reconstruía en la
+posición vieja, así que la canción volvía sola al minuto en el que
+estaba antes, ignorando el arrastre. Lo mismo con el doble toque de
+±10 s sobre la carátula y con tocar un renglón de la letra.
+
+Ahora la posición que pide el dedo viaja hasta la reconstrucción.
+
+### La biblioteca entera se recorría cuatro veces por dibujo
+
+La pantalla principal armaba siempre la lista de artistas, la de
+álbumes y las dos tablas de qué carátula representa a cada uno: cuatro
+recorridas completas de la biblioteca (cientos de canciones) en **cada**
+dibujado. Y esa pantalla se vuelve a dibujar con cada tecla que se
+escribe en el buscador y con cada aviso del reproductor — incluso
+estando en Juegos o en Noticias, donde esas cuatro cosas no se usan
+para nada.
+
+Ahora son variables `late`: en Dart una variable local `late` se calcula
+la primera vez que se lee, así que solo se arman al entrar a Artistas o
+a Álbumes.
+
+### El tablero de los juegos se repintaba entero sin necesidad
+
+Los cuatro juegos comparten el mismo dibujante del tablero, y tenía dos
+problemas de los que no se ven pero se sienten en la batería:
+
+- Creaba un objeto de pintura nuevo por **cada casilla**. En Tetris, con
+  12×20, son hasta 480 objetos por cuadro, y el juego se redibuja varias
+  veces por segundo. Ahora se crean dos y se les cambia el color.
+- Decía "hay que repintar" siempre, así que el tablero se rehacía aunque
+  solo hubiera cambiado el puntaje de arriba. No alcanzaba con comparar
+  las listas por identidad (la vista devuelve una lista nueva cada vez),
+  así que ahora se comparan las casillas una por una: es mucho más
+  barato que dibujarlas.
+
+### Cosas chicas de coherencia
+
+- Un comentario en el reproductor de video describía un método y estaba
+  pegado arriba de otro, diciendo dos cosas distintas seguidas.
+- Al cerrar un video quedaban guardados su título, su autor y su
+  duración, así que si se abría otro a medio camino se veían los datos
+  del anterior.
+
+### Lo que se revisó y estaba bien
+
+Vale decirlo también, porque revisar y no encontrar nada es parte del
+trabajo: los permisos y el manifiesto de Android, el puente nativo del
+ecualizador, todos los `dispose()` (ningún temporizador, controlador ni
+suscripción queda suelto), las playlists y los favoritos, el servicio de
+búsqueda de YouTube (ningún error se escapa y deja la ruedita girando
+para siempre), y los archivos del proyecto: no hay ninguno que no se
+use.
+
+`flutter analyze`, `flutter test` (**206**) y `flutter build apk
+--release` salieron limpios.

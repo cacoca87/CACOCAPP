@@ -321,6 +321,12 @@ class OnlineVideoProvider extends ChangeNotifier {
     _controller?.close();
     _controller = null;
     _videoId = null;
+    // También el título, el autor y la duración: son del video que se
+    // acaba de cerrar, y si queda uno nuevo a medio abrir se mostraban
+    // los datos del anterior.
+    _titulo = '';
+    _autor = '';
+    _duracionSegundos = 0;
     _cola = const [];
     _indiceEnCola = -1;
     _videoYaTerminado = null;
@@ -329,10 +335,13 @@ class OnlineVideoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Pausa el video, si hay uno. La usa `PlayerProvider` cuando arranca
-  /// otra reproducción y cuando vence el temporizador de apagado.
-  /// Pausa el video SIN sacar su notificacion. La usa el boton de
-  /// pausa de la propia notificacion.
+  /// Pausa el video SIN sacar su notificación: la sesión de medios
+  /// sigue puesta, solo que diciendo "en pausa". La usa el botón de
+  /// pausa de esa misma notificación, que tiene que poder volver a
+  /// darle play.
+  ///
+  /// Es la diferencia con [pausar], que además da de baja la sesión
+  /// porque ahí el video deja el lugar a otra cosa.
   void pausarSoloElVideo() {
     // Primero se deja de insistir: si no, el temporizador de "seguir
     // sonando con la pantalla bloqueada" lo reanudaba al segundo y el
