@@ -1,24 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song.dart';
 import '../utils/app_logger.dart';
 import '../utils/nombre_archivo_parser.dart';
 
 class DriveService {
+  // Mismo patrón que `LyricsService`, `JamendoService`, `NoticiasService`
+  // y `ArtworkService`: el cliente HTTP entra por el constructor para
+  // poder probar esta clase sin red real. Era el único servicio que no
+  // lo tenía, y por eso el respaldo de la biblioteca --que es lo que se
+  // ve cuando no hay señal-- nunca lo comprobó ningún test.
+  DriveService({http.Client? client}) : _client = client ?? http.Client();
+
+  final http.Client _client;
+
   final String baseUrl = 'https://pub-700eb414537341c79d5046ada835aea7.r2.dev';
   final String listUrl = 'https://cacocapp-audio.cacoca87.workers.dev/list';
 
-  static List<Song>? _cache;
+  /// Con qué nombre se guarda en el celular la última lista que SÍ vino
+  /// del servidor.
+  static const String _claveListaGuardada = 'drive_lista_v1';
 
-  // Si la ultima carga real vino del Worker o del respaldo fijo. Hace
-  // falta porque `_cargar()` nunca falla hacia afuera: cuando el
-  // servidor no responde devuelve la lista fija y todo sigue andando.
-  // Sin esta bandera, el boton "Actualizar" avisaba "Biblioteca
-  // actualizada" aunque no hubiera podido hablar con el servidor.
-  static bool _ultimaCargaFueDelWorker = false;
+  // Por instancia y no `static`, igual que en los otros servicios: la
+  // app crea una sola, así que se comporta igual, pero deja de depender
+  // del orden en que corren los tests.
+  List<Song>? _cache;
 
-  /// `true` si la biblioteca que se esta mostrando vino del servidor, y
-  /// `false` si es la lista de respaldo que viaja dentro de la app.
+  // De dónde salió la biblioteca que se está mostrando. Hace falta
+  // porque `_cargar()` nunca falla hacia afuera: cuando el servidor no
+  // responde devuelve un respaldo y todo sigue andando. Sin esto, el
+  // botón "Actualizar" avisaba "Biblioteca actualizada" aunque no
+  // hubiera podido hablar con el servidor.
+  bool _ultimaCargaFueDelWorker = false;
+
+  /// `true` si la biblioteca que se está mostrando vino del servidor, y
+  /// `false` si es un respaldo.
   bool get listaVieneDelWorker => _ultimaCargaFueDelWorker;
 
   static const List<String> _artistasQueVanPrimero = [
@@ -47,29 +64,69 @@ class DriveService {
       if (canciones.isNotEmpty) {
         _ultimaCargaFueDelWorker = true;
         _cache = canciones;
+        // Se guarda para la próxima vez que no haya señal. No se espera:
+        // la biblioteca ya está lista y esto no tiene que demorarla.
+        _guardarLista(nombresArchivos);
         return canciones;
       }
     } catch (e) {
-      AppLogger.w(
-          'No se pudo cargar la lista dinámica, usando respaldo fijo: $e');
+      AppLogger.w('No se pudo consultar el servidor: $e');
     }
 
-    // Respaldo: si el Worker no responde, se arma la biblioteca con la
-    // lista fija de nombres de más abajo. Es una constante de 160
-    // entradas, así que esto nunca queda vacío -- antes había acá un
-    // tercer respaldo para el caso "ni siquiera la lista fija dio
-    // nada", que era inalcanzable y además mentía: devolvía una
+    _ultimaCargaFueDelWorker = false;
+
+    // PRIMER RESPALDO: la última lista que SÍ vino del servidor, tal
+    // como estaba la última vez que hubo señal.
+    //
+    // Antes esto no existía y se pasaba directo a la lista fija de más
+    // abajo, que se escribió una vez y quedó congelada. O sea que abrir
+    // la app sin internet no te mostraba TU biblioteca con menos cosas:
+    // te mostraba OTRA biblioteca. Los temas subidos después de esa
+    // lista --los de Amén, por ejemplo-- desaparecían, y podían
+    // aparecer archivos que ya no están en el servidor.
+    final guardada = await _leerListaGuardada();
+    if (guardada != null && guardada.isNotEmpty) {
+      final canciones = _construirCanciones(guardada);
+      _cache = canciones;
+      return canciones;
+    }
+
+    // SEGUNDO RESPALDO: la lista fija que viaja dentro de la app. Solo
+    // se usa en la primera apertura sin señal, cuando todavía no hubo
+    // ninguna vez con internet y no hay nada guardado. Es una constante
+    // de 160 entradas, así que esto nunca queda vacío -- antes había
+    // acá un tercer respaldo para el caso "ni siquiera la lista fija
+    // dio nada", que era inalcanzable y además mentía: devolvía una
     // canción titulada "Sweet Child O Mine" de "Guns N Roses" cuya URL
     // apuntaba a un MP3 de demostración genérico de otro sitio.
-    _ultimaCargaFueDelWorker = false;
     final cancionesFijas = _construirCanciones(_nombresArchivosFijos);
     _cache = cancionesFijas;
     return cancionesFijas;
   }
 
+  Future<void> _guardarLista(List<String> nombres) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_claveListaGuardada, nombres);
+    } catch (_) {
+      // Si no se pudo guardar no pasa nada grave: la próxima vez sin
+      // señal se cae en la lista fija, como antes.
+    }
+  }
+
+  Future<List<String>?> _leerListaGuardada() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_claveListaGuardada);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<String>> _obtenerListaDesdeWorker() async {
-    final response =
-        await http.get(Uri.parse(listUrl)).timeout(const Duration(seconds: 10));
+    final response = await _client
+        .get(Uri.parse(listUrl))
+        .timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
       throw Exception('El Worker respondió ${response.statusCode}');
