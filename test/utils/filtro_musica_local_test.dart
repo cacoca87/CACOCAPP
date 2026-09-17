@@ -137,6 +137,44 @@ void main() {
     });
   });
 
+  group('canciones que el filtro se estaba llevando puestas', () {
+    // El filtro comparaba sus palabras contra la RUTA ENTERA, así que
+    // el título de la canción podía activar una regla pensada para
+    // nombres de carpeta. Estas desaparecían de la biblioteca sin
+    // ningún aviso, y son nombres de canciones de verdad.
+    const desaparecian = [
+      '/storage/emulated/0/Music/Alarma.mp3', // "alarm"
+      '/storage/emulated/0/Music/La Llamada.mp3', // "llamada"
+      '/storage/emulated/0/Music/Signal.mp3', // "signal"
+      '/storage/emulated/0/Music/Live Recording 1995.mp3', // "recording"
+      '/storage/emulated/0/Music/Tonos del Sur.mp3', // "tonos"
+      '/storage/emulated/0/Music/La Grabadora.mp3', // "grabadora"
+      '/storage/emulated/0/Music/Ringtone (Remix).mp3', // "ringtone"
+    ];
+
+    for (final ruta in desaparecian) {
+      test('"${ruta.split('/').last}" tiene que entrar', () {
+        expect(entra(ruta), isTrue);
+      });
+    }
+
+    test('pero la CARPETA con ese nombre sigue descartando', () {
+      // Nadie llama "Alarmas" a la carpeta donde guarda su música, así
+      // que como nombre de carpeta la regla sigue valiendo.
+      expect(entra('/storage/emulated/0/Alarms/Alarma.mp3'), isFalse);
+      expect(entra('/storage/emulated/0/Ringtones/algo.mp3'), isFalse);
+      expect(entra('/storage/emulated/0/Grabaciones/algo.mp3'), isFalse);
+    });
+
+    test('y las marcas inconfundibles en el nombre también', () {
+      // Estas sí se revisan contra el nombre del archivo, porque
+      // ninguna canción se llama así.
+      expect(entra('/Music/PTT-20240115-WA0001.mp3'), isFalse);
+      expect(entra('/Music/Voice note 3.m4a'), isFalse);
+      expect(entra('/Music/AUD-20240115-WA0002.mp3'), isFalse);
+    });
+  });
+
   group('el motivo se informa, para poder contarlos', () {
     test('cada regla dice cuál fue', () {
       expect(
