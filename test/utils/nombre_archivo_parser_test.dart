@@ -81,4 +81,60 @@ void main() {
       expect(r.artista, 'Blink 182');
     });
   });
+
+  group('tituloSabiendoElArtista', () {
+    test('el caso real: "Amén - Te Quiero" con artista "Amén"', () {
+      // La app mostraba tres canciones distintas del disco "Libre",
+      // las tres tituladas "Amén", que es el nombre de la banda.
+      expect(tituloSabiendoElArtista('Amén - Te Quiero', 'Amén'), 'Te Quiero');
+      expect(
+        tituloSabiendoElArtista('Amén - Sé Que Tú No Estás Solo', 'Amén'),
+        'Sé Que Tú No Estás Solo',
+      );
+    });
+
+    test('si el archivo ya estaba bien, no lo toca', () {
+      // "Título - Artista", que es lo habitual en esta biblioteca.
+      expect(
+        tituloSabiendoElArtista(
+            'Whole Lotta Love - Led Zeppelin', 'Led Zeppelin'),
+        isNull,
+      );
+    });
+
+    test('no distingue mayúsculas ni espacios de sobra', () {
+      expect(tituloSabiendoElArtista('  AMÉN  -  Libre  ', 'amén'), 'Libre');
+    });
+
+    test('un título con guiones adentro se conserva entero', () {
+      expect(
+        tituloSabiendoElArtista('Amén - Yo - Tú - Nosotros', 'Amén'),
+        'Yo - Tú - Nosotros',
+      );
+    });
+
+    test('sin guion, sin artista o sin nombre no hay nada que corregir', () {
+      expect(tituloSabiendoElArtista('Amén', 'Amén'), isNull);
+      expect(tituloSabiendoElArtista('Amén - Libre', ''), isNull);
+      expect(tituloSabiendoElArtista('', 'Amén'), isNull);
+    });
+
+    test('un archivo que es solo "Artista - " no deja el título vacío', () {
+      expect(tituloSabiendoElArtista('Amén - ', 'Amén'), isNull);
+    });
+  });
+
+  group('nombreDeArchivoDeUrl', () {
+    test('saca la carpeta, la extensión y los códigos de la URL', () {
+      expect(
+        nombreDeArchivoDeUrl(
+            'https://ejemplo.test/Am%C3%A9n%20-%20Te%20Quiero.mp3'),
+        'Amén - Te Quiero',
+      );
+    });
+
+    test('aguanta una ruta local o algo que no sea una URL', () {
+      expect(nombreDeArchivoDeUrl('Whole Lotta Love.mp3'), 'Whole Lotta Love');
+    });
+  });
 }

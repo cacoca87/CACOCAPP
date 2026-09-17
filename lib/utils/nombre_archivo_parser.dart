@@ -98,3 +98,56 @@ TituloYArtista deducirTituloYArtista(
     artista.isEmpty ? artistaDesconocido : artista,
   );
 }
+
+/// El nombre del archivo, sin carpeta ni extensión, sacado de su URL.
+String nombreDeArchivoDeUrl(String url) {
+  final uri = Uri.tryParse(url);
+  final ultimo = (uri != null && uri.pathSegments.isNotEmpty)
+      // `pathSegments` YA viene decodificado: volver a decodificarlo
+      // reventaba con cualquier nombre que tuviera un signo de
+      // porcentaje.
+      ? uri.pathSegments.last
+      : url;
+  return ultimo.replaceAll(RegExp(r'\.mp3$', caseSensitive: false), '').trim();
+}
+
+/// Corrige el título cuando YA se sabe quién es el artista de verdad.
+///
+/// Devuelve el título corregido, o `null` si no hay nada que corregir.
+///
+/// POR QUÉ HACE FALTA
+///
+/// [deducirTituloYArtista] tiene que adivinar si un archivo se llama
+/// "Título - Artista" o "Artista - Título", y para eso usa una lista de
+/// artistas conocidos que van primero. Esa lista tiene seis nombres:
+/// cualquier disco cuyos archivos estén nombrados al revés y cuyo
+/// artista no esté ahí queda con el título y el artista cambiados.
+///
+/// Pasó de verdad y se notó: los temas del disco "Libre" de Amén se
+/// llamaban "Amén - Te Quiero.mp3", así que la app mostraba tres
+/// canciones distintas todas tituladas "Amén" (el nombre de la banda).
+/// Con el título equivocado la letra tampoco aparecía nunca, porque se
+/// buscaba una canción que no existe.
+///
+/// Pero el tag ID3 del propio MP3 SÍ dice quién es el artista. Sabiendo
+/// eso, ya no hay que adivinar: si la primera parte del nombre del
+/// archivo es el artista, entonces el título es el resto. Sale gratis,
+/// porque ese dato ya se pidió para corregir el artista.
+String? tituloSabiendoElArtista(String nombreLimpio, String artistaReal) {
+  final nombre = nombreLimpio.trim();
+  final artista = artistaReal.trim();
+  if (nombre.isEmpty || artista.isEmpty || !nombre.contains(' - ')) return null;
+
+  final partes = nombre.split(' - ').map((p) => p.trim()).toList();
+  bool esElArtista(String parte) =>
+      parte.toLowerCase() == artista.toLowerCase();
+
+  // "Artista - Título": el título es todo lo que viene después.
+  if (esElArtista(partes.first)) {
+    final resto = partes.sublist(1).join(' - ').trim();
+    return resto.isEmpty ? null : resto;
+  }
+
+  // "Título - Artista": ya estaba bien, no se toca.
+  return null;
+}

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
 import '../utils/bibliotecas_reservadas.dart';
+import '../utils/nombre_archivo_parser.dart';
 import '../utils/plural.dart';
 import '../models/song.dart';
 import '../providers/online_video_provider.dart';
@@ -162,8 +163,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             artista != cancion.artist) {
           cancion.artist = artista;
           huboCambios = true;
-        }
 
+          // Sabiendo quién es el artista de verdad, el nombre del
+          // archivo deja de ser una adivinanza. Si empieza con el
+          // artista, entonces el título es el resto -- y eso corrige de
+          // una los discos nombrados "Artista - Canción", que hasta
+          // ahora quedaban con el título y el artista cambiados.
+          //
+          // Sale gratis: usa el dato que ya se acaba de pedir, sin una
+          // sola descarga más.
+          final tituloCorregido = tituloSabiendoElArtista(
+            nombreDeArchivoDeUrl(cancion.url),
+            artista,
+          );
+          if (tituloCorregido != null && tituloCorregido != cancion.title) {
+            cancion.title = tituloCorregido;
+          }
+        }
         // El título REAL (tag TIT2) no se pide acá a propósito, aunque
         // se podría: las canciones que ya tienen álbum y artista
         // guardados en el celular NO tienen el título, así que pedirlo
