@@ -57,9 +57,7 @@ class _TetrisScreenState extends State<TetrisScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Si te vas de la app, el juego se pausa solo: volver y encontrarte
     // con que perdiste mientras no mirabas sería desagradable.
-    if (state != AppLifecycleState.resumed && !_enPausa) {
-      setState(() => _enPausa = true);
-    }
+    if (state != AppLifecycleState.resumed) _setPausa(true);
   }
 
   Future<void> _cargarRecord() async {
@@ -73,6 +71,25 @@ class _TetrisScreenState extends State<TetrisScreen>
   Future<void> _guardarRecord(int puntaje) async {
     final vigente = await guardarRecordSiEsMejor(_claveRecord, puntaje);
     if (mounted && vigente != _record) setState(() => _record = vigente);
+  }
+
+  /// Pausa o reanuda, y **para el reloj del juego** mientras tanto.
+  ///
+  /// Antes el reloj seguía latiendo en pausa: el `_tic` se salía por la
+  /// primera línea y no hacía nada, pero el temporizador despertaba al
+  /// procesador varias veces por segundo igual. Y eso pasaba también
+  /// con la app al fondo --el juego se pausa solo al irse-- o sea justo
+  /// cuando estás escuchando música con la pantalla apagada y lo único
+  /// que importa es la batería.
+  void _setPausa(bool pausado) {
+    if (_enPausa == pausado) return;
+    setState(() => _enPausa = pausado);
+    if (pausado) {
+      _reloj?.cancel();
+      _reloj = null;
+    } else {
+      _programarReloj();
+    }
   }
 
   void _programarReloj() {
@@ -132,9 +149,7 @@ class _TetrisScreenState extends State<TetrisScreen>
               color: AppTheme.paper,
             ),
             tooltip: _enPausa ? 'Continuar' : 'Pausar',
-            onPressed: _juego.terminado
-                ? null
-                : () => setState(() => _enPausa = !_enPausa),
+            onPressed: _juego.terminado ? null : () => _setPausa(!_enPausa),
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.paper),
