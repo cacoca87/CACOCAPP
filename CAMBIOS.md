@@ -3023,3 +3023,120 @@ Escuchadas". Ahora se arma una sola vez, y solo si alguien lo lee.
 
 `flutter analyze`, `flutter test` (**227**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 87. Vueltas 75 a 79: cosas que la app mostraba y no eran verdad
+
+Tres de estas se ven en pantalla y son datos falsos, no fallas de
+dibujo. Es la peor clase: la app no se rompe, te miente con cara seria.
+
+### Mirar un video de YouTube sumaba tiempo a una canción de la biblioteca
+
+Cuando suena un video, la app publica una notificación de medios para
+que Android le ponga los controles en la pantalla de bloqueo. Esa
+notificación es **la misma** que usa la biblioteca: se la prestan.
+
+`PlayerProvider` la leía sin distinguir de quién era, así que al
+arrancar un video entendía que había empezado a sonar la canción de la
+biblioteca. Dos consecuencias:
+
+- Se ponía en marcha el reloj de "tiempo escuchado" y le sumaba a la
+  **última canción de la biblioteca** cada minuto de video que miraras.
+  La pantalla de Estadísticas —que es una de las cosas que se
+  presentan— terminaba mostrando horas dedicadas a canciones que en ese
+  rato no sonaron ni un segundo.
+- Si esa canción venía restaurada de la sesión anterior y todavía no se
+  había contado, se le anotaba además una reproducción que nunca pasó.
+
+Y algo parecido con el título: con la cola vacía se fabricaba una
+canción falsa con los datos del video, y el mini reproductor de la
+biblioteca aparecía mostrándolo como si fuera un tema tuyo.
+
+El reproductor ya sabía si estaba en modo video y lo decía; nadie se lo
+preguntaba.
+
+### Aleatorio y repetir se veían encendidos y no hacían nada
+
+Al reabrir la app se leía del disco si los tenías puestos… y solo se
+guardaba en las dos variables que **pintan los botones**. Nunca se le
+decía al motor de audio.
+
+O sea: el botón de aleatorio salía encendido en ámbar y la música
+sonaba en orden igual. El de repetir decía "repetir esta canción" y la
+canción no se repetía. Para que empezara a obedecer había que tocar el
+botón **dos veces**: una para apagar lo que en realidad nunca estuvo
+puesto, y otra para volver a ponerlo.
+
+### Las canciones descargadas nunca leían nada de su propio archivo
+
+La app guarda la dirección de una canción descargada como
+`file:///data/.../descargas/xxx.mp3`. Eso es una **dirección**, no una
+ruta: lleva el `file://` adelante.
+
+Dárselo tal cual a `File` no falla con un error. Crea un archivo cuyo
+nombre es, literalmente, `file:///data/...`. Ese archivo no existe
+nunca, así que la comprobación decía tranquilamente "no está" y todo
+seguía como si la canción no tuviera nada adentro. Por eso no lo agarró
+nadie.
+
+Lo que rompía: una canción guardada **para escuchar sin internet**
+necesitaba internet para mostrar su tapa, porque la buscaba en iTunes
+en vez de sacarla del archivo que ya tenía al lado. Y su letra
+incrustada tampoco se leía nunca.
+
+La rama entera de "archivo local" de los dos servicios que leen tags
+estaba muerta: la app siempre arma esas direcciones con `file://`, así
+que no había ningún caso en que funcionara.
+
+### La lista parpadeaba una ruedita en cada fila
+
+Pedir una carátula era **siempre** una espera, incluso cuando la
+respuesta ya estaba en memoria. Y hasta la espera más corta cuesta un
+cuadro entero: el widget se dibuja primero con la ruedita de "cargando"
+y recién en el siguiente pone la imagen.
+
+Al desplazar la biblioteca eso es un parpadeo de ruedas en cada fila
+que entra, con todas las tapas resueltas desde hace rato. Y cada
+ruedita es una animación andando: trabajo de dibujo por nada, justo
+mientras se está desplazando. Lo peor era Descubrir, donde la dirección
+de la tapa viene junto con el resultado de la búsqueda.
+
+Ahora los servicios contestan también sin esperar, y el widget pregunta
+eso primero.
+
+### La biblioteca decía "Artista Desconocido" hasta terminar todo
+
+La primera vez que se abre la app no hay nada guardado, así que
+completar el álbum y el artista obliga a bajar medio megabyte de cada
+canción, de a seis por tanda. Con cientos de temas eso es medio minuto
+largo mirando una lista que dice "Artista Desconocido" en **todas** las
+filas, y que de golpe se arregla entera al final.
+
+El dato de las primeras canciones estaba resuelto desde el principio y
+no se mostraba, porque la pantalla se refrescaba una sola vez al
+terminar. Ahora se refresca al terminar cada tanda.
+
+Y si tocabas "Actualizar" mientras eso corría, el repaso viejo seguía
+completando datos de canciones que ya no se muestran en ninguna parte,
+bajando medio megabyte por cada una para nada.
+
+### Lo demás
+
+- Se guardaba `currentIndex` en el disco y no lo leía nadie.
+- `"last_position"` era un texto suelto escrito dos veces a mano. Una
+  letra distinta en cualquiera de las dos y la app volvía a empezar la
+  canción desde cero, sin que nada avisara.
+- `title` se hizo mutable hace varias vueltas y no lo probaba ningún
+  test, siendo que `artist` y `album` sí tenían el suyo — y es justo el
+  campo cuyo fallo más se vio en pantalla.
+
+### Una que no tiene test, y se dice
+
+El arreglo del tiempo de escucha **no está cubierto por tests**:
+`PlayerProvider` necesita el motor de audio real, que no arranca fuera
+de un celular. Se comprueba mirando un video un rato y abriendo después
+Estadísticas.
+
+`flutter analyze`, `flutter test` (**234**) y `flutter build apk
+--release` salieron limpios.
