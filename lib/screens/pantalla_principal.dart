@@ -995,6 +995,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   style: AppTheme.body
                       .copyWith(color: AppTheme.paper, fontSize: 14),
                   textInputAction: TextInputAction.search,
+                  // La lista ya se filtra con cada letra, así que acá
+                  // "buscar" lo único que tiene que hacer es bajar el
+                  // teclado --que está tapando media lista de
+                  // resultados--. Antes esa tecla no hacía nada.
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   decoration: InputDecoration(
                     hintText: "¿Qué te apetece reproducir?",
                     hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),

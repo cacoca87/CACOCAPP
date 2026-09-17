@@ -163,6 +163,17 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                     AppTheme.body.copyWith(color: AppTheme.paper, fontSize: 14),
                 textInputAction: TextInputAction.search,
                 onChanged: _onTextoCambio,
+                // La tecla de "buscar" del teclado baja el teclado y
+                // busca ya, sin esperar el medio segundo de pausa.
+                // Antes no hacía nada y el teclado tapaba justo los
+                // resultados que acababas de pedir.
+                onSubmitted: (texto) {
+                  _debounce?.cancel();
+                  FocusScope.of(context).unfocus();
+                  if (texto.trim().isEmpty) return;
+                  _ejecutarBusqueda(
+                      () => JamendoService.instance.buscar(texto));
+                },
                 decoration: InputDecoration(
                   hintText: "Buscar en Jamendo (título, artista)...",
                   hintStyle: AppTheme.body.copyWith(color: AppTheme.faintInk),

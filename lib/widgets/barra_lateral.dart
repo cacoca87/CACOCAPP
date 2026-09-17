@@ -84,6 +84,15 @@ class BarraLateral extends StatelessWidget {
           TextField(
             controller: controladorNuevaBib,
             style: AppTheme.body.copyWith(fontSize: 13, color: AppTheme.paper),
+            // La tecla de "listo" del teclado crea la biblioteca, igual
+            // que el botón. Antes escribías el nombre, dabas enter y no
+            // pasaba nada: había que cerrar el teclado y buscar el
+            // botón, que con el teclado abierto queda tapado.
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              onCrearBiblioteca();
+              if (esDrawer) Navigator.pop(context);
+            },
             decoration: InputDecoration(
               hintText: "Nombre...",
               hintStyle: AppTheme.body
