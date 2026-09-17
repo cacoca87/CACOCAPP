@@ -4112,3 +4112,49 @@ contra el fondo sobre el que se dibuja de verdad. Si alguien toca un
 color y lo deja por debajo del mínimo, salta.
 
 `flutter analyze` limpio, **518 tests** en verde y APK de 40,5 MB.
+
+## 99. Vuelta 117: los controles del reproductor, y otra sospecha falsa
+
+La fila de cinco botones del reproductor grande --aleatorio, anterior,
+play, siguiente, repetir-- pasó a ser una pieza propia. El reproductor
+entero no se puede probar (necesita el motor de audio del celular) y
+esa fila sí.
+
+### La sospecha, y por qué era falsa
+
+Los botones de los costados llevan un ícono de 26 píxeles y el código
+decía explícitamente "sin nada alrededor". Fui a medir esperando
+encontrar una zona tocable de 26, muy por debajo de los 48 que se
+recomiendan para algo que se toca con el dedo.
+
+Medidos:
+
+| Botón | Zona tocable |
+|---|---|
+| Aleatorio | 48 × 48 |
+| Anterior | 48 × 48 |
+| Play / pausa | 72 × 72 |
+| Siguiente | 48 × 48 |
+| Repetir | 48 × 48 |
+
+**No había ningún problema.** Material impone ese mínimo por su cuenta
+aunque se le pidan cero restricciones.
+
+Queda escrito en el código para que nadie lo vuelva a buscar ahí. El
+mínimo se dejó escrito igual, porque así pasa a ser una promesa de ese
+widget en vez de un efecto secundario de cómo esté configurado el tema.
+
+Es la segunda vez en esta serie de vueltas que una sospecha razonable
+resulta falsa al medirla --la otra fue el alto de la fila de géneros--.
+Las dos quedaron anotadas. Medir antes de arreglar cuesta cinco
+minutos; "arreglar" algo que no estaba roto cuesta un bug nuevo.
+
+### Lo que sí se ganó
+
+Once tests sobre lo que de verdad puede fallar: que los cinco botones
+entren en una pantalla de 320, 360 y 412; que cada uno avise lo suyo y
+no el del vecino; que el botón grande cambie entre play y pausa; y que
+los **tres** modos de repetición se distingan entre sí --si no, no hay
+forma de saber en cuál estás sin probar--.
+
+`flutter analyze` limpio, **529 tests** en verde y APK de 40,5 MB.
