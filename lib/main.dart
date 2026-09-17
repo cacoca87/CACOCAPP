@@ -209,6 +209,8 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
     };
     _onlineVideoProvider.onTerminaVideo =
         widget.audioHandler.terminarSesionDeVideo;
+    _onlineVideoProvider.onEstadoDeVideo = (sonando) =>
+        widget.audioHandler.publicarEstadoDeVideo(sonando: sonando);
     widget.audioHandler.onVideoPlay = _onlineVideoProvider.reanudar;
     widget.audioHandler.onVideoPause = _onlineVideoProvider.pausarSoloElVideo;
     widget.audioHandler.onVideoNext = _onlineVideoProvider.siguiente;

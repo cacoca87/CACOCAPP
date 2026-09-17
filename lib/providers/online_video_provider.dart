@@ -157,19 +157,38 @@ class OnlineVideoProvider extends ChangeNotifier {
   void _escucharFinDelVideo() {
     _suscripcion?.cancel();
     _suscripcion = _controller?.stream.listen((valor) {
+      final estado = valor.playerState;
       // Se anota el estado para saber, al bloquear la pantalla, si el
       // video estaba sonando o si lo habías pausado vos.
-      _ultimoEstado = valor.playerState;
+      final cambio = estado != _ultimoEstado;
+      _ultimoEstado = estado;
 
-      if (valor.playerState != PlayerState.ended) return;
+      // La notificación tiene que decir lo mismo que el video. Sin
+      // esto, pausarlo con los controles de YouTube dejaba la
+      // notificación diciendo "reproduciendo".
+      if (cambio && estado == PlayerState.playing) {
+        onEstadoDeVideo?.call(true);
+      } else if (cambio && estado == PlayerState.paused) {
+        onEstadoDeVideo?.call(false);
+      }
+
+      if (estado != PlayerState.ended) return;
       // `ended` puede repetirse; sin esta guarda un solo final podría
       // saltearse varios videos de un tirón.
       if (_videoYaTerminado == _videoId) return;
       _videoYaTerminado = _videoId;
+
+      // Se terminó y no hay nada más: se saca la notificación. Si no,
+      // quedaba diciendo "reproduciendo" para siempre, con el servicio
+      // en primer plano y el bloqueo de energía tomados al pedo,
+      // gastando batería hasta que cerraras la app.
+      if (!haySiguiente) {
+        onTerminaVideo?.call();
+        return;
+      }
       siguiente(conservarTamano: true);
     });
   }
-
   // ===== Seguir sonando con la pantalla bloqueada =====
   //
   // El reproductor de YouTube vive dentro de una vista web. Cuando se
@@ -208,20 +227,28 @@ class OnlineVideoProvider extends ChangeNotifier {
     var intentos = 0;
     _insistirEnSonar =
         Timer.periodic(const Duration(milliseconds: 900), (temporizador) {
-      if (_controller == null || intentos++ >= _maxIntentos) {
-        temporizador.cancel();
-        _insistirEnSonar = null;
+      // Se corta si el video ya terminó: si no, insistir con "play"
+      // sobre un video terminado lo arrancaba de nuevo desde el
+      // principio, con la pantalla bloqueada y sin que nadie lo pidiera.
+      if (_controller == null ||
+          _ultimoEstado == PlayerState.ended ||
+          intentos++ >= _maxIntentos) {
+        dejarDeInsistir();
         return;
       }
       _controller?.playVideo();
     });
   }
 
-  /// La app volvió al frente: ya no hace falta insistir.
-  void alVolverAlFrente() {
+  /// La app volvió al frente, o alguien pidió expresamente que se
+  /// pause: en los dos casos hay que dejar de insistir.
+  void dejarDeInsistir() {
     _insistirEnSonar?.cancel();
     _insistirEnSonar = null;
   }
+
+  /// La app volvió al frente: ya no hace falta insistir.
+  void alVolverAlFrente() => dejarDeInsistir();
 
   /// Pasa al siguiente video de la lista de resultados, si hay.
   ///
@@ -258,6 +285,10 @@ class OnlineVideoProvider extends ChangeNotifier {
   /// bloquear la pantalla -- aunque la vista web del video siga viva.
   void Function(String id, String titulo, String autor)? onEmpiezaVideo;
   VoidCallback? onTerminaVideo;
+
+  /// Avisa si el video pasó a sonar o a estar en pausa, para que la
+  /// notificación diga lo mismo que la pantalla.
+  void Function(bool sonando)? onEstadoDeVideo;
 
   /// Vuelve a poner en marcha el video. La usa la notificación.
   void reanudar() => _controller?.playVideo();
@@ -298,9 +329,16 @@ class OnlineVideoProvider extends ChangeNotifier {
   /// otra reproducción y cuando vence el temporizador de apagado.
   /// Pausa el video SIN sacar su notificacion. La usa el boton de
   /// pausa de la propia notificacion.
-  void pausarSoloElVideo() => _controller?.pauseVideo();
+  void pausarSoloElVideo() {
+    // Primero se deja de insistir: si no, el temporizador de "seguir
+    // sonando con la pantalla bloqueada" lo reanudaba al segundo y el
+    // boton de pausa de la notificacion no servia de nada.
+    dejarDeInsistir();
+    _controller?.pauseVideo();
+  }
 
   void pausar() {
+    dejarDeInsistir();
     // El motor de audio toma el control de la notificacion: si la
     // sesion del video quedara puesta, taparia a la cancion que
     // empieza a sonar.
