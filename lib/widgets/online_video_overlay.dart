@@ -92,6 +92,30 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
     return _futuroLetra!;
   }
 
+  /// Por dónde va el video, como un `Stream<Duration>` ESTABLE.
+  ///
+  /// Se guarda en vez de armarlo dentro del `build` porque
+  /// `videoStateStream.map(...)` devuelve un flujo NUEVO cada vez que
+  /// se lo pide. Quien lo escucha compara si le cambiaron el flujo para
+  /// saber si tiene que volver a engancharse: con uno nuevo en cada
+  /// refresco, la letra se desenganchaba y se volvía a enganchar todo
+  /// el tiempo, por nada.
+  ///
+  /// El controlador se reutiliza entre videos (se le pide que cargue
+  /// otro, no se crea uno nuevo), así que este flujo sirve igual para
+  /// todos: lo único que hay que vigilar es que el controlador sea el
+  /// mismo de antes.
+  YoutubePlayerController? _controladorDeLaPosicion;
+  Stream<Duration>? _posicionDelVideo;
+
+  Stream<Duration> _posicionDe(YoutubePlayerController controller) {
+    if (_posicionDelVideo == null || _controladorDeLaPosicion != controller) {
+      _controladorDeLaPosicion = controller;
+      _posicionDelVideo = controller.videoStateStream.map((e) => e.position);
+    }
+    return _posicionDelVideo!;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<OnlineVideoProvider>();
@@ -258,6 +282,7 @@ class _OnlineVideoOverlayState extends State<OnlineVideoOverlay> {
                   child: _PanelLetra(
                     futuro: _letraDe(provider),
                     controller: controller,
+                    posicion: _posicionDe(controller),
                     videoId: provider.videoId,
                   ),
                 ),
@@ -425,12 +450,18 @@ class _PanelLetra extends StatelessWidget {
   final Future<Lyrics> futuro;
   final YoutubePlayerController controller;
 
+  /// Por dónde va el video. Entra por acá y no se arma adentro para
+  /// que sea siempre el MISMO flujo entre refrescos: ver
+  /// `_OnlineVideoOverlayState._posicionDe`.
+  final Stream<Duration> posicion;
+
   /// Con qué nombre se recuerda el ajuste de desfase de ESTE video.
   final String? videoId;
 
   const _PanelLetra({
     required this.futuro,
     required this.controller,
+    required this.posicion,
     required this.videoId,
   });
 
@@ -467,7 +498,7 @@ class _PanelLetra extends StatelessWidget {
         if (letra.estaSincronizada) {
           return LetraSincronizada(
             lineas: letra.lineas!,
-            posicion: controller.videoStateStream.map((e) => e.position),
+            posicion: posicion,
             onTocarLinea: (tiempo) => controller.seekTo(
               seconds: tiempo.inMilliseconds / 1000,
               allowSeekAhead: true,

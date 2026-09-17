@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -73,6 +74,7 @@ class _LetraSincronizadaState extends State<LetraSincronizada> {
   void initState() {
     super.initState();
     _cargarAjuste();
+    _escucharPosicion();
   }
 
   @override
@@ -82,8 +84,14 @@ class _LetraSincronizadaState extends State<LetraSincronizada> {
     if (oldWidget.claveDeAjuste != widget.claveDeAjuste) {
       _ajuste = Duration.zero;
       _ultimaLineaResaltada = -1;
+      _indiceActual = -1;
+      _ultimaPosicion = Duration.zero;
       _cargarAjuste();
     }
+    // Si cambió de dónde sale la posición (otra canción, otro video),
+    // hay que escuchar la nueva: con la suscripción vieja la letra se
+    // quedaba quieta para siempre.
+    if (oldWidget.posicion != widget.posicion) _escucharPosicion();
   }
 
   String? get _claveGuardada {
@@ -126,12 +134,49 @@ class _LetraSincronizadaState extends State<LetraSincronizada> {
       _ajuste = nuevo;
       // Para que el próximo cambio de línea vuelva a centrar la vista.
       _ultimaLineaResaltada = -1;
+      // El renglón que toca cambia en el acto al mover el desfase: no
+      // se espera al próximo aviso de la reproducción, que puede tardar
+      // un quinto de segundo y hace sentir el botón lento.
+      _indiceActual = _indiceDe(_ultimaPosicion);
     });
+    _irALinea(_indiceActual);
     _guardarAjuste();
+  }
+
+  // ===== Por dónde va la reproducción =====
+  //
+  // Se escucha la posición con una suscripción propia y se redibuja
+  // SOLO cuando cambia el renglón, en vez de envolver la letra en un
+  // `StreamBuilder`.
+  //
+  // El motivo: la posición llega unas cinco veces por segundo, y con el
+  // `StreamBuilder` cada uno de esos avisos rehacía la lista entera
+  // --los diez renglones visibles, cada uno con su animación de tamaño
+  // y su detector de toques-- para terminar pintando exactamente lo
+  // mismo. Un renglón dura varios segundos: de cada veinte o treinta
+  // redibujados, uno solo cambiaba algo. Encima se agendaba un trabajo
+  // para después de cada cuadro, también cinco veces por segundo.
+  //
+  // Es lo más caro que hacía la app mientras estás leyendo la letra, y
+  // se nota justo ahí: con el video de YouTube andando al lado.
+  StreamSubscription<Duration>? _suscripcion;
+  Duration _ultimaPosicion = Duration.zero;
+  int _indiceActual = -1;
+
+  void _escucharPosicion() {
+    _suscripcion?.cancel();
+    _suscripcion = widget.posicion.listen((posicion) {
+      _ultimaPosicion = posicion;
+      final indice = _indiceDe(posicion);
+      if (indice == _indiceActual) return;
+      if (mounted) setState(() => _indiceActual = indice);
+      _irALinea(indice);
+    });
   }
 
   @override
   void dispose() {
+    _suscripcion?.cancel();
     _scroll.dispose();
     super.dispose();
   }
@@ -170,13 +215,9 @@ class _LetraSincronizadaState extends State<LetraSincronizada> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        StreamBuilder<Duration>(
-          stream: widget.posicion,
-          builder: (context, snapshot) {
-            final indiceActual = _indiceDe(snapshot.data ?? Duration.zero);
-
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _irALinea(indiceActual));
+        Builder(
+          builder: (context) {
+            final indiceActual = _indiceActual;
 
             return NotificationListener<ScrollNotification>(
               onNotification: (aviso) {
