@@ -188,6 +188,23 @@ class _CACOCAPPState extends State<CACOCAPP> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // SIN ESTA LÍNEA, `didChangeAppLifecycleState` (acá abajo) no se
+    // llama NUNCA. Estaba el `removeObserver` en `dispose` pero faltaba
+    // el `addObserver`, así que todo lo que cuelga de ahí no pasaba:
+    //
+    //  - no se guardaba en qué minuto iba la canción al salir de la
+    //    app, y al volver a abrirla siempre empezaba de cero;
+    //  - al desbloquear la pantalla no corría `onAppResumed()`, que es
+    //    lo que revive la reproducción si Android cortó la red o el
+    //    motor de audio mientras la pantalla estaba apagada;
+    //  - al video de YouTube no se le insistía para que siguiera
+    //    sonando al irse al fondo, que es justo para lo que se escribió
+    //    todo ese mecanismo.
+    //
+    // Las cuatro pantallas de juegos sí lo hacen bien; acá se había
+    // quedado a medias.
+    WidgetsBinding.instance.addObserver(this);
+
     _playerProvider = PlayerProvider(
       widget.audioHandler,
       onPausarVideoOnline: _onlineVideoProvider.pausar,

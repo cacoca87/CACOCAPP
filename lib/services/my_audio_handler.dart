@@ -399,7 +399,17 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     }
   }
 
-  Future<bool> _ensureAlive({bool autoplay = true}) async {
+  /// Vuelve a armar la fuente de audio si se perdió, y devuelve `true`
+  /// si tuvo que hacerlo.
+  ///
+  /// [desde] es en qué momento de la canción arrancar. Solo lo manda
+  /// quien sabe a dónde quiere ir — hoy, [seek]. Sin esto, mover la
+  /// barra de progreso después de que el motor se cayó NO llevaba a
+  /// donde pedía el dedo: se reconstruía en la posición vieja y el
+  /// `seek` se descartaba con el `return`, así que la canción volvía
+  /// sola al minuto en el que estaba antes. Lo mismo pasaba con el
+  /// doble toque de ±10 s y con tocar un renglón de la letra.
+  Future<bool> _ensureAlive({bool autoplay = true, Duration? desde}) async {
     if (_rebuilding || _recovering) return true;
     final songs = _lastSongs;
     if (songs == null || songs.isEmpty) return false;
@@ -413,8 +423,10 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
     _rebuilding = true;
     try {
       final resumeIndex = _lastKnownIndex.clamp(0, songs.length - 1);
-      final resumeAt =
-          st == ProcessingState.completed ? Duration.zero : _lastKnownPosition;
+      final resumeAt = desde ??
+          (st == ProcessingState.completed
+              ? Duration.zero
+              : _lastKnownPosition);
       await _buildSource(
         songs,
         initialIndex: resumeIndex,
@@ -481,7 +493,8 @@ class MyAudioHandler extends BaseAudioHandler with SeekHandler, QueueHandler {
 
   @override
   Future<void> seek(Duration position) async {
-    if (await _ensureAlive(autoplay: _wantsToPlay)) return;
+    _lastKnownPosition = position;
+    if (await _ensureAlive(autoplay: _wantsToPlay, desde: position)) return;
     await player.seek(position);
   }
 

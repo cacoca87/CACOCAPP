@@ -130,30 +130,50 @@ class PlayerProvider extends ChangeNotifier {
 
     audioHandler.mediaItem.listen((item) {
       if (item != null) {
-        final song = _queue.firstWhere(
-          (s) => s.id == item.id,
-          // El indice se acota a la cola: si quedo apuntando mas alla
-          // del final (una cola nueva mas corta que la anterior), esto
-          // era un RangeError en medio de un evento de audio.
-          orElse: () => _queue.isNotEmpty
-              ? _queue[_currentIndex.clamp(0, _queue.length - 1)]
-              : Song(
-                  id: item.id,
-                  title: item.title,
-                  artist: item.artist ?? '',
-                  album: item.album ?? '',
-                  url: '',
-                  coverUrl: item.artUri?.toString() ?? '',
-                ),
-        );
+        // Se busca por posición y no solo por contenido porque hacen
+        // falta las dos cosas: cuál es la canción Y en qué lugar de la
+        // cola está.
+        final indice = _queue.indexWhere((s) => s.id == item.id);
+        final song = indice != -1
+            ? _queue[indice]
+            // El indice se acota a la cola: si quedo apuntando mas alla
+            // del final (una cola nueva mas corta que la anterior), esto
+            // era un RangeError en medio de un evento de audio.
+            : (_queue.isNotEmpty
+                ? _queue[_currentIndex.clamp(0, _queue.length - 1)]
+                : Song(
+                    id: item.id,
+                    title: item.title,
+                    artist: item.artist ?? '',
+                    album: item.album ?? '',
+                    url: '',
+                    coverUrl: item.artUri?.toString() ?? '',
+                  ));
+
+        var hayQueAvisar = false;
+
+        // El índice solo se fijaba al armar la cola, así que en cuanto
+        // la música pasaba sola a la siguiente canción quedaba viejo.
+        // La pantalla "Cola de reproducción" lo usa para saber cuál
+        // resaltar: te marcaba en ámbar, con el ícono de ecualizador,
+        // una canción que había terminado hace rato, y al abrirla te
+        // dejaba parado en ese lugar de la lista en vez de en la que
+        // estaba sonando.
+        if (indice != -1 && indice != _currentIndex) {
+          _currentIndex = indice;
+          hayQueAvisar = true;
+        }
+
         // Mismo criterio: el `mediaItem` se emite varias veces por
         // canción (al armar la fuente, al llegar el índice, al conocerse
         // la duración, al aparecer la carátula) y casi siempre es la
         // MISMA canción. Avisar solo cuando de verdad cambió.
         if (song.id.isNotEmpty && song.id != _currentSong?.id) {
           _currentSong = song;
-          notifyListeners();
+          hayQueAvisar = true;
         }
+
+        if (hayQueAvisar) notifyListeners();
       }
     });
     _cargarHistorial();
