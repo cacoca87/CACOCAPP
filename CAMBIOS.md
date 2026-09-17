@@ -4039,3 +4039,76 @@ se deslizaba. En una ventana achicada a lo alto eso no entra. Ahora se
 desliza, así que desbordarse pasa a ser imposible.
 
 `flutter analyze` limpio, **498 tests** en verde y APK de 40,5 MB.
+
+## 98. Vueltas 113 a 116: la carátula, un botón muerto y lo que no se leía
+
+### Tests para la carátula, que es lo que más se dibuja
+
+Una por cada fila de la lista, una en cada tarjeta de los carruseles,
+una en el mini reproductor y una grande en el reproductor. Ahí se
+arreglaron varias cosas de rendimiento a ciegas y ninguna estaba
+fijada.
+
+El test que más importa: que se pida la imagen dando **solo el ancho**
+y no el alto. Dando los dos, Flutter descomprime a esas medidas exactas
+y deja de respetar la proporción: una tapa rectangular --las hay, sobre
+todo las que vienen dentro del MP3-- se aplastaba, y el recorte ya no
+podía arreglarlo porque recibía la imagen deformada.
+
+Comprobado que el test lo agarra: volviendo a poner el alto, falla.
+
+### Un botón muerto en la pantalla de bloqueo
+
+La notificación del video mostraba **siempre** el botón de "siguiente",
+incluso cuando el video que sonaba era el último resultado de la
+búsqueda. Ahí no hacía nada.
+
+Es el peor lugar posible para un botón muerto: en la pantalla de
+bloqueo no hay forma de entender por qué no pasa nada. Y dentro de la
+app ese mismo botón ya se apagaba solo; era la notificación la que no
+se enteraba.
+
+### Dos decisiones sin explicación, ahora explicadas
+
+Ninguna de las dos se cambió. Las dos son de las que alguien mira, las
+encuentra sospechosas y las "arregla" a ciegas, rompiendo algo que
+andaba.
+
+**El motor de dibujo nuevo de Flutter está apagado**, y no se sabía por
+qué: esa línea viene de antes de que el proyecto tuviera control de
+versiones. El motivo más probable es el reproductor de YouTube --una
+vista nativa metida dentro de Flutter, combinación que dio problemas
+con ese motor en varias versiones--. No se tocó porque la diferencia
+solo se ve en un celular de verdad, y cambiarlo a ciegas se arriesga
+justo a romper el video.
+
+**La columna `DATA` figura como obsoleta y se usa igual.** Desde Android
+11 una app con permiso de audio sí puede abrir la música por su ruta
+--lo prohibido fue el acceso suelto a todo el almacenamiento--. Y la
+app usa esa ruta para tres cosas, no solo para reproducir: decidir si
+el archivo es música mirando su carpeta, leerle la carátula de adentro
+del MP3, y sacarle el título real. Cambiarla no arregla nada y rompe
+las tres.
+
+### Los renglones de la letra no se leían al sol
+
+Esto no es una opinión: hay una cuenta estándar para medir si un texto
+se lee. El gris del texto terciario daba **3,3** contra el fondo, y el
+mínimo para leerse cómodo es **4,5**.
+
+Y no es un detalle de manual. Ese gris pinta los renglones de la letra
+que **todavía no suenan**, que son justo los que se leen para ir
+siguiendo la canción.
+
+Es de esos colores que se eligen mirando la pantalla de la
+computadora, con luz de interior y a cincuenta centímetros. El celular
+se usa en la calle, al sol y con el brillo bajo para ahorrar batería.
+
+El valor nuevo da 5,1 sobre el fondo y 4,6 sobre una tarjeta, y sigue
+siendo un gris apagado: la diferencia se nota leyendo, no mirando.
+
+Quedaron **doce tests que miden la paleta entera**: cada color de texto
+contra el fondo sobre el que se dibuja de verdad. Si alguien toca un
+color y lo deja por debajo del mínimo, salta.
+
+`flutter analyze` limpio, **518 tests** en verde y APK de 40,5 MB.
