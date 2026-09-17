@@ -564,14 +564,18 @@ class PlayerProvider extends ChangeNotifier {
     _persistState();
   }
 
+  /// 0 = sin repetir, 1 = repetir todo, 2 = repetir esta canción. La
+  /// traducción vive acá y no suelta dentro de [toggleRepeat] porque
+  /// [restoreSession] también la necesita.
+  AudioServiceRepeatMode get _modoDeRepeticion => switch (_repeatMode) {
+        1 => AudioServiceRepeatMode.all,
+        2 => AudioServiceRepeatMode.one,
+        _ => AudioServiceRepeatMode.none,
+      };
+
   void toggleRepeat() {
     _repeatMode = (_repeatMode + 1) % 3;
-    final mode = _repeatMode == 0
-        ? AudioServiceRepeatMode.none
-        : _repeatMode == 1
-            ? AudioServiceRepeatMode.all
-            : AudioServiceRepeatMode.one;
-    audioHandler.setRepeatMode(mode);
+    audioHandler.setRepeatMode(_modoDeRepeticion);
     notifyListeners();
     _persistState();
   }
@@ -610,12 +614,21 @@ class PlayerProvider extends ChangeNotifier {
   // ========== PERSISTENCIA ==========
   static const String _stateKey = 'player_state_v2';
 
+  /// En qué minuto de la canción se quedó. Era un texto suelto escrito
+  /// dos veces a mano (donde se guarda y donde se lee): una letra
+  /// distinta en cualquiera de las dos y la app volvía a empezar la
+  /// canción desde cero sin que nada avisara.
+  static const String _posicionKey = 'last_position';
+
   Future<void> _persistState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final state = {
         'currentSongId': _currentSong?.id ?? '',
-        'currentIndex': _currentIndex,
+        // Acá se guardaba también `currentIndex`, y no lo leía nadie:
+        // al restaurar, la posición en la cola se vuelve a buscar por
+        // el id de la canción, que es lo correcto porque la biblioteca
+        // pudo haber cambiado de tamaño mientras tanto.
         'shuffle': _isShuffleEnabled,
         'repeat': _repeatMode,
       };
@@ -637,7 +650,7 @@ class PlayerProvider extends ChangeNotifier {
 
         final songIndex = allSongs.indexWhere((s) => s.id == songId);
         if (songIndex != -1 && allSongs.isNotEmpty) {
-          final positionMs = prefs.getInt('last_position') ?? 0;
+          final positionMs = prefs.getInt(_posicionKey) ?? 0;
           await setQueue(
             allSongs,
             initialIndex: songIndex,
@@ -647,6 +660,22 @@ class PlayerProvider extends ChangeNotifier {
         } else if (allSongs.isNotEmpty) {
           await setQueue(allSongs, initialIndex: 0, autoplay: false);
         }
+
+        // Aleatorio y repetición hay que APLICARLOS al motor de audio,
+        // no solo recordarlos acá.
+        //
+        // Antes solo se guardaban en estas dos variables, que son las
+        // que pintan los botones. Así que al reabrir la app el botón de
+        // aleatorio salía encendido en ámbar y la música sonaba en
+        // orden igual; y el de repetir decía "repetir esta canción" y
+        // la canción no se repetía. Para que empezara a obedecer había
+        // que tocar el botón dos veces: una para apagar lo que en
+        // realidad nunca estuvo puesto, y otra para volver a ponerlo.
+        //
+        // Va después de armar la cola: aplicarlo sobre un reproductor
+        // que todavía no tiene canciones no sirve de nada.
+        await audioHandler.setShuffle(_isShuffleEnabled);
+        await audioHandler.setRepeatMode(_modoDeRepeticion);
       } else if (allSongs.isNotEmpty) {
         await setQueue(allSongs, initialIndex: 0, autoplay: false);
       }
@@ -659,7 +688,7 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> saveSession() async {
     final prefs = await SharedPreferences.getInstance();
     final position = audioHandler.player.position;
-    await prefs.setInt('last_position', position.inMilliseconds);
+    await prefs.setInt(_posicionKey, position.inMilliseconds);
     await _persistState();
   }
 }
