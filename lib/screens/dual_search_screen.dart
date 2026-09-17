@@ -235,105 +235,112 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                           itemBuilder: (context, index) {
                             final video = _resultados[index];
 
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              decoration: BoxDecoration(
+                            // El fondo redondeado va en el propio
+                            // ListTile: envuelto en un Container con
+                            // color, el destello al tocar queda tapado.
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Material(
                                 color: AppTheme.surface,
                                 borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 4),
-                                leading: Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        video.thumbnailUrl,
-                                        width: 75,
-                                        height: 50,
-                                        // La miniatura que da YouTube es de
-                                        // alta resolucion: sin esto se
-                                        // decodificaba entera en memoria para
-                                        // dibujarla en 75x50 px, una por fila.
-                                        cacheWidth: (75 *
-                                                MediaQuery.devicePixelRatioOf(
-                                                    context))
-                                            .round(),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (c, e, s) => Container(
+                                clipBehavior: Clip.antiAlias,
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  leading: Stack(
+                                    alignment: Alignment.bottomRight,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Image.network(
+                                          video.thumbnailUrl,
                                           width: 75,
                                           height: 50,
-                                          color: AppTheme.surfaceLight,
-                                          child: const Icon(Icons.music_video,
-                                              color: AppTheme.mutedInk),
+                                          // La miniatura que da YouTube es de
+                                          // alta resolucion: sin esto se
+                                          // decodificaba entera en memoria para
+                                          // dibujarla en 75x50 px, una por fila.
+                                          cacheWidth: (75 *
+                                                  MediaQuery.devicePixelRatioOf(
+                                                      context))
+                                              .round(),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (c, e, s) => Container(
+                                            width: 75,
+                                            height: 50,
+                                            color: AppTheme.surfaceLight,
+                                            child: const Icon(Icons.music_video,
+                                                color: AppTheme.mutedInk),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 4, vertical: 2),
-                                      color: Colors.black87,
-                                      child: Text(
-                                        video.lengthSeconds,
-                                        style: const TextStyle(
-                                            color: Colors.white, fontSize: 10),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 2),
+                                        color: Colors.black87,
+                                        child: Text(
+                                          video.lengthSeconds,
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                title: Text(
-                                  video.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTheme.body.copyWith(
-                                    color: AppTheme.paper,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                                    ],
                                   ),
+                                  title: Text(
+                                    video.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTheme.body.copyWith(
+                                      color: AppTheme.paper,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    "${video.author} • ${video.viewCount}",
+                                    style:
+                                        AppTheme.small.copyWith(fontSize: 11),
+                                  ),
+                                  trailing: const Icon(
+                                      Icons.play_circle_fill_rounded,
+                                      color: AppTheme.amber,
+                                      size: 28),
+                                  // El video se pone a sonar en el overlay persistente
+                                  // (OnlineVideoProvider) -- NO se navega a una pantalla
+                                  // nueva, así el video sobrevive si después tocás
+                                  // "atrás" o cambiás de sección (se minimiza en vez de
+                                  // destruirse).
+                                  onTap: () {
+                                    // Sin esto, el campo de búsqueda conserva el foco
+                                    // mientras mirás el video, y Android deja flotando
+                                    // el manipulador del cursor: una "gota" del color
+                                    // primario (ámbar) dibujada POR ENCIMA del video,
+                                    // porque vive en la capa de superposición de la app.
+                                    FocusScope.of(context).unfocus();
+                                    // Se pasa la lista entera para que, al terminar
+                                    // este video, siga solo con el siguiente.
+                                    context
+                                        .read<OnlineVideoProvider>()
+                                        .reproducir(
+                                          videoId: video.videoId,
+                                          titulo: video.title,
+                                          autor: video.author,
+                                          duracionSegundos:
+                                              video.lengthInSeconds,
+                                          cola: _resultados
+                                              .map((r) => VideoEnCola(
+                                                    videoId: r.videoId,
+                                                    titulo: r.title,
+                                                    autor: r.author,
+                                                    duracionSegundos:
+                                                        r.lengthInSeconds,
+                                                  ))
+                                              .toList(),
+                                          indice: index,
+                                        );
+                                  },
                                 ),
-                                subtitle: Text(
-                                  "${video.author} • ${video.viewCount}",
-                                  style: AppTheme.small.copyWith(fontSize: 11),
-                                ),
-                                trailing: const Icon(
-                                    Icons.play_circle_fill_rounded,
-                                    color: AppTheme.amber,
-                                    size: 28),
-                                // El video se pone a sonar en el overlay persistente
-                                // (OnlineVideoProvider) -- NO se navega a una pantalla
-                                // nueva, así el video sobrevive si después tocás
-                                // "atrás" o cambiás de sección (se minimiza en vez de
-                                // destruirse).
-                                onTap: () {
-                                  // Sin esto, el campo de búsqueda conserva el foco
-                                  // mientras mirás el video, y Android deja flotando
-                                  // el manipulador del cursor: una "gota" del color
-                                  // primario (ámbar) dibujada POR ENCIMA del video,
-                                  // porque vive en la capa de superposición de la app.
-                                  FocusScope.of(context).unfocus();
-                                  // Se pasa la lista entera para que, al terminar
-                                  // este video, siga solo con el siguiente.
-                                  context
-                                      .read<OnlineVideoProvider>()
-                                      .reproducir(
-                                        videoId: video.videoId,
-                                        titulo: video.title,
-                                        autor: video.author,
-                                        duracionSegundos: video.lengthInSeconds,
-                                        cola: _resultados
-                                            .map((r) => VideoEnCola(
-                                                  videoId: r.videoId,
-                                                  titulo: r.title,
-                                                  autor: r.author,
-                                                  duracionSegundos:
-                                                      r.lengthInSeconds,
-                                                ))
-                                            .toList(),
-                                        indice: index,
-                                      );
-                                },
                               ),
                             );
                           },

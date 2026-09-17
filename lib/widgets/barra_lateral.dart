@@ -49,9 +49,18 @@ class BarraLateral extends StatelessWidget {
                     color: AppTheme.ink, size: 18),
               ),
               const SizedBox(width: 10),
-              Text("CACOCAPP",
-                  style: AppTheme.wordmark
-                      .copyWith(fontSize: 18, letterSpacing: 0.4)),
+              // El nombre de la app también tiene que entrar al lado de
+              // su ícono. Con la letra del sistema al doble, "CACOCAPP"
+              // en 18 puntos se pasa 24 píxeles del ancho de la barra,
+              // que es fijo. Se arregló antes lo mismo en las filas del
+              // menú de abajo, y esta fila se quedó sin arreglar.
+              Expanded(
+                child: Text("CACOCAPP",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.wordmark
+                        .copyWith(fontSize: 18, letterSpacing: 0.4)),
+              ),
             ],
           ),
           const SizedBox(height: 28),
@@ -120,27 +129,37 @@ class BarraLateral extends StatelessWidget {
               // que mantener apretado "Recientes" abria un menu cuyas
               // dos opciones no hacian absolutamente nada.
               final esProtegida = nombresReservadosDeBiblioteca.contains(bib);
-              return ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  bib,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.body.copyWith(
-                    fontSize: 14,
-                    color: seleccionada ? AppTheme.amber : AppTheme.mutedInk,
-                    fontWeight:
-                        seleccionada ? FontWeight.w700 : FontWeight.w400,
+              // `Material` transparente alrededor: sin él, el destello
+              // al tocar la fila es INVISIBLE. El ListTile pinta su
+              // fondo y su destello sobre el Material más cercano, y
+              // acá el más cercano queda TAPADO por el color de fondo
+              // de la barra. Flutter lo avisa, pero solo se ve al
+              // correr un test de pantalla: en el celular la fila
+              // responde igual, solo que se siente muerta al tocarla.
+              return Material(
+                type: MaterialType.transparency,
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    bib,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.body.copyWith(
+                      fontSize: 14,
+                      color: seleccionada ? AppTheme.amber : AppTheme.mutedInk,
+                      fontWeight:
+                          seleccionada ? FontWeight.w700 : FontWeight.w400,
+                    ),
                   ),
+                  onTap: () {
+                    onSeleccionarBiblioteca(bib);
+                    if (esDrawer) Navigator.pop(context);
+                  },
+                  onLongPress: (esProtegida || onEliminarBiblioteca == null)
+                      ? null
+                      : () => onEliminarBiblioteca!(bib),
                 ),
-                onTap: () {
-                  onSeleccionarBiblioteca(bib);
-                  if (esDrawer) Navigator.pop(context);
-                },
-                onLongPress: (esProtegida || onEliminarBiblioteca == null)
-                    ? null
-                    : () => onEliminarBiblioteca!(bib),
               );
             },
           ),

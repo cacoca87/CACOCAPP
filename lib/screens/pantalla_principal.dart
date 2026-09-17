@@ -1006,93 +1006,109 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               player.currentSong?.id == cancion.id;
                           final descargando = player.isDownloading(cancion.id);
 
-                          final fila = Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
+                          // El color de "esta es la que suena" va en un
+                          // `Material` y no en un `Container`.
+                          //
+                          // Envuelto en algo con color, el destello al
+                          // tocar la fila queda TAPADO: el ListTile lo
+                          // pinta sobre el `Material` más cercano, que
+                          // quedaba por debajo. La fila respondía igual,
+                          // pero se sentía muerta al tocarla, que en una
+                          // lista de cientos de canciones es lo que más
+                          // se toca de toda la app.
+                          //
+                          // Flutter avisa de esto, pero el aviso solo
+                          // aparece al correr un test de pantalla. Se
+                          // encontró cuando se escribieron los primeros.
+                          final fila = Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Material(
                               color: estaSonando
                                   ? AppTheme.surfaceLight
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: ListTile(
-                              dense: esPantallaPequena,
-                              onTap: () => player.playSong(
-                                  cancion, cancionesFiltradas, index),
-                              leading: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  SongCover(
-                                    title: cancion.title,
-                                    artist: cancion.artist,
-                                    url: cancion.url,
-                                    coverUrlDirecto: cancion.coverUrl,
-                                    size: esPantallaPequena ? 44 : 52,
-                                    borderRadius: BorderRadius.circular(6),
-                                    showShadow: true,
-                                  ),
-                                  if (descargando)
-                                    Positioned.fill(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.black
-                                              .withValues(alpha: 0.55),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: const Center(
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: AppTheme.primary,
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                dense: esPantallaPequena,
+                                onTap: () => player.playSong(
+                                    cancion, cancionesFiltradas, index),
+                                leading: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    SongCover(
+                                      title: cancion.title,
+                                      artist: cancion.artist,
+                                      url: cancion.url,
+                                      coverUrlDirecto: cancion.coverUrl,
+                                      size: esPantallaPequena ? 44 : 52,
+                                      borderRadius: BorderRadius.circular(6),
+                                      showShadow: true,
+                                    ),
+                                    if (descargando)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.55),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: const Center(
+                                            child: SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: AppTheme.primary,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  if (estaSonando && player.isPlaying)
-                                    Positioned(
-                                      right: -3,
-                                      bottom: -3,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: const BoxDecoration(
-                                          color: AppTheme.ink,
-                                          shape: BoxShape.circle,
+                                    if (estaSonando && player.isPlaying)
+                                      Positioned(
+                                        right: -3,
+                                        bottom: -3,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: const BoxDecoration(
+                                            color: AppTheme.ink,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const IndicadorSonando(),
                                         ),
-                                        child: const IndicadorSonando(),
                                       ),
-                                    ),
-                                ],
-                              ),
-                              title: Text(
-                                cancion.title,
-                                // Sin limite de renglones, un titulo
-                                // largo partia la fila en dos y la lista
-                                // quedaba despareja.
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: estaSonando
-                                      ? AppTheme.amber
-                                      : AppTheme.paper,
-                                  fontSize: esPantallaPequena ? 13 : 15,
-                                  fontWeight: estaSonando
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
+                                  ],
                                 ),
-                              ),
-                              subtitle: Text(
-                                "${cancion.artist} • ${cancion.album}",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTheme.small.copyWith(
-                                    fontSize: esPantallaPequena ? 11 : 12),
-                              ),
-                              trailing: SongOptionsMenu(
-                                cancion: cancion,
-                                bibliotecaSeleccionada: bibliotecaSeleccionada,
+                                title: Text(
+                                  cancion.title,
+                                  // Sin limite de renglones, un titulo
+                                  // largo partia la fila en dos y la lista
+                                  // quedaba despareja.
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: estaSonando
+                                        ? AppTheme.amber
+                                        : AppTheme.paper,
+                                    fontSize: esPantallaPequena ? 13 : 15,
+                                    fontWeight: estaSonando
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "${cancion.artist} • ${cancion.album}",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTheme.small.copyWith(
+                                      fontSize: esPantallaPequena ? 11 : 12),
+                                ),
+                                trailing: SongOptionsMenu(
+                                  cancion: cancion,
+                                  bibliotecaSeleccionada:
+                                      bibliotecaSeleccionada,
+                                ),
                               ),
                             ),
                           );

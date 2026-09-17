@@ -80,14 +80,36 @@ class CarruselCanciones extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SongCover(
-                            title: cancion.title,
-                            artist: cancion.artist,
-                            url: cancion.url,
-                            coverUrlDirecto: cancion.coverUrl,
-                            size: ancho,
-                            borderRadius: BorderRadius.circular(8),
-                            showShadow: true,
+                          // La tapa es FLEXIBLE: usa el alto que sobre
+                          // después del texto, y nunca más que su
+                          // propio ancho para seguir cuadrada.
+                          //
+                          // Reservar un alto fijo para el texto no
+                          // alcanzaba: las cuentas se hacen con una
+                          // letra y el celular dibuja con otra, así que
+                          // siempre quedaba algún caso por unos pocos
+                          // píxeles. Dejando que la tapa ceda espacio,
+                          // el desbordado es IMPOSIBLE por como está
+                          // armado, no por haber acertado el número.
+                          //
+                          // Es el mismo arreglo que ya usa la grilla de
+                          // Artistas y Álbumes, que nunca se desbordó.
+                          Flexible(
+                            child: LayoutBuilder(
+                              builder: (context, restricciones) {
+                                final lado =
+                                    restricciones.maxHeight.clamp(0.0, ancho);
+                                return SongCover(
+                                  title: cancion.title,
+                                  artist: cancion.artist,
+                                  url: cancion.url,
+                                  coverUrlDirecto: cancion.coverUrl,
+                                  size: lado,
+                                  borderRadius: BorderRadius.circular(8),
+                                  showShadow: true,
+                                );
+                              },
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(

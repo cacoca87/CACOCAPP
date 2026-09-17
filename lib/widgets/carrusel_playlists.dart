@@ -73,16 +73,25 @@ class CarruselPlaylists extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: ancho,
-                            height: ancho,
-                            decoration: AppTheme.gradientCard(
-                                AppTheme.gradientePara(playlist.name)),
-                            child: Center(
-                              child: Icon(
-                                Icons.playlist_play_rounded,
-                                size: esPantallaPequena ? 40 : 50,
-                                color: AppTheme.paper.withValues(alpha: 0.92),
+                          // Flexible + cuadrada, por el mismo motivo que
+                          // en `carrusel_canciones.dart`: la tapa cede
+                          // el espacio que necesite el texto, así el
+                          // desbordado es imposible por como está
+                          // armado y no por haber acertado un número.
+                          Flexible(
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: Container(
+                                decoration: AppTheme.gradientCard(
+                                    AppTheme.gradientePara(playlist.name)),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.playlist_play_rounded,
+                                    size: esPantallaPequena ? 40 : 50,
+                                    color:
+                                        AppTheme.paper.withValues(alpha: 0.92),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -98,6 +107,8 @@ class CarruselPlaylists extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(contarCanciones(playlist.songs.length),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: AppTheme.small),
                         ],
                       ),

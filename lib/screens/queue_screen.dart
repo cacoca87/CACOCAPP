@@ -73,9 +73,14 @@ class _QueueScreenState extends State<QueueScreen> {
                 final cancion = cola[index];
                 final esActual = index == indiceActual;
 
-                return Container(
-                  color: esActual ? AppTheme.surfaceRaised : Colors.transparent,
+                // El color de "esta es la que suena" va en el propio
+                // ListTile y no en un Container alrededor: envuelto, el
+                // destello al tocar la fila queda TAPADO y no se ve.
+                return Material(
+                  type: MaterialType.transparency,
                   child: ListTile(
+                    tileColor:
+                        esActual ? AppTheme.surfaceRaised : Colors.transparent,
                     leading: SongCover(
                       title: cancion.title,
                       artist: cancion.artist,
