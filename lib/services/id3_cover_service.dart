@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../utils/huella_de_texto.dart';
 import '../utils/id3_tags.dart';
 import '../utils/ruta_de_archivo.dart';
+import '../utils/tamano_etiqueta_id3.dart';
 import '../utils/una_sola_vez.dart';
 
 /// Extrae metadata REAL incrustada en el propio MP3 (tags ID3v2):
@@ -15,9 +16,15 @@ import '../utils/una_sola_vez.dart';
 /// tal como lo hace un reproductor profesional, sin necesitar servidor
 /// propio ni descargar el archivo completo.
 ///
-/// Solo pedimos los primeros ~512KB vía HTTP Range, donde normalmente
-/// viven los tags ID3v2 (van al inicio del archivo). R2/Cloudflare
-/// soporta peticiones por rango igual que cualquier bucket S3.
+/// No se descarga el archivo entero: los tags ID3v2 van al inicio, así
+/// que se piden solo los primeros bytes por HTTP Range. R2/Cloudflare
+/// soporta pedidos por rango igual que cualquier bucket S3.
+///
+/// Cuántos bytes NO es un número fijo. Se pide un pedazo chico y la
+/// propia etiqueta dice cuánto mide, así que solo se pide más si de
+/// verdad hace falta. Antes eran 512 KB de cada canción siempre --con
+/// 160 temas, ochenta megabytes de datos móviles para leer unos
+/// títulos--. Ver `utils/tamano_etiqueta_id3.dart`.
 ///
 /// Los tres comparten el mismo parseo -- así que si `SongCover` ya pidió
 /// la carátula de una canción, pedir después su álbum o su artista es
@@ -157,9 +164,9 @@ class Id3CoverService {
     return '${limpio}_${huellaCorta(url)}';
   }
 
-  /// Obtiene los bytes del MP3 (archivo local si es una canción
-  /// descargada, o los primeros ~512KB por red vía HTTP Range) — el
-  /// paso costoso que carátula, álbum y artista comparten.
+  /// Obtiene los bytes del MP3: el archivo entero si la canción ya está
+  /// en el celular, o solo el principio por red -- el paso costoso que
+  /// carátula, álbum y artista comparten.
   ///
   /// Devuelve tambien, por separado, si se pudo leer el archivo. La
   /// diferencia importa: "lo lei entero y no trae caratula" se puede
@@ -173,7 +180,7 @@ class Id3CoverService {
   /// Al abrir la app pasan dos cosas al mismo tiempo: la lista empieza a
   /// pedir la carátula de cada canción que se ve, y por detrás corre el
   /// repaso que completa el álbum y el artista de toda la biblioteca.
-  /// Las dos cosas necesitan exactamente los mismos 512 KB del mismo
+  /// Las dos cosas necesitan exactamente los mismos bytes del mismo
   /// MP3, y cada una los bajaba por su cuenta: el doble de datos
   /// móviles, por nada. Con decenas de canciones en pantalla eso son
   /// varios megas de más en el primer arranque.
@@ -202,19 +209,46 @@ class Id3CoverService {
         return (bytes: await archivoLocal.readAsBytes(), seLeyo: true);
       }
 
-      final response = await _client.get(Uri.parse(url), headers: {
-        'Range': 'bytes=0-524287'
-      }).timeout(const Duration(seconds: 8));
+      // SE PIDE UN PEDAZO CHICO PRIMERO, Y SOLO SE PIDE MÁS SI HACE
+      // FALTA.
+      //
+      // Antes se pedían 512 KB de cada canción, siempre. Es una apuesta
+      // a lo grande: una etiqueta sin carátula ocupa unos pocos
+      // kilobytes, y una con carátula normalmente entre 30 y 150. Con
+      // una biblioteca de 160 temas, eso son OCHENTA MEGABYTES de datos
+      // móviles la primera vez que se abre la app, para leer unos
+      // títulos.
+      //
+      // Y no hay que adivinar: la propia etiqueta empieza diciendo
+      // cuánto mide. Ver `utils/tamano_etiqueta_id3.dart`.
+      final primera = await _pedirPedazo(url, primerPedazoDeMp3);
+      if (primera == null) return (bytes: null, seLeyo: false);
 
-      // 200 = el servidor ignoró el Range y mandó todo igual (también
-      // sirve). 206 = sí respetó el rango (lo esperado).
-      if (response.statusCode != 200 && response.statusCode != 206) {
-        return (bytes: null, seLeyo: false);
+      if (alcanzaConLoQueSeBajo(primera, primera.length)) {
+        return (bytes: primera, seLeyo: true);
       }
-      return (bytes: response.bodyBytes, seLeyo: true);
+
+      // No entró: ahora sí se sabe cuánto pedir, exactamente.
+      final necesarios = tamanoDeLaEtiquetaId3(primera)!;
+      final completa = await _pedirPedazo(url, necesarios);
+      // Si el segundo pedido falla, se usa lo que ya se tenía: quizá
+      // alcance para el título y el artista aunque falte la carátula.
+      return (bytes: completa ?? primera, seLeyo: true);
     } catch (_) {
       return (bytes: null, seLeyo: false);
     }
+  }
+
+  /// Pide los primeros [cuantosBytes] del archivo.
+  Future<Uint8List?> _pedirPedazo(String url, int cuantosBytes) async {
+    final response = await _client.get(Uri.parse(url), headers: {
+      'Range': 'bytes=0-${cuantosBytes - 1}'
+    }).timeout(const Duration(seconds: 8));
+
+    // 200 = el servidor ignoró el Range y mandó todo igual (también
+    // sirve). 206 = sí respetó el rango (lo esperado).
+    if (response.statusCode != 200 && response.statusCode != 206) return null;
+    return response.bodyBytes;
   }
 
   // ========== CARÁTULA (APIC) ==========
@@ -388,8 +422,8 @@ class Id3CoverService {
   /// Existe porque los cuatro caminos que leen tags (carátula, álbum,
   /// artista y título) salen del MISMO archivo descargado, pero cada uno
   /// guardaba solo lo suyo. Resultado: escanear la biblioteca pedía el
-  /// álbum de una canción (512 KB por red), y enseguida el artista de la
-  /// misma canción, bajando otros 512 KB para releer exactamente los
+  /// álbum de una canción (bajándola por red), y enseguida el artista de
+  /// la misma canción, bajándola otra vez para releer exactamente los
   /// mismos bytes. Con cientos de canciones eso es el doble de datos
   /// móviles en el primer escaneo, y encima la carátula los guardaba solo
   /// en memoria, así que al reabrir la app se volvían a bajar.
