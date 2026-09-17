@@ -28,6 +28,15 @@ class _TarjetaPresionableState extends State<TarjetaPresionable> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      // Toda la tarjeta responde al toque, no solo donde hay algo
+      // pintado.
+      //
+      // Por defecto un `GestureDetector` le pregunta a su hijo si ese
+      // punto le corresponde, y un hueco --el espacio entre la tapa y
+      // el título de una tarjeta del carrusel, por ejemplo-- contesta
+      // que no. O sea que tocando ahí no pasaba nada: la tarjeta se
+      // sentía rota justo en el medio.
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _setPresionada(true),
       onTapUp: (_) => _setPresionada(false),
       onTapCancel: () => _setPresionada(false),

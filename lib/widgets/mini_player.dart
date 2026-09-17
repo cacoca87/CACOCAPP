@@ -42,6 +42,10 @@ class MiniPlayer extends StatelessWidget {
     if (song == null) return const SizedBox.shrink();
 
     return GestureDetector(
+      // Toda la barra abre el reproductor, incluida la línea fina de
+      // progreso de arriba: sin esto, esos dos píxeles eran el único
+      // lugar de la barra que no respondía.
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         HapticFeedback.lightImpact();
         Navigator.push(context, rutaDesdeAbajo(const PlayerScreen()));
