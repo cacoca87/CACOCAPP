@@ -97,15 +97,26 @@ class DriveService {
 
     // SEGUNDO RESPALDO: la lista fija que viaja dentro de la app.
     //
-    // NO SE BORRA, y conviene dejarlo escrito para que a nadie se le
-    // ocurra al ver 160 líneas de nombres y pensar que son relleno:
-    // esas canciones ESTÁN en el servidor y se reproducen perfecto. Es
-    // una foto real del bucket, solo que le faltan las que se subieron
-    // después de armarla.
+    // NO SE BORRA. Conviene dejar escrito POR QUÉ, porque son 165
+    // líneas de nombres de archivo y es justo el bloque que alguien
+    // mira, toma por relleno y saca.
     //
-    // Sirve para la primerísima apertura sin señal, cuando todavía no
-    // hubo ninguna vez con internet y no hay nada guardado: ahí es esto
-    // o una pantalla vacía. Con 160 entradas, nunca queda vacío.
+    // La clave es que la lista y el audio salen de DOS SERVICIOS
+    // DISTINTOS:
+    //
+    //   * la lista, del Worker  (cacocapp-audio...workers.dev)
+    //   * el audio, del bucket  (pub-...r2.dev)
+    //
+    // Y uno puede fallar sin el otro. Si el Worker se cae, se borra o
+    // queda mal configurado --es la pieza más frágil de todo esto-- el
+    // bucket sigue sirviendo los MP3 igual. En ese caso estas 160
+    // canciones no son un adorno: SUENAN, porque el audio no pasa por
+    // el Worker. La app sigue andando en vez de quedarse vacía.
+    //
+    // Dicho al revés, para no venderlo de más: cuando NO hay internet
+    // de ningún tipo, esta lista casi no sirve. Muestra 160 canciones
+    // que al tocarlas tampoco van a sonar, porque el audio también
+    // necesita red. Ahí lo único que evita es la pantalla vacía.
     //
     // (Antes había acá un TERCER respaldo, para el caso "ni siquiera la
     // lista fija dio nada". Ese sí era inútil y además mentía: devolvía

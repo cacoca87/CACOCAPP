@@ -68,11 +68,37 @@ void main() {
       ]);
     });
 
+    test(
+        'POR ESTO NO SE BORRA LA LISTA FIJA: si se cae el Worker, la '
+        'música igual suena', () async {
+      // La lista y el audio salen de dos servicios DISTINTOS: la lista
+      // del Worker, el audio del bucket. Uno puede fallar sin el otro.
+      //
+      // Si el Worker se cae, se borra o queda mal configurado --es la
+      // pieza más frágil de todo esto-- el bucket sigue sirviendo los
+      // MP3 igual. Ahí estas canciones no son un adorno: SUENAN,
+      // porque sus direcciones apuntan al bucket y ese está bien.
+      final servicio = DriveService(
+        // El Worker contesta cualquier cosa; el bucket ni se toca.
+        client: MockClient((_) async => http.Response('Worker caido', 500)),
+      );
+
+      final canciones = await servicio.obtenerCanciones();
+
+      expect(canciones, isNotEmpty);
+      // Lo que importa: las direcciones son del bucket, no del Worker.
+      expect(canciones.first.url, contains('r2.dev'));
+      expect(canciones.first.url, isNot(contains('workers.dev')));
+    });
+
     test('la primera vez sin señal cae en la lista que trae la app', () async {
-      // Nunca hubo internet, así que no hay nada guardado. Acá la lista
-      // fija hace exactamente su trabajo: es eso o una pantalla vacía,
-      // y esas canciones están en el servidor de verdad. Por eso NO se
-      // borra aunque ya casi nunca se use.
+      // Nunca hubo internet, así que no hay nada guardado.
+      //
+      // Dicho sin venderlo de más: con la red caída del todo, esta
+      // lista casi no sirve --las canciones tampoco van a sonar, porque
+      // el audio también necesita red--. Lo único que evita es la
+      // pantalla vacía. El caso que de verdad la justifica es el de
+      // arriba.
       final servicio = DriveService(
         client: MockClient((_) async => throw const SocketException('sin red')),
       );
