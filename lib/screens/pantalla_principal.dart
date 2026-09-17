@@ -478,7 +478,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             .toList();
       }
       for (final p in playlistProvider.playlists) {
-        if (p.name == nombre) return p.songs;
+        // Copia: `p.songs` es la lista interna de la playlist, y quien
+        // la reciba no tiene por qué poder modificarla sin querer.
+        if (p.name == nombre) return List<Song>.from(p.songs);
       }
       return [];
     }

@@ -395,7 +395,14 @@ class PlayerProvider extends ChangeNotifier {
     // pausa -- solo cuando esto realmente va a sonar (no en la
     // restauración silenciosa de sesión al abrir la app).
     if (autoplay) onPausarVideoOnline?.call();
-    _queue = songs;
+    // Copia, no la lista de quien llamó.
+    //
+    // `cancionesParaNombre()` devuelve la lista INTERNA de la playlist,
+    // así que sin esta copia la cola y la playlist eran el mismo objeto:
+    // quitar una canción de la playlist (deslizándola) se la sacaba
+    // también a la cola que estaba sonando, por debajo, y el índice
+    // actual podía quedar apuntando fuera de rango.
+    _queue = List<Song>.from(songs);
     _currentIndex =
         initialIndex.clamp(0, _queue.isNotEmpty ? _queue.length - 1 : 0);
     _currentSong = _queue.isNotEmpty ? _queue[_currentIndex] : null;

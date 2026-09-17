@@ -68,6 +68,13 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
       });
       return;
     }
+    // Se refresca en cada tecla por dos motivos: para que aparezca el
+    // botón de borrar apenas empezás a escribir (antes tardaba hasta
+    // que la búsqueda terminara, casi medio segundo más la red), y para
+    // apagar el chip del género -- si venías de tocar "Rock" y después
+    // escribís otra cosa, el chip quedaba encendido marcando un género
+    // que ya no tenía nada que ver con lo que estabas viendo.
+    setState(() => _generoActivo = null);
     _debounce = Timer(const Duration(milliseconds: 450), () {
       _ejecutarBusqueda(() => JamendoService.instance.buscar(texto));
     });
@@ -101,10 +108,18 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
     } catch (e) {
       if (!mounted || generacion != _generacionBusqueda) return;
       setState(() {
+        // El mensaje es para quien USA la app, no para quien la
+        // programa. Antes acá salía "Falta configurar el client_id de
+        // Jamendo en jamendo_service.dart": una instrucción para el
+        // programador, en la cara de la persona que solo quería
+        // escuchar música. Esa clave ya está puesta, así que ese texto
+        // ni siquiera podía aparecer -- pero si algún día vuelve a
+        // faltar, lo que corresponde mostrar es que el servicio no está
+        // disponible, no un archivo de código.
         _error = JamendoService.instance.configurado
-            ? 'No se pudo buscar. Revisa tu conexión.'
-            : 'Falta configurar el client_id de Jamendo en jamendo_service.dart '
-                '(es gratis: https://devportal.jamendo.com)';
+            ? 'No se pudo buscar. Revisá tu conexión e intentá de nuevo.'
+            : 'El catálogo de Descubrir no está disponible en esta versión '
+                'de la app.';
         _buscando = false;
       });
     }

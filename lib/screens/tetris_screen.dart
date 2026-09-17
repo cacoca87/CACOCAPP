@@ -74,6 +74,22 @@ class _TetrisScreenState extends State<TetrisScreen>
   Future<void> _guardarRecord(int puntaje) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Se compara contra lo GUARDADO, no contra lo que hay en memoria.
+      //
+      // El récord se lee del disco al abrir el juego, y esa lectura
+      // tarda. Si perdías antes de que terminara --en estos juegos se
+      // puede perder en dos segundos-- `_record` todavía valía 0, el
+      // puntaje nuevo parecía récord, y se escribía encima del récord
+      // de verdad. O sea que una partida mala te borraba la mejor.
+      final guardado = prefs.getInt(_claveRecord) ?? 0;
+      if (puntaje <= guardado) {
+        // Lo que había era mejor: se deja, y se corrige lo que muestra
+        // la pantalla.
+        if (mounted && guardado != _record) {
+          setState(() => _record = guardado);
+        }
+        return;
+      }
       await prefs.setInt(_claveRecord, puntaje);
     } catch (_) {}
   }
