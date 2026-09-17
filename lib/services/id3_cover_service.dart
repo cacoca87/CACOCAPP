@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -308,7 +309,7 @@ class Id3CoverService {
       final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheRuta[url] = null;
-        if (seLeyoElArchivo) _marcarSinCaratula(url);
+        if (seLeyoElArchivo) unawaited(_marcarSinCaratula(url));
         return null;
       }
 
@@ -338,7 +339,7 @@ class Id3CoverService {
     }
 
     _cacheRuta[url] = null;
-    if (seLeyoElArchivo) _marcarSinCaratula(url);
+    if (seLeyoElArchivo) unawaited(_marcarSinCaratula(url));
     return null;
   }
 
@@ -380,7 +381,8 @@ class Id3CoverService {
     } catch (_) {}
   }
 
-  /// Guarda TODO lo que trae el MP3 -- carátula aparte: álbum, artista
+  /// Guarda de una sola lectura lo que trae el MP3 --carátula aparte:
+  /// álbum, artista
   /// y título -- de un mismo parseo, en memoria y en disco.
   ///
   /// Existe porque los cuatro caminos que leen tags (carátula, álbum,
@@ -391,30 +393,28 @@ class Id3CoverService {
   /// mismos bytes. Con cientos de canciones eso es el doble de datos
   /// móviles en el primer escaneo, y encima la carátula los guardaba solo
   /// en memoria, así que al reabrir la app se volvían a bajar.
+  /// Las seis escrituras van SIN esperar, a propósito: lo que importa
+  /// --el dato-- ya quedó en memoria en la línea de arriba, y la
+  /// pantalla lo puede usar ya. Guardarlo en el disco es para la
+  /// próxima vez que se abra la app, y no tiene por qué demorar nada.
   void _recordarTags(String url, Map<String, dynamic>? tags) {
     final album = _extraerAlbum(tags);
     _cacheAlbum[url] = album;
-    if (album != null) {
-      _guardarAlbumEnDisco(url, album);
-    } else {
-      _marcarSinAlbum(url);
-    }
+    unawaited(album != null
+        ? _guardarAlbumEnDisco(url, album)
+        : _marcarSinAlbum(url));
 
     final artista = _extraerArtista(tags);
     _cacheArtista[url] = artista;
-    if (artista != null) {
-      _guardarArtistaEnDisco(url, artista);
-    } else {
-      _marcarSinArtista(url);
-    }
+    unawaited(artista != null
+        ? _guardarArtistaEnDisco(url, artista)
+        : _marcarSinArtista(url));
 
     final titulo = _extraerTitulo(tags);
     _cacheTitulo[url] = titulo;
-    if (titulo != null) {
-      _guardarTituloEnDisco(url, titulo);
-    } else {
-      _marcarSinTitulo(url);
-    }
+    unawaited(titulo != null
+        ? _guardarTituloEnDisco(url, titulo)
+        : _marcarSinTitulo(url));
   }
 
   // ========== TÍTULO REAL (TIT2) ==========
@@ -467,7 +467,7 @@ class Id3CoverService {
       final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheTitulo[url] = null;
-        if (seLeyoElArchivo) _marcarSinTitulo(url);
+        if (seLeyoElArchivo) unawaited(_marcarSinTitulo(url));
         return null;
       }
 
@@ -482,7 +482,7 @@ class Id3CoverService {
     }
 
     _cacheTitulo[url] = null;
-    if (seLeyoElArchivo) _marcarSinTitulo(url);
+    if (seLeyoElArchivo) unawaited(_marcarSinTitulo(url));
     return null;
   }
 
@@ -548,7 +548,7 @@ class Id3CoverService {
       final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheAlbum[url] = null;
-        if (seLeyoElArchivo) _marcarSinAlbum(url);
+        if (seLeyoElArchivo) unawaited(_marcarSinAlbum(url));
         return null;
       }
 
@@ -563,7 +563,7 @@ class Id3CoverService {
     }
 
     _cacheAlbum[url] = null;
-    if (seLeyoElArchivo) _marcarSinAlbum(url);
+    if (seLeyoElArchivo) unawaited(_marcarSinAlbum(url));
     return null;
   }
 
@@ -635,7 +635,7 @@ class Id3CoverService {
       final bytes = lectura.bytes;
       if (bytes == null) {
         _cacheArtista[url] = null;
-        if (seLeyoElArchivo) _marcarSinArtista(url);
+        if (seLeyoElArchivo) unawaited(_marcarSinArtista(url));
         return null;
       }
 
@@ -650,7 +650,7 @@ class Id3CoverService {
     }
 
     _cacheArtista[url] = null;
-    if (seLeyoElArchivo) _marcarSinArtista(url);
+    if (seLeyoElArchivo) unawaited(_marcarSinArtista(url));
     return null;
   }
 

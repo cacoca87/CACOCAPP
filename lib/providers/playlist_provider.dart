@@ -120,7 +120,7 @@ class PlaylistProvider extends ChangeNotifier {
 
       final favIds = prefs.getStringList(_kFavoritesKey);
       if (favIds != null) {
-        // Se guardan TODOS los ids, sin filtrar por los que estén en
+        // Se guardan los ids sin filtrar por los que estén en
         // `allSongs`. Un favorito es solo un id marcado -- no hace falta
         // tener la canción a mano para recordar que te gustaba, y
         // filtrarlos acá hacía que se perdieran solos (ver la nota de

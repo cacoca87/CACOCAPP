@@ -537,7 +537,9 @@ class PlayerProvider extends ChangeNotifier {
       exito = false;
     }
     notifyListeners();
-    _persistState();
+    // A propósito sin esperar: guardar en el disco qué canción quedó
+    // sonando no tiene por qué demorar que empiece a sonar.
+    unawaited(_persistState());
     return exito;
   }
 

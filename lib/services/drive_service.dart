@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,7 +67,7 @@ class DriveService {
         _cache = canciones;
         // Se guarda para la próxima vez que no haya señal. No se espera:
         // la biblioteca ya está lista y esto no tiene que demorarla.
-        _guardarLista(nombresArchivos);
+        unawaited(_guardarLista(nombresArchivos));
         return canciones;
       }
     } catch (e) {

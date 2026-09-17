@@ -69,7 +69,8 @@ void main() {
         expect(r.artista, 'Pink Floyd');
       });
 
-      test('si TODO lo que sigue son calificadores, no inventa un artista', () {
+      test('si lo que sigue son todos calificadores, no inventa un artista',
+          () {
         final r = _parsear('Ziggy Stardust - 2012 Remaster');
         expect(r.titulo, 'Ziggy Stardust');
         expect(r.artista, artistaDesconocido);

@@ -16,6 +16,59 @@ linter:
     # el cambio.
     package_names: false
 
+    # ===== Reglas que buscan ERRORES, no estilo =====
+    #
+    # Las de abajo no vienen encendidas con `flutter_lints`. Se
+    # agregaron porque cada una corresponde a una clase de falla que YA
+    # apareció en este proyecto y que se encontró leyendo, de a una:
+    # suscripciones que nadie cancelaba, trabajos lanzados sin esperar
+    # cuyo error se perdía en silencio, y datos sin tipo donde un cambio
+    # de forma no avisa nada.
+    #
+    # Tenerlas encendidas hace que el chequeo automático las encuentre
+    # solo, en vez de depender de que alguien las vea.
+
+    # Una suscripción a un flujo que no se cancela sigue viva después de
+    # cerrar la pantalla, gastando batería y a veces tocando estado que
+    # ya no existe.
+    cancel_subscriptions: true
+    close_sinks: true
+
+    # Un `Future` que se lanza y no se espera ni se marca como
+    # deliberado: si falla, el error no aparece por ningún lado.
+    unawaited_futures: true
+
+    # Llamar a algo sobre un valor `dynamic` no se comprueba hasta que
+    # la app está corriendo. Es justo lo que pasó con los tags de los
+    # MP3, que a veces vienen como texto y a veces como mapa.
+    avoid_dynamic_calls: true
+
+    # `avoid_slow_async_io` queda APAGADA a propósito, y conviene dejar
+    # escrito por qué para que nadie la encienda de nuevo pensando que
+    # es una mejora.
+    #
+    # Esa regla pide cambiar `File.exists()` por `File.existsSync()`.
+    # El consejo tiene sentido en un programa de línea de comandos,
+    # donde no hay nada que trabar. Acá no: la versión `Sync` FRENA EL
+    # HILO QUE DIBUJA LA PANTALLA mientras lee el disco, y esta app
+    # consulta archivos de caché justo mientras se desplaza la lista de
+    # canciones. Serían tirones visibles a cambio de ahorrar
+    # microsegundos.
+    #
+    # O sea: seguir la regla haría la app peor. Se deja apagada.
+    avoid_slow_async_io: false
+
+    # Errores de dedo al armar listas de textos: dos strings pegados sin
+    # la coma del medio se convierten en uno solo, sin aviso.
+    no_adjacent_strings_in_list: true
+
+    # Comparar cosas de tipos que nunca pueden ser iguales: siempre da
+    # `false` y casi siempre es un error.
+    unrelated_type_equality_checks: true
+
+    # Un `await` sobre algo que no es un `Future` no espera nada.
+    await_only_futures: true
+
 analyzer:
   exclude:
     - build/**

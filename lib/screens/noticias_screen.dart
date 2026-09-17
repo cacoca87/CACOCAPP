@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,11 +67,13 @@ class _NoticiasScreenState extends State<NoticiasScreen> {
   void _cambiarCategoria(CategoriaNoticias c) {
     if (c.nombre == _categoria.nombre) return;
     setState(() => _categoria = c);
-    _cargar();
+    // Sin esperar: la pantalla ya muestra "cargando" y el resultado
+    // llega por su cuenta.
+    unawaited(_cargar());
   }
 
   Future<void> _abrir(Noticia noticia) async {
-    HapticFeedback.selectionClick();
+    unawaited(HapticFeedback.selectionClick());
     final uri = Uri.tryParse(noticia.enlace);
     var abrio = false;
     try {

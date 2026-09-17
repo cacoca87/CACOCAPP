@@ -217,5 +217,38 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.containsKey('lyrics_cache_v1_roxanne|the police'), isFalse);
     });
+
+    test('una letra guardada con un renglón roto NO se pierde entera',
+        () async {
+      // Lo guardado en el celular se lee ANTES de buscar nada. Si un
+      // solo renglón venía con otra forma --sin texto, o con el tiempo
+      // escrito como palabra-- el lector saltaba con un error de tipo
+      // que se atrapaba más arriba, y el resultado era que la canción
+      // se quedaba SIN LETRA aunque las otras cuarenta líneas
+      // estuvieran perfectas.
+      SharedPreferences.setMockInitialValues({
+        'lyrics_cache_v3_roxanne|the police': jsonEncode({
+          'plano': null,
+          'lineas': [
+            {'ms': 1000, 'texto': 'primera linea'},
+            {'ms': 'rota', 'texto': 'esta no sirve'},
+            {'ms': 3000},
+            'ni siquiera es un renglon',
+            {'ms': 4000, 'texto': 'ultima linea'},
+          ],
+        }),
+      });
+
+      final servicio = LyricsService.testable(
+        MockClient((_) async => http.Response('[]', 200)),
+      );
+      final letra = await servicio.getLyrics(
+          title: 'Roxanne', artist: 'The Police', urlCancion: '');
+
+      expect(letra.estaSincronizada, isTrue,
+          reason: 'las líneas buenas tienen que sobrevivir');
+      expect(
+          letra.lineas!.map((l) => l.texto), ['primera linea', 'ultima linea']);
+    });
   });
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -146,7 +147,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     await context
         .read<PlaylistProvider>()
         .loadFromPrefs([...list, ..._delCelular, ...player.downloadedSongs]);
-    _resolverMetadataReal(list);
+    // Sin esperar, a propósito: el repaso completa el álbum y el
+    // artista de a poco por detrás, y la biblioteca ya está en
+    // pantalla desde hace rato.
+    unawaited(_resolverMetadataReal(list));
   }
 
   /// Busca la música guardada en el celular y la suma a la biblioteca.
@@ -154,8 +158,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   /// Se puede llamar cuantas veces haga falta. Android mantiene su
   /// propio índice de música al día solo --cuando llega un archivo
   /// nuevo por WhatsApp, por cable o desde otra app, lo agrega sin que
-  /// nadie se lo pida--, así que volver a preguntar es TODO lo que hay
-  /// que hacer para ver lo que se agregó después. Por eso también
+  /// nadie se lo pida--, así que no hay que hacer nada más que volver
+  /// a preguntar para ver lo que se agregó después. Por eso también
   /// cuelga del botón de "Actualizar".
   Future<void> _buscarMusicaDelCelular({bool pedirPermiso = true}) async {
     if (!MusicaLocalService.disponible) return;
@@ -193,7 +197,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       await context
           .read<PlaylistProvider>()
           .loadFromPrefs([...list, ..._delCelular, ...player.downloadedSongs]);
-      _resolverMetadataReal(list);
+      unawaited(_resolverMetadataReal(list));
       if (!mounted) return;
       // `refrescarCanciones` nunca falla hacia afuera: cuando el
       // servidor no contesta devuelve la lista de respaldo que viaja

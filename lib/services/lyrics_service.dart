@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -46,7 +47,7 @@ class LyricsService {
       '${title.toLowerCase()}|${artist.toLowerCase()}';
 
   /// La `v2` no es decorativa: sube de versión a propósito para que se
-  /// descarte TODO lo que se guardó con la regla vieja.
+  /// descarte por completo lo que se guardó con la regla vieja.
   ///
   /// Hasta la vuelta 42, la app tomaba el primer resultado de lrclib a
   /// ciegas y guardaba en disco letras que eran de otra canción (el
@@ -55,7 +56,7 @@ class LyricsService {
   /// seguirían mostrándose para siempre aunque la regla nueva esté
   /// bien. Cambiando el nombre, se vuelven a buscar una sola vez.
   String _prefKey(String clave) => 'lyrics_cache_v3_$clave';
-  // Se limpia TODO lo guardado con reglas anteriores. La v3 llega
+  // Se limpia por completo lo guardado con reglas anteriores. La v3 llega
   // porque la v2 dejaba pasar canciones de otro artista que duraban
   // casi lo mismo (el caso "Amén" / Bring Me the Horizon).
   static const List<String> _prefijosViejos = [
@@ -164,7 +165,7 @@ class LyricsService {
     // siempre, incluso con la conexion ya funcionando. El "no hay"
     // sigue viviendo en memoria, que alcanza para no repetir la
     // busqueda cinco veces dentro de la misma sesion.
-    if (resultado.hayAlgo) _guardar(clave, resultado);
+    if (resultado.hayAlgo) unawaited(_guardar(clave, resultado));
     return resultado;
   }
 
@@ -289,18 +290,36 @@ class LyricsService {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       final lineasRaw = decoded['lineas'] as List?;
 
-      final lineas = lineasRaw?.map((e) {
-        // Soporte robusto tanto para 'ms' como si existiera un registro previo con 'segundos'
-        final ms = e['ms'] ?? ((e['segundos'] ?? 0) * 1000);
-        return LineaLetra(
-          Duration(milliseconds: ms is int ? ms : (ms as double).toInt()),
-          e['texto'] as String,
-        );
-      }).toList();
+      // Se lee renglón por renglón con el tipo comprobado, y el que
+      // venga mal se SALTEA en vez de tirar abajo la letra entera.
+      //
+      // Antes se leía sin comprobar nada: un renglón guardado con otra
+      // forma --sin texto, con el tiempo como número decimal o como
+      // palabra-- hacía saltar un error de tipo que se atrapaba más
+      // arriba, y el resultado era que la canción se quedaba SIN LETRA
+      // aunque las otras cuarenta líneas estuvieran perfectas.
+      final lineas = <LineaLetra>[];
+      for (final cruda in lineasRaw ?? const []) {
+        if (cruda is! Map) continue;
+
+        final texto = cruda['texto'];
+        if (texto is! String) continue;
+
+        // 'segundos' es de una versión vieja del formato guardado.
+        final ms = cruda['ms'] ?? cruda['segundos'];
+        final milisegundos = switch (ms) {
+          final int n => cruda.containsKey('ms') ? n : n * 1000,
+          final double d => (cruda.containsKey('ms') ? d : d * 1000).round(),
+          _ => null,
+        };
+        if (milisegundos == null) continue;
+
+        lineas.add(LineaLetra(Duration(milliseconds: milisegundos), texto));
+      }
 
       return Lyrics(
         textoPlano: decoded['plano'] as String?,
-        lineas: (lineas != null && lineas.isNotEmpty) ? lineas : null,
+        lineas: lineas.isNotEmpty ? lineas : null,
       );
     } catch (_) {
       return Lyrics.vacia;

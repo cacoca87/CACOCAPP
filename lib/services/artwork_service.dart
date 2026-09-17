@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,14 +139,25 @@ class ArtworkService {
         respuestaValida = true;
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final results = data['results'] as List?;
-        if (results != null && results.isNotEmpty) {
-          var art = results.first['artworkUrl100'] as String?;
-          // iTunes devuelve la miniatura de 100x100 por defecto;
-          // pedimos una resolución más grande para que se vea nítida.
-          art = art?.replaceAll('100x100bb', '600x600bb');
-          _cache[key] = art;
-          _guardar(key, art ?? '');
-          return art;
+        // Se comprueba la FORMA de lo que llegó antes de meterle mano.
+        //
+        // Antes se hacía `results.first['artworkUrl100']` directo sobre
+        // algo sin tipo: si iTunes devolviera una lista de cualquier
+        // otra cosa, eso explota. Quedaba tapado por el `catch` de más
+        // abajo, así que no se rompía la app --pero la canción se
+        // quedaba sin carátula sin que nadie supiera por qué--.
+        final primero =
+            results == null || results.isEmpty ? null : results.first;
+        if (primero is Map) {
+          var art = primero['artworkUrl100'];
+          if (art is String) {
+            // iTunes devuelve la miniatura de 100x100 por defecto;
+            // pedimos una resolución más grande para que se vea nítida.
+            art = art.replaceAll('100x100bb', '600x600bb');
+            _cache[key] = art;
+            unawaited(_guardar(key, art));
+            return art;
+          }
         }
       }
     } catch (_) {
@@ -156,7 +168,7 @@ class ArtworkService {
     // cincuenta veces en la misma sesion), pero solo baja a disco si la
     // respuesta fue de verdad.
     _cache[key] = null;
-    if (respuestaValida) _guardar(key, '');
+    if (respuestaValida) unawaited(_guardar(key, ''));
     return null;
   }
 
