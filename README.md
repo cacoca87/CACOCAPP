@@ -1,9 +1,13 @@
 # CACOCAPP
 
-Reproductor de música en Flutter para Android. Reúne en una sola app tres
-fuentes distintas de música y las trata a todas por igual: una biblioteca
-propia alojada en Cloudflare R2, el catálogo libre de Jamendo, y videos de
-YouTube reproducidos en un reproductor flotante.
+Reproductor de música en Flutter para Android. Reúne en una sola app cuatro
+fuentes distintas y las trata a todas por igual: una biblioteca propia alojada
+en Cloudflare R2, **la música que ya está guardada en el celular**, el catálogo
+libre de Jamendo, y videos de YouTube reproducidos en un reproductor flotante.
+
+Las tres primeras se mezclan en una sola lista ordenada. No hay una "sección de
+música local" aparte: buscás, marcás favoritos, armás playlists y mirás las
+estadísticas sin tener que saber de dónde salió cada canción.
 
 ## Qué hace
 
@@ -20,6 +24,12 @@ YouTube reproducidos en un reproductor flotante.
 - **Tu Biblioteca**: archivos MP3 en un bucket de Cloudflare R2, listados por un
   Worker. Los títulos, artistas y carátulas se leen de las etiquetas ID3 reales
   del archivo, con el nombre del archivo como respaldo.
+- **La música del propio celular**: se lee del índice de medios de Android y se
+  mezcla con la biblioteca en la misma lista. Un filtro deja afuera lo que no es
+  música --notas de voz de WhatsApp, grabaciones, tonos y alarmas-- mirando la
+  carpeta, el formato, la duración y las marcas del propio Android. Si se
+  saltearon archivos, la app dice cuántos: si un día falta un tema, ese número
+  es la primera pista.
 - **Descubrir**: búsqueda en Jamendo (catálogo Creative Commons, audio completo).
   Los resultados se comportan como cualquier otra canción: favoritos, playlists
   y descarga offline.
@@ -72,11 +82,20 @@ lib/
     id3_cover_service        etiquetas y carátulas incrustadas en los MP3
     lyrics_service           letras sincronizadas
     noticias_service         noticias por categoría (RSS de Google Noticias)
-  utils/                    funciones puras (parseo, ayudantes)
-                            incluye la lógica de los cuatro juegos y el
-                            parseo de los feeds de noticias
+    musica_local_service     la música guardada en el propio celular
+  utils/                    funciones puras: nada de Flutter adentro, así que
+                            se prueban sin necesitar un celular. Ahí vive todo
+                            lo que de verdad puede fallar: la lógica de los
+                            cuatro juegos, el parseo de las letras y de las
+                            noticias, el filtro de música local, la búsqueda
+                            que ignora tildes, la elección de qué letra
+                            corresponde a qué canción, y las cuentas de dónde
+                            va cada cosa en pantalla.
   styles/app_theme.dart     identidad visual
-test/                       pruebas unitarias
+test/                       pruebas, con la misma estructura que lib/
+android/app/src/main/kotlin/
+                            el puente nativo: efectos de audio y lectura del
+                            índice de música de Android
 ```
 
 ## Pruebas y calidad
@@ -90,15 +109,33 @@ dart format .      # formato
 Los tres pasos corren automáticamente en GitHub Actions ante cada push
 (`.github/workflows/flutter_ci.yml`).
 
-Las pruebas cubren lógica pura y servicios con HTTP simulado: parseo de letras,
-deducción de título y artista desde el nombre del archivo, adivinación de
-extensiones, motor de recomendaciones, cliente de Jamendo, la persistencia de
-playlists y favoritos, el parseo y la descarga de las noticias, y las reglas de
-los cuatro juegos (choques, rotación, líneas completas, puntaje).
+Hay **529 pruebas**, en tres grupos:
 
-**No hay pruebas de interfaz**, así que
-los cambios visuales o de interacción se verifican probando la app en un
-dispositivo real.
+**Lógica pura** (parseo, reglas, cuentas). Parseo de letras, deducción de título
+y artista desde el nombre del archivo, adivinación de extensiones, motor de
+recomendaciones, reglas de los cuatro juegos, el filtro que distingue música de
+una nota de voz, la búsqueda que ignora tildes, y la geometría del reproductor
+de video.
+
+**Servicios**, con HTTP simulado: cliente de Jamendo, biblioteca de R2 con sus
+tres respaldos, letras, carátulas, noticias, y la persistencia de playlists y
+favoritos.
+
+**Interfaz**: unas ochenta pruebas que montan widgets de verdad y comprueban lo
+que se ve y lo que responde al toque. Que nada se desborde con la letra del
+sistema agrandada en pantallas de 320 a 412 píxeles, que el destello al tocar no
+quede tapado, que los botones de los juegos repitan al mantenerlos apretados,
+que la letra sincronizada resalte el renglón correcto, y que los colores de la
+paleta tengan contraste suficiente para leerse.
+
+Varios arreglos están comprobados **a la inversa**: se vuelve a poner el error a
+propósito y se verifica que la prueba lo agarre. Un test que pasa igual con el
+arreglo y sin él no prueba nada, y en este proyecto ya apareció uno así (se
+borró).
+
+Lo que **no** se puede probar acá es lo que necesita un teléfono de verdad: que
+el audio suene, los permisos de Android, el reproductor de YouTube (es una vista
+nativa) y los efectos de audio. Eso se verifica instalando el APK.
 
 ## Decisiones de diseño que conviene conocer
 
@@ -129,6 +166,18 @@ reproducción. Hay dos reglas ahí que no conviene romper.
   aplican al reproductor de YouTube (ese maneja su propio audio).
 - Algunos videos de YouTube no permiten reproducción embebida; en esos casos la
   app lo informa y sugiere elegir otro resultado.
+- **Búsqueda Online no suena con la pantalla apagada.** El reproductor de
+  YouTube es una vista web, y Android la suspende al bloquear la pantalla. La
+  app hace lo que se puede hacer legítimamente --levanta un servicio en primer
+  plano, publica la notificación con sus controles, y le insiste al video para
+  que siga sonando-- y aun así no alcanza en todos los teléfonos. Reproducir
+  YouTube en segundo plano es, de hecho, una función que YouTube cobra aparte.
+  Todo lo demás (la biblioteca, la música del celular, las descargas y Jamendo)
+  sí suena con la pantalla apagada, porque son archivos de audio de verdad.
+- **El filtro de música local es una apuesta.** Decide qué es música y qué es
+  una nota de voz por la carpeta, el formato y la duración. Puede equivocarse en
+  los dos sentidos. Por eso la app dice cuántos archivos salteó: ese número es
+  la forma de darse cuenta.
 
 ## Historial
 
