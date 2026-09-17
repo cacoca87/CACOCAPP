@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:id3/id3.dart';
 import 'package:path_provider/path_provider.dart';
 import '../utils/id3_tags.dart';
+import '../utils/ruta_de_archivo.dart';
 import '../utils/una_sola_vez.dart';
 
 /// Extrae metadata REAL incrustada en el propio MP3 (tags ID3v2):
@@ -170,11 +171,11 @@ class Id3CoverService {
 
   Future<({Uint8List? bytes, bool seLeyo})> _bajarBytesMp3(String url) async {
     try {
-      final esArchivoLocal =
-          !url.startsWith('http://') && !url.startsWith('https://');
-
-      if (esArchivoLocal) {
-        final archivoLocal = File(url);
+      // Las canciones descargadas vienen como `file:///...`, que es una
+      // dirección y no una ruta. Ver `utils/ruta_de_archivo.dart`.
+      final ruta = rutaDeArchivoDe(url);
+      if (ruta != null) {
+        final archivoLocal = File(ruta);
         if (!await archivoLocal.exists()) return (bytes: null, seLeyo: false);
         return (bytes: await archivoLocal.readAsBytes(), seLeyo: true);
       }

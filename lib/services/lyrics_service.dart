@@ -5,6 +5,7 @@ import 'package:id3/id3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/eleccion_letra.dart';
 import '../utils/lyrics_parsing.dart';
+import '../utils/ruta_de_archivo.dart';
 
 export '../utils/lyrics_parsing.dart' show LineaLetra;
 
@@ -230,11 +231,12 @@ class LyricsService {
     if (url.isEmpty) return null;
     try {
       List<int> bytes;
-      final esArchivoLocal =
-          !url.startsWith('http://') && !url.startsWith('https://');
+      // Las canciones descargadas vienen como `file:///...`, que es una
+      // dirección y no una ruta. Ver `utils/ruta_de_archivo.dart`.
+      final ruta = rutaDeArchivoDe(url);
 
-      if (esArchivoLocal) {
-        final archivo = File(url);
+      if (ruta != null) {
+        final archivo = File(ruta);
         if (!await archivo.exists()) return null;
         bytes = await archivo.readAsBytes();
       } else {

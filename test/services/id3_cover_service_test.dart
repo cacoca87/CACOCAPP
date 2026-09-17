@@ -293,6 +293,35 @@ void main() {
       expect(rutas.whereType<String>().toSet().length, 1);
     });
 
+    test('una canción DESCARGADA lee su tapa del archivo, sin tocar internet',
+        () async {
+      // La app guarda la dirección de una canción descargada como
+      // `file:///...`, y así le llega acá. Eso es una dirección, no una
+      // ruta: se le pasaba tal cual a `File`, que armaba un archivo
+      // llamado literalmente "file:///data/..." y por supuesto no
+      // existía. La comprobación decía "no está" sin quejarse.
+      //
+      // Resultado: las canciones descargadas se quedaban sin su
+      // carátula en la pantalla de bloqueo y la app salía a buscarla a
+      // internet -- justo lo contrario de para qué se descarga una
+      // canción.
+      final descargada = File('${raiz.path}/Descargada.mp3');
+      await descargada.writeAsBytes(_mp3ConTapa());
+      final direccion = Uri.file(descargada.path).toString();
+
+      var fueALaRed = false;
+      final servicio = Id3CoverService.testable(MockClient((_) async {
+        fueALaRed = true;
+        return http.Response('', 500);
+      }));
+
+      final ruta = await servicio.getEmbeddedCoverPath(direccion);
+
+      expect(ruta, isNotNull, reason: 'la tapa estaba adentro del archivo');
+      expect(fueALaRed, isFalse,
+          reason: 'una canción descargada no tiene por qué usar internet');
+    });
+
     test('la limpieza se hace una sola vez', () async {
       await carpetaDeCache.create(recursive: true);
       final servicio = Id3CoverService.testable(
