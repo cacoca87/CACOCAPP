@@ -78,6 +78,17 @@ android {
             // cuenta, y se cuelan igual. El APK salia de 62 MB con el
             // filtro puesto. Si alguien lo vuelve a intentar: ya se
             // probo, y el camino es la bandera de arriba.
+
+            // Y SE PROBO TAMBIEN ACHICARLO CON R8 (minify + shrink).
+            // Tampoco sirve, y se midio: el APK paso de 40,5 MB a
+            // 40,6 --creció-- y compilar paso de 40 segundos a 242.
+            //
+            // El motivo es el mismo que arriba: lo que pesa en este APK
+            // son las librerias nativas de Flutter (libflutter.so y
+            // libapp.so), y R8 no las toca. Solo achica el codigo Java
+            // y Kotlin, que aca es una pizca. Si alguien lo vuelve a
+            // intentar: ya se probo, y lo unico que se gana es esperar
+            // seis veces mas en cada compilacion.
         }
     }
 }

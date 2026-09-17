@@ -48,6 +48,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final TextEditingController _buscadorController = TextEditingController();
   final TextEditingController _nuevaBibController = TextEditingController();
 
+  /// Lo último que se buscó, para no rehacer la pantalla cuando el
+  /// campo avisa por algo que no es el texto (mover el cursor, por
+  /// ejemplo).
+  String _ultimoTextoBuscado = '';
+
   List<Song> canciones = [];
   bool cargando = true;
   bool actualizando = false;
@@ -60,7 +65,19 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   void initState() {
     super.initState();
     _cargarCanciones();
-    _buscadorController.addListener(() => setState(() {}));
+    // Solo cuando cambia el TEXTO, no en cada aviso del campo.
+    //
+    // Un `TextEditingController` avisa también cuando se mueve el
+    // cursor o cambia lo seleccionado. Sin esta comprobación, tocar
+    // dentro del buscador para corregir una letra rehacía la pantalla
+    // principal entera --con su lista, sus carruseles y su menú
+    // lateral-- para mostrar exactamente lo mismo.
+    _buscadorController.addListener(() {
+      final texto = _buscadorController.text;
+      if (texto == _ultimoTextoBuscado) return;
+      _ultimoTextoBuscado = texto;
+      setState(() {});
+    });
   }
 
   /// La música que está guardada en el propio celular. Se guarda aparte
