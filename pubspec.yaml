@@ -12,6 +12,11 @@ dependencies:
   audio_service: ^0.18.15
   audio_session: ^0.1.21
   just_audio: ^0.9.38
+  # No se importa en ningún archivo, y NO sobra: es la implementación de
+  # `just_audio` para Windows. Los plugins de Flutter se registran solos
+  # según la plataforma, así que buscar "just_audio_windows" por el
+  # proyecto no encuentra nada y parece de más. Sacándolo, la app
+  # compila igual en Windows pero no suena.
   just_audio_windows: ^0.2.3
   provider: ^6.1.2
   shared_preferences: ^2.2.3

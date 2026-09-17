@@ -40,11 +40,10 @@ class AppTheme {
   static const Color primary = amber;
   static const Color surfaceLight = surfaceRaised;
 
-  // Estas dos sí se usan, pero más abajo en este mismo archivo (sin el
-  // prefijo `AppTheme.`), así que buscar "AppTheme.cardCornerRadius"
-  // por el proyecto no las encuentra y parecen muertas. No lo están.
+  // Se usa más abajo en este mismo archivo (sin el prefijo
+  // `AppTheme.`), así que buscar "AppTheme.cardCornerRadius" por el
+  // proyecto no la encuentra y parece muerta. No lo está.
   static const double cardCornerRadius = 10.0;
-  static const double miniPlayerCornerRadius = 18.0;
 
   // ===== Tipografía =====
   // Display: slab-serif con peso, para títulos y momentos de marca —
@@ -82,30 +81,12 @@ class AppTheme {
       _display(fontSize: 20, weight: FontWeight.w700, color: paper);
 
   // ===== Decoraciones reutilizables =====
-  static BoxDecoration cardDecoration = BoxDecoration(
-    color: surface,
-    borderRadius: BorderRadius.circular(cardCornerRadius),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.35),
-        blurRadius: 8,
-        offset: const Offset(0, 4),
-      ),
-    ],
-  );
-
-  static BoxDecoration cardDecorationElevated = BoxDecoration(
-    color: surfaceRaised,
-    borderRadius: BorderRadius.circular(cardCornerRadius),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.5),
-        blurRadius: 12,
-        offset: const Offset(0, 6),
-      ),
-    ],
-  );
-
+  //
+  // Acá había además `cardDecoration`, `cardDecorationElevated` y
+  // `miniPlayerDecoration`: tres decoraciones que no usaba NADIE. Cada
+  // pantalla se arma su propio `BoxDecoration` a mano. Tenerlas
+  // guardadas hacía creer que existía un sistema de tarjetas
+  // compartido, y que cambiándolas cambiaba algo -- no cambiaba nada.
   static BoxDecoration gradientCard(List<Color> colors) {
     return BoxDecoration(
       gradient: LinearGradient(
@@ -116,19 +97,6 @@ class AppTheme {
       borderRadius: BorderRadius.circular(cardCornerRadius),
     );
   }
-
-  static BoxDecoration miniPlayerDecoration = BoxDecoration(
-    color: surface,
-    borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(miniPlayerCornerRadius)),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.6),
-        blurRadius: 16,
-        offset: const Offset(0, -6),
-      ),
-    ],
-  );
 
   /// Texto para los `SnackBar` de fondo ámbar. El tema global los pinta
   /// en crema, y crema sobre ámbar da un contraste de ~1.9:1: al sol no
