@@ -3788,3 +3788,101 @@ compara exacto, la playlist choca consigo misma y la app te dice que
 ya existe. Tiene su test.
 
 `flutter analyze` limpio, **390 tests** en verde y APK de 40,5 MB.
+
+## 95. Vueltas 101 a 103: las pantallas que no se podían probar
+
+Estas tres van sobre las partes de la app que hasta ahora estaban
+fuera del alcance de los tests: el video de YouTube, el reproductor
+grande, Descubrir y Noticias. Todas tienen el mismo obstáculo --piden
+algo que solo existe en un celular de verdad-- y la misma salida:
+sacar aparte la parte que sí es comprobable.
+
+### El overlay del video
+
+El overlay entero no se puede probar: lleva un WebView adentro, que es
+una vista nativa de Android. Pero **lo que de verdad puede salir mal
+ahí no es el WebView, son las cuentas de dónde poner cada cosa**, y
+esas son aritmética pura.
+
+Y ya salieron mal: la barra chica del video se le montaba encima al
+mini reproductor en los celulares con la letra del sistema agrandada.
+
+Ese cálculo ahora vive aparte, con 45 tests sobre cinco pantallas
+distintas --celular angosto, normal, grande, horizontal y ventana
+partida-- y con el mini reproductor en sus tres altos posibles.
+
+**Comprobado que los tests sirven**: se volvió a poner el alto del mini
+reproductor a mano, como estaba antes del arreglo, y fallan en *todas*
+las pantallas con la letra agrandada.
+
+Lo que queda fijado: la barra nunca le pisa el mini reproductor, nada
+mide en negativo ni empieza fuera de la pantalla, el video conserva su
+proporción 16:9, el video chico entra en su barra, queda ancho para los
+controles al lado --que es la única forma comprobada de que el WebView
+no se quede con los toques-- y la letra nunca se dibuja encima del
+video.
+
+Y se sacaron cuatro números que estaban repetidos entre el widget y las
+cuentas. Tener el mismo valor en dos lugares es exactamente lo que
+causó el fallo original: uno cambió y el otro no.
+
+### El reproductor inventaba que la canción duraba 3 minutos
+
+Mientras no se sabe cuánto dura la canción, la barra de progreso hacía
+de cuenta que duraba **tres minutos**. Eso trae tres cosas, todas
+visibles:
+
+1. Abajo a la derecha decía `3:00`, que es un dato inventado.
+2. En una canción más larga, la barra llegaba al final a los tres
+   minutos y se quedaba clavada ahí mientras la canción seguía sonando.
+3. Arrastrando la barra no se podía pasar de los tres minutos: el resto
+   de la canción quedaba **fuera de alcance**.
+
+Y no hace falta una conexión mala para verlo: la duración de cualquier
+canción tarda un momento en conocerse, y con una canción del servidor
+en una red lenta ese momento dura bastante.
+
+Ahora hace lo que hace cualquier reproductor de verdad: mientras no se
+sabe, muestra `--:--` y la barra no se puede arrastrar. Es menos bonito
+que una barra que se mueve, y es cierto. El tiempo que *va* sí se
+muestra, porque eso sí se sabe.
+
+### Una sospecha que resultó falsa, y queda escrita
+
+La fila de géneros de Descubrir tenía el alto escrito a mano. Fui a
+buscar ahí el mismo fallo de los carruseles de Inicio, y **lo medí**:
+
+| Escala de letra | Con el alto fijo | Sin el alto fijo |
+|---|---|---|
+| x1.0 | caja 40, chip 40 | caja 48, chip 48 |
+| x1.6 | caja 64, chip 48 | caja 48, chip 48 |
+| x2.0 | caja 64, chip 55 | caja 55, chip 55 |
+
+**No había desbordado ni texto cortado.** Lo único que hacía el número
+era achatar los chips con la letra normal y reservar lugar de más con
+la letra grande. Ninguna de las dos cosas rompe nada.
+
+Queda escrito en el propio código para que nadie lo vuelva a buscar
+ahí. El número se sacó igual porque no hacía falta, pero lo que de
+verdad ganó ese cambio fueron los tests: que tocar un género mande su
+**etiqueta** de Jamendo (`rock`) y no su nombre en pantalla (`Rock`)
+--si mandara el nombre, "Electrónica" y "Clásica" no encontrarían
+nada--, y que la fila se pueda desplazar hasta el último género.
+
+### Noticias
+
+La pantalla y el servicio ya estaban bien: reintento con generación,
+caché con vencimiento, cada tipo de fallo con su propio mensaje, y
+hasta un respaldo de codificación para que un acento mal codificado no
+tire la pantalla abajo.
+
+Lo único sin probar era el texto de antigüedad de cada noticia, que
+usaba el reloj por dentro: un test tendría que esperar horas de verdad.
+Ahora se le puede decir desde cuándo mirar, y tiene sus tests con los
+bordes --59 min, 60 min, 23 h, 24 h, 48 h--, que es justo donde se
+cuelan los "hace 60 min".
+
+Y se agregó el caso que faltaba: una noticia de hace ocho meses decía
+"hace 213 días", que no se lee, se calcula. Ahora dice "hace 7 meses".
+
+`flutter analyze` limpio, **471 tests** en verde y APK de 40,5 MB.
