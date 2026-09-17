@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../styles/app_theme.dart';
+import '../utils/secciones.dart';
 import '../utils/bibliotecas_reservadas.dart';
 
 class BarraLateral extends StatelessWidget {
@@ -54,18 +55,18 @@ class BarraLateral extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 28),
-          _buildItemMenu(Icons.home_rounded, "Tu Biblioteca",
+          _buildItemMenu(Icons.home_rounded, seccionBiblioteca,
               etiqueta: "Inicio"),
-          _buildItemMenu(Icons.queue_music_rounded, "Playlists"),
-          _buildItemMenu(Icons.person_rounded, "Artistas"),
-          _buildItemMenu(Icons.album_rounded, "Álbumes"),
-          _buildItemMenu(Icons.bar_chart_rounded, "Estadísticas"),
-          _buildItemMenu(Icons.videogame_asset_rounded, "Juegos"),
-          _buildItemMenu(Icons.newspaper_rounded, "Noticias"),
-          _buildItemMenu(Icons.auto_awesome_rounded, "Recomendaciones"),
-          _buildItemMenu(Icons.travel_explore_rounded, "Descubrir"),
-          _buildItemMenu(Icons.cloud_queue_rounded, "Buscador Online"),
-          _buildItemMenu(Icons.download_done_rounded, "Música Descargada"),
+          _buildItemMenu(Icons.queue_music_rounded, seccionPlaylists),
+          _buildItemMenu(Icons.person_rounded, seccionArtistas),
+          _buildItemMenu(Icons.album_rounded, seccionAlbumes),
+          _buildItemMenu(Icons.bar_chart_rounded, seccionEstadisticas),
+          _buildItemMenu(Icons.videogame_asset_rounded, seccionJuegos),
+          _buildItemMenu(Icons.newspaper_rounded, seccionNoticias),
+          _buildItemMenu(Icons.auto_awesome_rounded, seccionRecomendaciones),
+          _buildItemMenu(Icons.travel_explore_rounded, seccionDescubrir),
+          _buildItemMenu(Icons.cloud_queue_rounded, seccionBuscadorOnline),
+          _buildItemMenu(Icons.download_done_rounded, seccionMusicaDescargada),
           const Divider(color: AppTheme.hairline, height: 32),
           Text("Crear biblioteca",
               style: AppTheme.caption
@@ -113,7 +114,7 @@ class BarraLateral extends StatelessWidget {
             itemBuilder: (context, index) {
               final bib = bibliotecas[index];
               final seleccionada = bib == bibliotecaSeleccionada &&
-                  seccionActiva == "Tu Biblioteca";
+                  seccionActiva == seccionBiblioteca;
               // Las cuatro vistas propias de la app no se pueden
               // renombrar ni borrar. Antes solo se protegian dos, asi
               // que mantener apretado "Recientes" abria un menu cuyas

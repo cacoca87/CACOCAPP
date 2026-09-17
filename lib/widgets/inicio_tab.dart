@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/playlist.dart';
+import '../utils/secciones.dart';
 import '../utils/plural.dart';
 import '../models/song.dart';
 import '../providers/player_provider.dart';
@@ -157,7 +158,7 @@ class InicioTab extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Buscador Online",
+                            seccionBuscadorOnline,
                             style: AppTheme.body.copyWith(
                                 color: AppTheme.paper,
                                 fontWeight: FontWeight.bold,
@@ -253,23 +254,23 @@ class InicioTab extends StatelessWidget {
             children: [
               _AccesoRapido(
                 icono: Icons.queue_music_rounded,
-                etiqueta: "Playlists",
+                etiqueta: seccionPlaylists,
                 onTap: onVerTodoPlaylists,
               ),
               _AccesoRapido(
                 icono: Icons.person_rounded,
-                etiqueta: "Artistas",
-                onTap: () => onIrASeccion("Artistas"),
+                etiqueta: seccionArtistas,
+                onTap: () => onIrASeccion(seccionArtistas),
               ),
               _AccesoRapido(
                 icono: Icons.album_rounded,
-                etiqueta: "Álbumes",
-                onTap: () => onIrASeccion("Álbumes"),
+                etiqueta: seccionAlbumes,
+                onTap: () => onIrASeccion(seccionAlbumes),
               ),
               _AccesoRapido(
                 icono: Icons.download_done_rounded,
                 etiqueta: "Descargada",
-                onTap: () => onIrASeccion("Música Descargada"),
+                onTap: () => onIrASeccion(seccionMusicaDescargada),
               ),
               _AccesoRapido(
                 icono: Icons.auto_awesome_rounded,
@@ -278,23 +279,23 @@ class InicioTab extends StatelessWidget {
               ),
               _AccesoRapido(
                 icono: Icons.travel_explore_rounded,
-                etiqueta: "Descubrir",
-                onTap: () => onIrASeccion("Descubrir"),
+                etiqueta: seccionDescubrir,
+                onTap: () => onIrASeccion(seccionDescubrir),
               ),
               _AccesoRapido(
                 icono: Icons.bar_chart_rounded,
-                etiqueta: "Estadísticas",
-                onTap: () => onIrASeccion("Estadísticas"),
+                etiqueta: seccionEstadisticas,
+                onTap: () => onIrASeccion(seccionEstadisticas),
               ),
               _AccesoRapido(
                 icono: Icons.videogame_asset_rounded,
-                etiqueta: "Juegos",
-                onTap: () => onIrASeccion("Juegos"),
+                etiqueta: seccionJuegos,
+                onTap: () => onIrASeccion(seccionJuegos),
               ),
               _AccesoRapido(
                 icono: Icons.newspaper_rounded,
-                etiqueta: "Noticias",
-                onTap: () => onIrASeccion("Noticias"),
+                etiqueta: seccionNoticias,
+                onTap: () => onIrASeccion(seccionNoticias),
               ),
             ],
           ),
