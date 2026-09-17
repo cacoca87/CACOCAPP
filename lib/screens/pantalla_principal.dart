@@ -501,16 +501,33 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       return [];
     }
 
-    List<String> listaArtistas =
-        canciones.map((c) => c.artist).toSet().toList();
-    List<String> listaAlbumes = canciones.map((c) => c.album).toSet().toList();
-
-    final Map<String, Song> representativaPorArtista = {};
-    final Map<String, Song> representativaPorAlbum = {};
-    for (final c in canciones) {
-      representativaPorArtista.putIfAbsent(c.artist, () => c);
-      representativaPorAlbum.putIfAbsent(c.album, () => c);
+    /// La primera canción de cada artista / de cada álbum, para usar su
+    /// carátula como portada del grupo.
+    Map<String, Song> primeraPorClave(String Function(Song) clave) {
+      final mapa = <String, Song>{};
+      for (final c in canciones) {
+        mapa.putIfAbsent(clave(c), () => c);
+      }
+      return mapa;
     }
+
+    // `late` a propósito: en Dart una variable local `late` se calcula
+    // la primera vez que se LEE, no acá. Y estas cuatro solo se leen en
+    // las vistas de Artistas y de Álbumes.
+    //
+    // Antes se calculaban siempre: cuatro recorridas enteras de la
+    // biblioteca (cientos de canciones) en cada `build`, y este `build`
+    // corre con cada tecla que se escribe en el buscador y con cada
+    // aviso del reproductor -- incluso estando en Juegos o Noticias,
+    // donde no se usan para nada.
+    late final List<String> listaArtistas =
+        canciones.map((c) => c.artist).toSet().toList();
+    late final List<String> listaAlbumes =
+        canciones.map((c) => c.album).toSet().toList();
+    late final Map<String, Song> representativaPorArtista =
+        primeraPorClave((c) => c.artist);
+    late final Map<String, Song> representativaPorAlbum =
+        primeraPorClave((c) => c.album);
 
     Widget widgetCentral;
     if (seccionActiva == "Estadísticas") {
