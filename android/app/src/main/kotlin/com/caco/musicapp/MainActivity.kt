@@ -103,6 +103,28 @@ class MainActivity : AudioServiceActivity() {
      * al teléfono --por WhatsApp, por cable, desde otra app-- lo agrega
      * sin que nadie tenga que pedírselo. Por eso alcanza con volver a
      * consultar para ver lo nuevo.
+     *
+     * SOBRE LA COLUMNA `DATA`, QUE FIGURA COMO OBSOLETA
+     *
+     * `DATA` es la ruta del archivo, y Android la marca como obsoleta
+     * desde la versión 10. Es de las cosas que alguien mira, ve el
+     * tachado en el editor y "arregla" cambiándola por una dirección
+     * `content://`. Conviene dejar escrito por qué acá se usa igual:
+     *
+     *  * Desde Android 11, una app con permiso de audio SÍ puede abrir
+     *    los archivos de música por su ruta. Lo prohibido fue el acceso
+     *    suelto a todo el almacenamiento, no esto.
+     *  * La app usa esa ruta para tres cosas y no solo para reproducir:
+     *    decidir si el archivo es música de verdad --que se hace
+     *    mirando en qué CARPETA está--, leerle la carátula de adentro
+     *    del MP3, y sacarle el título y el artista reales. Con una
+     *    dirección `content://` nada de eso funciona sin escribir otro
+     *    puente nativo.
+     *
+     * O sea: cambiarlo no arregla nada y rompe tres cosas. Si algún día
+     * deja de andar de verdad en algún celular, el camino es devolver
+     * las DOS --la ruta para filtrar y la dirección para reproducir--,
+     * no reemplazar una por la otra.
      */
     private fun listarMusicaDelCelular(): List<Map<String, Any?>> {
         val encontradas = mutableListOf<Map<String, Any?>>()

@@ -37,6 +37,32 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- APAGA EL MOTOR DE DIBUJO NUEVO DE FLUTTER (Impeller).
+                 Y NO SE SABE POR QUÉ.
+
+                 Esta línea viene del primer commit del proyecto, de
+                 antes de que hubiera control de versiones, así que no
+                 quedó anotado el motivo. Vale la pena dejar escrito lo
+                 que sí se sabe, para que el próximo que la vea no la
+                 toque a ciegas ni la deje ahí sin entenderla:
+
+                 * Impeller es el motor nuevo y desde hace varias
+                   versiones es el que viene por defecto en Android.
+                   Suele ir más suave en las animaciones.
+                 * Apagarlo hace que se use el motor viejo (Skia).
+                 * El motivo más probable es el reproductor de YouTube:
+                   es una vista nativa metida dentro de Flutter, y esa
+                   combinación dio problemas con Impeller en varias
+                   versiones. O sea que esto puede ser un arreglo de
+                   verdad, no una copia sin pensar.
+
+                 NO SE CAMBIÓ porque la diferencia solo se ve en un
+                 celular de verdad, y acá no hay ninguno para probarlo.
+                 Cambiarlo a ciegas se arriesga justo a romper el video,
+                 que es la parte más frágil de la app. Si algún día se
+                 prueba: poner el valor en "true", compilar, y mirar
+                 sobre todo que el video de Búsqueda Online se siga
+                 viendo al achicarlo y al agrandarlo. -->
             <meta-data
                 android:name="io.flutter.embedding.android.EnableImpeller"
                 android:value="false" />
