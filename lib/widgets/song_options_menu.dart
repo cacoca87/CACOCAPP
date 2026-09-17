@@ -61,7 +61,14 @@ class SongOptionsMenu extends StatelessWidget {
         } else if (accion == "nueva_playlist") {
           mostrarDialogoNuevaPlaylist(context, cancion);
         } else if (accion.startsWith("add_")) {
-          provider.addSongToPlaylist(accion.substring(4), cancion);
+          final id = accion.substring(4);
+          provider.addSongToPlaylist(id, cancion);
+          // Antes esto no avisaba NADA: tocabas una playlist, el menú
+          // se cerraba y no pasaba nada visible. La canción sí se
+          // agregaba, pero no había forma de saberlo sin ir a mirar.
+          // Las otras dos formas de agregar --"Nueva playlist" y
+          // Favoritos-- sí avisaban, así que esta era la rara.
+          _avisar(context, 'Agregada a "${_nombreDePlaylist(provider, id)}"');
         } else if (accion == "descargar") {
           confirmarYDescargar(context, cancion);
         } else if (accion == "eliminar_descarga") {
@@ -154,12 +161,20 @@ class SongOptionsMenu extends StatelessWidget {
         }
         items.add(const PopupMenuDivider());
         for (final p in playlistProvider.playlists) {
+          // Antes todas las playlists se veían igual, estuviera la
+          // canción adentro o no. Tocar una que ya la tenía no hacía
+          // nada --el modelo no permite repetidas-- y no había forma de
+          // notar la diferencia: parecía que el menú no funcionaba.
+          final yaLaTiene = p.songs.any((s) => s.id == cancion.id);
           items.add(
             PopupMenuItem(
               value: "add_${p.id}",
+              enabled: !yaLaTiene,
               child: Row(
                 children: [
-                  const Icon(Icons.folder, color: AppTheme.primary, size: 18),
+                  Icon(yaLaTiene ? Icons.check_rounded : Icons.folder,
+                      color: yaLaTiene ? AppTheme.mutedInk : AppTheme.primary,
+                      size: 18),
                   const SizedBox(width: 10),
                   // El nombre lo escribe la persona y puede ser largo:
                   // sin acotarlo, se desbordaba del ancho del menú.
@@ -167,8 +182,10 @@ class SongOptionsMenu extends StatelessWidget {
                     child: Text(p.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTheme.body
-                            .copyWith(color: AppTheme.paper, fontSize: 13)),
+                        style: AppTheme.body.copyWith(
+                            color:
+                                yaLaTiene ? AppTheme.mutedInk : AppTheme.paper,
+                            fontSize: 13)),
                   ),
                 ],
               ),
@@ -401,6 +418,27 @@ Future<void> confirmarYEliminarDescarga(
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Text('Se eliminó la descarga de "${cancion.title}"'),
+      duration: const Duration(seconds: 2),
+    ),
+  );
+}
+
+/// El nombre de una playlist por su id, o un texto neutro si ya no
+/// existe (puede haberse borrado desde otra pantalla mientras el menú
+/// estaba abierto).
+String _nombreDePlaylist(PlaylistProvider provider, String id) {
+  for (final p in provider.playlists) {
+    if (p.id == id) return p.name;
+  }
+  return 'la playlist';
+}
+
+void _avisar(BuildContext context, String mensaje) {
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(mensaje, style: AppTheme.textoSobreAmbar),
+      backgroundColor: AppTheme.primary,
       duration: const Duration(seconds: 2),
     ),
   );

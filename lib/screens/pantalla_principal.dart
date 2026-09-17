@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
+import '../utils/busqueda.dart';
 import '../utils/secciones.dart';
 import '../utils/bibliotecas_reservadas.dart';
 import '../utils/nombre_archivo_parser.dart';
@@ -109,8 +110,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       return;
     }
     final todas = [...canciones, ..._delCelular];
-    todas
-        .sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    // El orden ignora las tildes: con `toLowerCase()` a secas, "Ángel"
+    // caía después de "Zeta", porque para la computadora la "Á" no está
+    // cerca de la "A" sino después de todo el abecedario.
+    todas.sort((a, b) => paraBuscar(a.title).compareTo(paraBuscar(b.title)));
     _biblioteca = todas;
   }
 
@@ -699,10 +702,22 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // corre con cada tecla que se escribe en el buscador y con cada
     // aviso del reproductor -- incluso estando en Juegos o Noticias,
     // donde no se usan para nada.
+    // Ordenados y sin los vacíos.
+    //
+    // Antes salían en el orden en que aparecían en la biblioteca --que
+    // está ordenada por TÍTULO de canción--, así que la grilla de
+    // Artistas quedaba en un orden que desde afuera parece al azar.
+    //
+    // Y los vacíos armaban una tarjeta sin nombre: pasa con los MP3 que
+    // no traen el dato del álbum, que son muchos, y se notó más al
+    // empezar a leer la música del propio celular.
+    //
+    // El orden ignora las tildes: si no, "Ángel" caía DESPUÉS de "Zeta",
+    // porque para la computadora la "Á" no está cerca de la "A".
     late final List<String> listaArtistas =
-        biblioteca.map((c) => c.artist).toSet().toList();
+        nombresOrdenados(biblioteca.map((c) => c.artist));
     late final List<String> listaAlbumes =
-        biblioteca.map((c) => c.album).toSet().toList();
+        nombresOrdenados(biblioteca.map((c) => c.album));
     late final Map<String, Song> representativaPorArtista =
         primeraPorClave((c) => c.artist);
     late final Map<String, Song> representativaPorAlbum =
@@ -769,14 +784,16 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       final sePuedeQuitarConSwipe =
           esVistaDeFavoritos || playlistDeVistaActual != null;
 
-      final textoBusqueda = _buscadorController.text.toLowerCase();
+      final textoBusqueda = _buscadorController.text.trim();
+      // Ver `utils/busqueda.dart`: no distingue tildes y no le importa
+      // el orden de las palabras. Antes buscar "corazon" no encontraba
+      // "Corazón", que en una biblioteca en castellano deja afuera
+      // medio catálogo.
       List<Song> cancionesFiltradas = textoBusqueda.isEmpty
           ? cancionesBase
           : cancionesBase
-              .where((c) =>
-                  c.title.toLowerCase().contains(textoBusqueda) ||
-                  c.artist.toLowerCase().contains(textoBusqueda) ||
-                  c.album.toLowerCase().contains(textoBusqueda))
+              .where((c) => coincideLaBusqueda(
+                  textoBusqueda, [c.title, c.artist, c.album]))
               .toList();
 
       final String tituloVista;
