@@ -285,6 +285,12 @@ class _DualSearchScreenState extends State<DualSearchScreen> {
                                   ),
                                   subtitle: Text(
                                     "${video.author} • ${video.viewCount}",
+                                    // El nombre de un canal de YouTube
+                                    // puede ser larguísimo, y esta era
+                                    // la única línea de la app sin
+                                    // límite: partía la fila en dos.
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style:
                                         AppTheme.small.copyWith(fontSize: 11),
                                   ),

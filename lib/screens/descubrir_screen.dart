@@ -275,7 +275,8 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
                     // archivo decía que sí.
                     trailing: SongOptionsMenu(
                       cancion: cancion,
-                      bibliotecaSeleccionada: 'Descubrir',
+                      // No es una playlist: ver la nota en `SongOptionsMenu`.
+                      bibliotecaSeleccionada: null,
                     ),
                     onTap: () {
                       HapticFeedback.selectionClick();

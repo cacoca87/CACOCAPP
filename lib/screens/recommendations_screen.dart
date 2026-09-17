@@ -54,17 +54,27 @@ class RecommendationsScreen extends StatelessWidget {
                     size: 44,
                     borderRadius: BorderRadius.circular(6),
                   ),
+                  // Una sola línea, igual que en el resto de las listas:
+                  // sin esto un título largo partía la fila en dos y la
+                  // lista quedaba despareja. Era la única lista de la
+                  // app a la que le faltaba.
                   title: Text(song.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTheme.body.copyWith(
                           color: AppTheme.paper, fontWeight: FontWeight.w600)),
-                  subtitle: Text(song.artist, style: AppTheme.small),
+                  subtitle: Text(song.artist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.small),
                   // Antes acá había un corazón que era solo un ícono: se
                   // veía como un botón pero no se podía tocar. Ahora es
                   // el mismo menú que usan todas las listas de la app,
                   // desde donde sí se puede marcar como favorita.
                   trailing: SongOptionsMenu(
                     cancion: song,
-                    bibliotecaSeleccionada: 'Recomendaciones',
+                    // No es una playlist: ver la nota en `SongOptionsMenu`.
+                    bibliotecaSeleccionada: null,
                   ),
                   onTap: () {
                     player.playSong(song, recommendations, index);

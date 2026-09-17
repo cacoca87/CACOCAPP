@@ -18,7 +18,18 @@ import '../utils/resultado_de_descarga.dart';
 /// saber si mostrar "Quitar de esta carpeta").
 class SongOptionsMenu extends StatelessWidget {
   final Song cancion;
-  final String bibliotecaSeleccionada;
+
+  /// Qué playlist se está mirando, para poder ofrecer "Quitar de esta
+  /// carpeta". **`null` cuando no se está mirando ninguna.**
+  ///
+  /// Que acepte `null` no es un detalle: tres pantallas que no son
+  /// playlists --Descargadas, Descubrir y Recomendaciones-- pasaban acá
+  /// un texto inventado con su propio nombre. Y esos nombres no están
+  /// reservados, así que si la persona tenía una playlist llamada
+  /// "Descargadas" --que es un nombre de lo más normal-- el menú le
+  /// ofrecía "Quitar de esta carpeta" y **se la sacaba de verdad de su
+  /// playlist**, desde una pantalla que no tiene nada que ver.
+  final String? bibliotecaSeleccionada;
 
   const SongOptionsMenu({
     super.key,
@@ -34,11 +45,13 @@ class SongOptionsMenu extends StatelessWidget {
     final estaDescargada = playerProvider.isDownloaded(cancion.id);
 
     Playlist? playlistActual;
+    final biblioteca = bibliotecaSeleccionada;
     // Los cuatro nombres reservados vienen de un solo lugar: antes acá
     // faltaba "Más Escuchadas".
-    if (!nombresReservadosDeBiblioteca.contains(bibliotecaSeleccionada)) {
+    if (biblioteca != null &&
+        !nombresReservadosDeBiblioteca.contains(biblioteca)) {
       for (final p in playlistProvider.playlists) {
-        if (p.name == bibliotecaSeleccionada) {
+        if (p.name == biblioteca) {
           playlistActual = p;
           break;
         }

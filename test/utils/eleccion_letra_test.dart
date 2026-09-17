@@ -156,5 +156,68 @@ void main() {
         'Otra',
       );
     });
+
+    test('la tilde del artista no lo convierte en otro artista', () {
+      // La base de letras casi nunca escribe las tildes. Comparando
+      // letra por letra, "Amén" y "Amen" son dos artistas distintos, y
+      // entonces la regla del artista --la que existe para que no se
+      // cuele una letra ajena-- rechazaba la letra CORRECTA.
+      final resultados = [
+        _resultado(track: 'Te Quiero', artista: 'Amen', duracion: 188),
+      ];
+      final elegida = elegirLetraDeLrclib(
+        resultados,
+        duracion: const Duration(seconds: 188),
+        artistaBuscado: 'Amén',
+        exigirArtista: true,
+      );
+      expect(elegida, isNotNull);
+      expect(elegida!['trackName'], 'Te Quiero');
+    });
+
+    group('cuando todavía no se sabe cuánto dura la canción', () {
+      // Pasa de verdad: se abre la letra apenas arranca el tema, antes
+      // de que el reproductor sepa la duración. Ahí la duración no
+      // puede descartar nada, pero el artista sí.
+      test('gana el del artista que coincide, no el primero de la lista',
+          () {
+        final resultados = [
+          _resultado(track: 'AmEN!', artista: 'Bring Me the Horizon'),
+          _resultado(track: 'Amén', artista: 'Amén'),
+        ];
+        final elegida = elegirLetraDeLrclib(
+          resultados,
+          duracion: null,
+          artistaBuscado: 'Amén',
+        );
+        expect(elegida!['artistName'], 'Amén');
+      });
+
+      test('exigiendo artista, uno ajeno se sigue descartando', () {
+        final resultados = [
+          _resultado(track: 'AmEN!', artista: 'Bring Me the Horizon'),
+        ];
+        expect(
+          elegirLetraDeLrclib(
+            resultados,
+            duracion: null,
+            artistaBuscado: 'Amén',
+            exigirArtista: true,
+          ),
+          isNull,
+        );
+      });
+
+      test('sin artista conocido, sigue devolviendo el primero', () {
+        final resultados = [
+          _resultado(track: 'Una', artista: 'Alguien'),
+          _resultado(track: 'Otra', artista: 'Otro'),
+        ];
+        expect(
+          elegirLetraDeLrclib(resultados, duracion: null)!['trackName'],
+          'Una',
+        );
+      });
+    });
   });
 }

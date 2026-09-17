@@ -87,7 +87,8 @@ class DownloadedSongsView extends StatelessWidget {
                   // descargada".
                   trailing: SongOptionsMenu(
                     cancion: cancion,
-                    bibliotecaSeleccionada: 'Descargadas',
+                    // No es una playlist: ver la nota en `SongOptionsMenu`.
+                    bibliotecaSeleccionada: null,
                   ),
                   onTap: () {
                     HapticFeedback.selectionClick();

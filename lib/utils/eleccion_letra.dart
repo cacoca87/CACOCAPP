@@ -13,6 +13,8 @@
 /// la letra" antes que mostrar la de otra canción.
 library;
 
+import 'busqueda.dart';
+
 /// Cuántos segundos de diferencia se toleran entre la canción que suena
 /// y la que dice lrclib. Un remaster o un archivo con un silencio al
 /// final pueden correrse unos segundos; una canción distinta se corre
@@ -52,7 +54,21 @@ Map<String, dynamic>? elegirLetraDeLrclib(
   if (porArtista.isEmpty) return null;
 
   final segundosReales = duracion?.inSeconds ?? 0;
-  if (segundosReales <= 0) return porArtista.first;
+  if (segundosReales <= 0) {
+    // Sin saber cuánto dura, la duración no puede descartar nada. Pero
+    // el artista sí, y conviene usarlo: pasa de verdad que se abra la
+    // letra apenas arranca la canción, antes de que el reproductor sepa
+    // cuánto dura. Antes, en ese momento se devolvía el primer
+    // resultado a ciegas -- que es exactamente la forma del fallo que
+    // puso una letra con insultos en pantalla.
+    if (artistaBuscado != null && artistaBuscado.trim().isNotEmpty) {
+      final delArtista = porArtista
+          .where((m) => _mismoArtista(m['artistName'], artistaBuscado))
+          .toList();
+      if (delArtista.isNotEmpty) return delArtista.first;
+    }
+    return porArtista.first;
+  }
 
   // Solo se consideran los que dicen cuánto duran; sin ese dato no hay
   // forma de saber si es la canción correcta.
@@ -87,10 +103,18 @@ int? _duracionDe(Map<String, dynamic> resultado) {
   return null;
 }
 
+/// Compara artistas **ignorando las tildes**, no solo las mayúsculas.
+///
+/// Sin eso, "Amén" y "Amen" son dos artistas distintos para la
+/// computadora, y la base de letras rara vez escribe los nombres con
+/// las tildes puestas. El resultado era el peor posible: la regla del
+/// artista --la que existe justamente para que no se cuele una letra
+/// ajena-- rechazaba la letra CORRECTA de "Amén" porque en lrclib
+/// figura como "Amen".
 bool _mismoArtista(dynamic delResultado, String? buscado) {
   if (delResultado is! String || buscado == null) return false;
-  final a = delResultado.trim().toLowerCase();
-  final b = buscado.trim().toLowerCase();
+  final a = paraBuscar(delResultado.trim());
+  final b = paraBuscar(buscado.trim());
   if (a.isEmpty || b.isEmpty) return false;
   return a == b || a.contains(b) || b.contains(a);
 }
