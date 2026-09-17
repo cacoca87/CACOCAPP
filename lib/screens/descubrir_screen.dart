@@ -7,6 +7,7 @@ import '../providers/player_provider.dart';
 import '../services/jamendo_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/boton_volver.dart';
+import '../widgets/fila_de_generos.dart';
 import '../widgets/estado_vacio.dart';
 import '../widgets/song_cover.dart';
 import '../widgets/song_options_menu.dart';
@@ -191,54 +192,11 @@ class _DescubrirScreenState extends State<DescubrirScreen> {
             ),
           ),
 
-          // Chips de género: buscan por tags reales de Jamendo (no por
-          // texto), así que encuentran música de ese género aunque la
-          // palabra en sí no aparezca en ningún título.
-          // El alto crece con la escala de texto del sistema: con la
-          // letra grande, un alto fijo dejaba los chips cortados. Mismo
-          // motivo que en `mini_player.dart`.
-          SizedBox(
-            height: 40 *
-                MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: JamendoService.generos.entries.map((entry) {
-                final activo = _generoActivo == entry.key;
-                final color =
-                    JamendoService.generosColores[entry.key] ?? AppTheme.amber;
-                final icono = JamendoService.generosIconos[entry.key] ??
-                    Icons.music_note_rounded;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    avatar: Icon(
-                      icono,
-                      size: 16,
-                      color: activo ? AppTheme.paper : color,
-                    ),
-                    label: Text(entry.key),
-                    selected: activo,
-                    onSelected: (_) => _buscarGenero(entry.key, entry.value),
-                    backgroundColor: AppTheme.surface,
-                    selectedColor: color,
-                    labelStyle: AppTheme.body.copyWith(
-                      fontSize: 13,
-                      color: activo
-                          ? AppTheme.paper
-                          : AppTheme.paper.withValues(alpha: 0.85),
-                      fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                          color:
-                              activo ? color : color.withValues(alpha: 0.35)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
+          // Ver `widgets/fila_de_generos.dart`: vive aparte para poder
+          // probarla, y ya no lleva ningún alto escrito a mano.
+          FilaDeGeneros(
+            generoActivo: _generoActivo,
+            onElegirGenero: _buscarGenero,
           ),
           const SizedBox(height: 12),
 
