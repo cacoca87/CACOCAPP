@@ -3655,3 +3655,74 @@ después de dos "no" y la única salida son los ajustes del sistema.
 Ahora el cartel lo dice y trae un botón "Permitir" que los abre.
 
 `flutter analyze` limpio, **360 tests** en verde y APK de 41,5 MB.
+
+## 93. Vueltas 96 a 98: cosas que la app escondía sin decirlo
+
+### Fuera la pantalla de diagnóstico de YouTube
+
+Era una herramienta de programador metida en la app de un usuario: un
+botón en la búsqueda de YouTube que corría una prueba técnica y
+escupía un registro de texto. Si la tocabas no hacía nada útil y
+parecía un error.
+
+Existía para averiguar si YouTube dejaba bajar el audio de un video
+completo. Esa pregunta ya quedó contestada --no deja-- y la app no
+descarga audio de YouTube, así que la pantalla probaba algo que la app
+deliberadamente no hace.
+
+**El APK bajó de 41,5 MB a 40,5 MB.** Un megabyte entero: esa pantalla
+era lo único que usaba la parte de *descarga* de `youtube_explode` (el
+resto de la app solo usa la búsqueda), así que al sacarla todo ese
+código dejó de entrar en el paquete.
+
+### El filtro se llevaba puestas canciones por su nombre
+
+El filtro que deja afuera las notas de voz comparaba sus palabras
+contra la **ruta entera**, nombre del archivo incluido. O sea que el
+título de una canción podía activar una regla pensada para nombres de
+*carpeta*, y esa canción desaparecía de la biblioteca sin ningún aviso.
+
+Desaparecían, entre otras:
+
+| Archivo | Se lo llevaba puesto |
+|---|---|
+| `Alarma.mp3` | "alarm" |
+| `La Llamada.mp3` | "llamada" |
+| `Signal.mp3` | "signal" |
+| `Live Recording.mp3` | "recording" |
+| `Tonos del Sur.mp3` | "tonos" |
+| `La Grabadora.mp3` | "grabadora" |
+| `Ringtone (Remix).mp3` | "ringtone" |
+
+Son nombres de canciones de verdad, y el síntoma es el peor posible:
+no hay error, no hay aviso, simplemente falta un tema.
+
+Ahora la ruta se parte en dos y cada mitad tiene su propia lista. La
+**carpeta** conserva todas las reglas de antes --nadie llama "Alarmas"
+a la carpeta donde guarda su música, así que ahí la palabra sigue
+siendo buena señal--. El **nombre del archivo** se revisa solo contra
+marcas que no dejan lugar a duda: "PTT-", "Voice note", "-WA0001".
+Ninguna canción se llama así.
+
+Las notas de voz siguen bloqueadas por cuatro caminos distintos: la
+carpeta, la marca del nombre, el formato (`.opus` no está en la lista
+de formatos de música) y la duración mínima.
+
+### Borrar un MP3 del celular daba "revisá tu conexión"
+
+Cuando el reproductor falla, la app supone que se cortó internet:
+reintenta ocho veces esperando cada vez más --hasta treinta segundos
+entre intento e intento-- y al final dice "Se perdió la conexión".
+
+Con un archivo del propio celular eso está mal dos veces. Reintentar
+no puede funcionar: el archivo no va a aparecer solo, así que son ocho
+esperas para nada. Y el mensaje es directamente falso.
+
+Y pasa fácil: borrás un MP3 con el administrador de archivos y esa
+canción seguía en una playlist, o era la última que sonó y la app la
+restaura al abrirse.
+
+Ahora, antes de suponer que es internet, se mira si el archivo sigue
+estando. Si no está, no se reintenta y el aviso dice la verdad.
+
+`flutter analyze` limpio, **374 tests** en verde y APK de 40,5 MB.
