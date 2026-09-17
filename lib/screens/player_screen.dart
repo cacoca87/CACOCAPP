@@ -14,6 +14,7 @@ import '../services/id3_cover_service.dart';
 import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/audio_effects_sheet.dart';
+import '../widgets/controles_reproduccion.dart';
 import '../widgets/estado_vacio.dart';
 import '../utils/barra_de_progreso.dart';
 import '../widgets/song_cover.dart';
@@ -78,22 +79,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     // cancion sin portada dejaba la pantalla roja.
     if (!mounted || _songIdColorCargado != song.id) return;
     setState(() => _colorDominante = color);
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    double size = 28,
-    Color? color,
-    VoidCallback? onPressed,
-    String? tooltip,
-  }) {
-    return IconButton(
-      icon: Icon(icon, size: size, color: color ?? AppTheme.paper),
-      onPressed: onPressed,
-      tooltip: tooltip,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(),
-    );
   }
 
   @override
@@ -498,110 +483,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             const SizedBox(height: 24),
                             Consumer<PlayerProvider>(
                               builder: (context, playerProvider, _) {
-                                final repeatIcon =
-                                    switch (playerProvider.repeatMode) {
-                                  2 => Icons.repeat_one_rounded,
-                                  _ => Icons.repeat_rounded,
-                                };
-                                final repeatActivo =
-                                    playerProvider.repeatMode != 0;
-                                final repeatTooltip =
-                                    switch (playerProvider.repeatMode) {
-                                  1 => "Repetir todo (activado)",
-                                  2 => "Repetir una canción (activado)",
-                                  _ => "Repetir (desactivado)",
-                                };
-
-                                return Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildControlButton(
-                                      icon: Icons.shuffle_rounded,
-                                      size: 26,
-                                      color: playerProvider.isShuffleEnabled
-                                          ? AppTheme.amber
-                                          : AppTheme.mutedInk,
-                                      onPressed: () {
+                                return StreamBuilder<PlaybackState>(
+                                  stream: audioHandler.playbackState,
+                                  builder: (context, snapshot) {
+                                    return ControlesDeReproduccion(
+                                      aleatorioActivo:
+                                          playerProvider.isShuffleEnabled,
+                                      onAleatorio: () {
                                         HapticFeedback.selectionClick();
                                         playerProvider.toggleShuffle();
                                       },
-                                      tooltip: playerProvider.isShuffleEnabled
-                                          ? "Aleatorio (activado)"
-                                          : "Aleatorio (desactivado)",
-                                    ),
-                                    _buildControlButton(
-                                      icon: Icons.skip_previous_rounded,
-                                      size: 40,
-                                      onPressed: () {
+                                      onAnterior: () {
                                         HapticFeedback.lightImpact();
                                         playerProvider.playPrevious();
                                       },
-                                      tooltip: "Anterior",
-                                    ),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color:
-                                                bgColor.withValues(alpha: 0.35),
-                                            blurRadius: 24,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: StreamBuilder<PlaybackState>(
-                                        stream: audioHandler.playbackState,
-                                        builder: (context, snapshot) {
-                                          final playing =
-                                              snapshot.data?.playing ?? false;
-                                          return IconButton(
-                                            icon: Icon(
-                                              playing
-                                                  ? Icons.pause_circle_filled
-                                                  : Icons.play_circle_filled,
-                                              size: 72,
-                                              color: AppTheme.amber,
-                                            ),
-                                            tooltip: playing
-                                                ? "Pausar"
-                                                : "Reproducir",
-                                            onPressed: () {
-                                              HapticFeedback.mediumImpact();
-                                              if (playing) {
-                                                audioHandler.pause();
-                                              } else {
-                                                audioHandler.play();
-                                              }
-                                            },
-                                            constraints: const BoxConstraints(),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    _buildControlButton(
-                                      icon: Icons.skip_next_rounded,
-                                      size: 40,
-                                      onPressed: () {
+                                      onSiguiente: () {
                                         HapticFeedback.lightImpact();
                                         playerProvider.playNext();
                                       },
-                                      tooltip: "Siguiente",
-                                    ),
-                                    _buildControlButton(
-                                      icon: repeatIcon,
-                                      size: 26,
-                                      color: repeatActivo
-                                          ? AppTheme.amber
-                                          : AppTheme.mutedInk,
-                                      onPressed: () {
+                                      sonando: snapshot.data?.playing ?? false,
+                                      onPlayPausa: () {
+                                        HapticFeedback.mediumImpact();
+                                        if (snapshot.data?.playing ?? false) {
+                                          audioHandler.pause();
+                                        } else {
+                                          audioHandler.play();
+                                        }
+                                      },
+                                      modoDeRepeticion:
+                                          playerProvider.repeatMode,
+                                      onRepetir: () {
                                         HapticFeedback.selectionClick();
                                         playerProvider.toggleRepeat();
                                       },
-                                      tooltip: repeatTooltip,
-                                    ),
-                                  ],
+                                      colorDelResplandor: bgColor,
+                                    );
+                                  },
                                 );
                               },
                             ),
