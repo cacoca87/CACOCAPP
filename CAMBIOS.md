@@ -4209,3 +4209,63 @@ Una documentación que miente es peor que no tenerla: la primera hace
 tomar decisiones equivocadas con confianza.
 
 `flutter analyze` limpio, **529 tests** en verde y APK de 40,5 MB.
+
+## 101. Vueltas 120 y 121: lo que no se puede recuperar, y 70 MB de datos
+
+### Quince tests para lo único que no se puede recuperar
+
+Las playlists y los favoritos son lo único que la app no puede volver a
+conseguir si se pierde. Una canción borrada se vuelve a bajar; una
+playlist de cuarenta temas armada a mano, no.
+
+Y tenía **tres** tests, todos sobre un caso raro. Lo de todos los días
+--crear, renombrar, borrar, agregar, quitar, favoritear-- no lo cubría
+ninguno.
+
+Los que más importan: que todo siga ahí al reabrir la app; que borrar
+una playlist no toque las otras; que renombrar no la vacíe; que pedirle
+algo a una playlist que **ya no existe** no reviente --pasa de verdad:
+se borra desde el menú lateral mientras el menú de opciones de una
+canción sigue abierto apuntando a ella--; y que un archivo guardado en
+un formato roto no tire la app abajo.
+
+Los quince pasan. **No apareció ningún bug**: esta parte estaba bien
+hecha. Lo que cambió es que ahora se sabe.
+
+### De 80 MB de datos móviles a 10
+
+Para leer el título, el artista y la carátula de cada canción, la app
+baja el principio del MP3 --ahí viven esos datos-- en vez del archivo
+entero. Pedía **siempre** los primeros 512 KB.
+
+512 KB es una apuesta a lo grande. Una etiqueta sin carátula ocupa unos
+pocos kilobytes; una con carátula, normalmente entre 30 y 150. O sea que
+casi siempre se bajaba de más, y por mucho.
+
+Con la biblioteca de 160 canciones, la primera vez que se abre la app
+eso son **ochenta megabytes**. Para leer unos títulos.
+
+Y no hace falta adivinar: **la propia etiqueta empieza diciendo cuánto
+mide**. Los primeros diez bytes traen ese número.
+
+| | Por canción | 160 canciones |
+|---|---|---|
+| Antes | 512 KB siempre | 80 MB |
+| Ahora | 64 KB, y más solo si hace falta | 10 MB |
+
+Ocho veces menos en el caso normal. Y cuando hace falta el segundo
+pedido, esos 64 KB no se tiran: sirvieron para saber exactamente cuánto
+pedir.
+
+La cuenta del tamaño vive suelta con 16 tests, porque es la parte del
+formato que más fácil se programa mal: el número va en cuatro bytes de
+**siete** bits cada uno, no de ocho. Se cubren también el archivo sin
+etiqueta, el tamaño corrupto, el bit prohibido encendido y el tope de
+seguridad.
+
+Y cinco tests más sobre lo que se le pide al servidor de verdad, con un
+servidor de mentira que **respeta el rango**: si devolviera el archivo
+entero siempre, el test no distinguiría entre pedir 64 KB y pedir 512,
+que es justo lo que se quiere medir.
+
+`flutter analyze` limpio, **565 tests** en verde y APK de 40,5 MB.
