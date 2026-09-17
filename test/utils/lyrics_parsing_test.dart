@@ -38,9 +38,41 @@ void main() {
         'Runnin Down A Dream',
       );
     });
+
+    test('saca las marcas de reedición, que llenan esta biblioteca', () {
+      // Casos reales de los archivos del R2.
+      expect(limpiarTituloParaBuscarLetra('Whole Lotta Love - Remaster'),
+          'Whole Lotta Love');
+      expect(limpiarTituloParaBuscarLetra('Kashmir (Remastered)'), 'Kashmir');
+      expect(limpiarTituloParaBuscarLetra('Five Years - 2012 Remaster'),
+          'Five Years');
+      expect(limpiarTituloParaBuscarLetra('Ziggy Stardust - 2012 Remaster'),
+          'Ziggy Stardust');
+    });
+
+    test('saca al artista invitado', () {
+      expect(
+        limpiarTituloParaBuscarLetra('Under Pressure (feat. David Bowie)'),
+        'Under Pressure',
+      );
+      expect(limpiarTituloParaBuscarLetra('Algo [ft. Otro]'), 'Algo');
+    });
+
+    test('no se come el título de una canción que no es reedición', () {
+      expect(limpiarTituloParaBuscarLetra('Paradise City'), 'Paradise City');
+      expect(limpiarTituloParaBuscarLetra('Sweet Child O Mine'),
+          'Sweet Child O Mine');
+    });
   });
 
   group('parsearLrc', () {
+    test('aguanta los tiempos escritos con un solo dígito', () {
+      // Hay archivos LRC que escriben "[1:23]" en vez de "[01:23]". Con
+      // el patrón estricto esa línea no coincidía con nada y se perdía.
+      final lineas = parsearLrc('[1:5]Una línea\n[1:23.4]Otra');
+      expect(lineas, hasLength(2));
+      expect(lineas.first.tiempo, const Duration(minutes: 1, seconds: 5));
+    });
     test('parsea una línea LRC simple (mm:ss.cc)', () {
       final lineas = parsearLrc('[00:12.50]Primera línea');
       expect(lineas, hasLength(1));

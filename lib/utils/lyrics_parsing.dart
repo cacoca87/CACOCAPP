@@ -27,6 +27,19 @@ String limpiarTituloParaBuscarLetra(String titulo) {
     RegExp(r'\[\s*lyrics?\s*\]', caseSensitive: false),
     RegExp(r'\(\s*audio\s*\)', caseSensitive: false),
     RegExp(r'\(\s*visualizer\s*\)', caseSensitive: false),
+    // Muy común en esta biblioteca, que está llena de reediciones:
+    // "Whole Lotta Love - Remaster", "Five Years - 2012 Remaster",
+    // "Kashmir (Remastered)". El año va suelto porque cambia en cada
+    // disco. Sin sacar esto, lrclib no encuentra la canción aunque la
+    // tenga, porque la busca con un nombre que nadie usa.
+    RegExp(
+        r'[\(\[]?\s*((19|20)\d{2}\s*)?remaster(ed|izado)?(\s*(19|20)\d{2})?\s*'
+        r'(version)?\s*[\)\]]?',
+        caseSensitive: false),
+    RegExp(r'\s*-\s*$'),
+    // "(feat. Fulano)" / "(ft. Fulano)": el invitado no forma parte del
+    // nombre de la canción en las bases de letras.
+    RegExp(r'[\(\[]\s*(feat|ft)\.?\s[^\)\]]*[\)\]]', caseSensitive: false),
     RegExp(r'\b(hd|4k|full hd|hq)\b', caseSensitive: false),
   ];
   for (final patron in patronesRuido) {
@@ -40,7 +53,10 @@ String limpiarTituloParaBuscarLetra(String titulo) {
 /// (donde vivía como `_parsearLrc`) por el mismo motivo que
 /// [limpiarTituloParaBuscarLetra].
 List<LineaLetra> parsearLrc(String contenido) {
-  final regex = RegExp(r'\[(\d{2}):(\d{2})(?:[.:](\d{1,3}))?\]');
+  // Minutos y segundos con uno o dos dígitos: hay archivos LRC que
+  // escriben "[1:23]" en vez de "[01:23]", y con el patrón estricto esa
+  // línea no coincidía con NADA, así que se perdía entera.
+  final regex = RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
   final lineas = <LineaLetra>[];
 
   for (final linea in contenido.split('\n')) {
