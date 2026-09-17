@@ -3208,3 +3208,98 @@ Siete tests nuevos.
 
 `flutter analyze`, `flutter test` (**241**) y `flutter build apk
 --release` salieron limpios.
+
+---
+
+## 89. Vuelta 82: leer la música que ya está en el celular
+
+Pedido en tres partes: que la app lea lo que ya está en el teléfono,
+que vea también lo que se agregue después, y que quede **mezclado** con
+lo del servidor en vez de una cosa en un lado y otra en otro.
+
+Y una advertencia que llegó a tiempo y cambió el diseño entero:
+
+> *"pero tener cuidado con las notas de voz de whatsapp… en una canción
+> que termine puede sonar una conversación de voz"*
+
+### Eso es exactamente lo que hunde estas funciones
+
+Para Android, una canción y una nota de voz son **lo mismo**: las dos
+son "audio" y las dos entran en su índice de medios. Una app que agarra
+todo lo que encuentra termina haciendo esto: se acaba un tema, y lo que
+sigue es una conversación tuya por el parlante, con el celular en el
+bolsillo.
+
+Por eso la decisión de **qué es música** se escribió como código puro de
+Dart (`utils/filtro_musica_local.dart`) en vez de quedar enterrada del
+lado nativo. Así está cubierta por **16 tests con rutas reales** —notas
+de voz de WhatsApp, grabaciones de la grabadora, grabaciones de llamada,
+audios de Telegram, tonos y sonidos del sistema— y se puede comprobar
+sin un celular. Es el tipo de cosa que si falla no da un error: un día
+suena algo que no tenía que sonar.
+
+No alcanza con una regla sola, cada una se escapa por algún lado. Se
+usan cuatro, y basta que una diga que no:
+
+1. **Lo que el propio Android ya marcó** como tono, notificación,
+   alarma, podcast, grabación o audiolibro.
+2. **La carpeta.** Es la señal más fuerte. Incluye `/Android/media/`,
+   que es donde WhatsApp y Telegram guardan lo suyo desde Android 11.
+   Además se reconoce la marca de WhatsApp en el propio nombre del
+   archivo (`-WA0001`), por si alguien lo movió a la carpeta de música.
+3. **El formato**, por lista de lo *permitido* y no de lo prohibido: las
+   notas de voz son `.opus` y las grabaciones viejas `.amr` o `.3gp`.
+   Así, un formato nuevo de notas de voz queda afuera solo.
+4. **Cuánto dura**: mínimo 45 segundos.
+
+El aviso de "Actualizar" dice cuántos se saltearon. Eso es a propósito:
+el filtro es una apuesta, y si algún día se lleva puesta una canción de
+verdad, ese número es la única forma de darse cuenta. Convierte "me
+falta un tema" en "se saltearon 47, alguno era mío".
+
+### Cómo se junta con lo del servidor
+
+Se convierten en `Song` normales, con dirección `file://` —la misma
+forma que ya usan las descargas— y se meten en la **misma lista**. Todo
+lo demás de la app trabaja con esa lista y no sabe de dónde salió cada
+canción, así que la búsqueda, los favoritos, las playlists, Artistas,
+Álbumes y las estadísticas las mezclan **sin una línea de código extra**.
+
+Y como van por `file://`, gratis y sin escribir nada nuevo: el
+reproductor las toca, les lee la carátula de adentro del propio MP3 (el
+arreglo de la vuelta 77 era justo esto), y no gastan ni un byte de datos
+móviles.
+
+### Lo que se agregue después
+
+Android mantiene su índice al día solo: cuando llega un archivo por
+WhatsApp, por cable o desde otra app, lo agrega sin que nadie se lo
+pida. Así que alcanza con volver a preguntar, y eso cuelga del botón de
+"Actualizar" que ya existía.
+
+### Detalles que importan
+
+- **Sin dependencias nuevas.** Se usa el mismo puente nativo que ya
+  tenía `MainActivity.kt` para el ecualizador, en un canal aparte.
+- **Permisos:** `READ_MEDIA_AUDIO` para Android 13+, y el viejo de
+  almacenamiento con `maxSdkVersion=32`, para que en los celulares
+  nuevos **no** se pida un "acceder a todos tus archivos" que ya no hace
+  falta y que asusta con razón.
+- El permiso se pide **después** de mostrar la biblioteca del servidor,
+  no al abrir la app encima de una pantalla vacía.
+- Si la persona dice que no, la app sigue funcionando igual.
+- **No se sacan repetidas**: si tenés la misma canción en el servidor y
+  en el celular son dos archivos distintos, y adivinar cuál es "la
+  misma" por el título terminaría escondiendo versiones que no lo son.
+
+`flutter analyze`, `flutter test` (**264**) y `flutter build apk
+--release` salieron limpios, y los permisos se verificaron en el
+manifiesto ya construido.
+
+### Lo que no se puede comprobar desde acá
+
+El filtro está probado; **el puente nativo no**. Que la consulta al
+índice de Android devuelva lo que tiene que devolver, que el permiso se
+pida bien y que los archivos suenen, eso solo se ve en el celular. Lo
+que sí se comprobó es que el Kotlin compila y que los permisos quedaron
+en el manifiesto final del APK.
