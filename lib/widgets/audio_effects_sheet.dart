@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/audio_effects_provider.dart';
+import '../services/audio_effects_service.dart';
 import '../styles/app_theme.dart';
 import 'estado_vacio.dart';
 
@@ -95,34 +96,13 @@ class _PanelDeAudio extends StatelessWidget {
                 titulo: "Ecualizador",
                 activo: fx.eqActivo,
                 onCambiar: (_) => fx.toggleEcualizador(),
-                child: SizedBox(
-                  height: 180,
-                  child: Row(
-                    // Cada banda ocupa una fracción igual del ancho, en
-                    // vez de su ancho natural repartido con
-                    // `spaceEvenly`.
-                    //
-                    // Con las 5 bandas que reporta la mayoría de los
-                    // celulares se ve igual, pero cuántas bandas hay lo
-                    // decide el fabricante y hay equipos que informan 8
-                    // o 10. Con el ancho natural, esas diez columnas no
-                    // entraban en la pantalla y el panel salía con las
-                    // rayas amarillas y negras de desbordado. Es un
-                    // fallo que no se puede ver en el celular donde se
-                    // programó: depende del aparato de cada uno.
-                    children: fx.info.bandas.map((banda) {
-                      return Expanded(
-                        child: _BandaSlider(
-                          etiqueta: _formatearFrecuencia(banda.frecuenciaHz),
-                          valor: fx.nivelBanda(banda.indice),
-                          min: fx.info.nivelMinimo,
-                          max: fx.info.nivelMaximo,
-                          habilitado: fx.eqActivo,
-                          onCambiar: (v) => fx.setNivelBanda(banda.indice, v),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                child: FilaDeBandas(
+                  bandas: fx.info.bandas,
+                  nivelMinimo: fx.info.nivelMinimo,
+                  nivelMaximo: fx.info.nivelMaximo,
+                  habilitado: fx.eqActivo,
+                  nivelDe: fx.nivelBanda,
+                  onCambiar: fx.setNivelBanda,
                 ),
               ),
               if (fx.info.bassBoostDisponible) ...[
@@ -213,6 +193,67 @@ class _SeccionConSwitch extends StatelessWidget {
         ),
         child,
       ],
+    );
+  }
+}
+
+/// La fila de deslizadores del ecualizador, una columna por banda.
+///
+/// Vive aparte y es pública para poder probarla: el panel entero
+/// necesita el motor de audio del celular, que no arranca fuera de un
+/// teléfono, así que probarlo completo no se puede. Esto sí, y es la
+/// parte donde de verdad puede fallar algo.
+///
+/// POR QUÉ CADA BANDA OCUPA UNA FRACCIÓN IGUAL DEL ANCHO
+///
+/// Antes cada columna se dibujaba con su ancho natural, repartidas con
+/// `spaceEvenly`. Con las 5 bandas que informa la mayoría de los
+/// celulares eso entra bien, pero **cuántas bandas hay lo decide el
+/// fabricante**, y hay equipos que informan 8 o 10. Esas columnas no
+/// entraban en la pantalla y el panel salía con las rayas amarillas y
+/// negras de desbordado.
+///
+/// Es un fallo imposible de ver en el celular donde se programó:
+/// depende del aparato de cada uno. Por eso se arregló a ciegas, y por
+/// eso ahora tiene tests con 5, 8 y 10 bandas.
+class FilaDeBandas extends StatelessWidget {
+  final List<BandaEcualizador> bandas;
+  final int nivelMinimo;
+  final int nivelMaximo;
+  final bool habilitado;
+
+  /// El nivel actual de una banda, por su índice.
+  final int Function(int indice) nivelDe;
+  final void Function(int indice, int nivel) onCambiar;
+
+  const FilaDeBandas({
+    super.key,
+    required this.bandas,
+    required this.nivelMinimo,
+    required this.nivelMaximo,
+    required this.habilitado,
+    required this.nivelDe,
+    required this.onCambiar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 180,
+      child: Row(
+        children: bandas.map((banda) {
+          return Expanded(
+            child: _BandaSlider(
+              etiqueta: _formatearFrecuencia(banda.frecuenciaHz),
+              valor: nivelDe(banda.indice),
+              min: nivelMinimo,
+              max: nivelMaximo,
+              habilitado: habilitado,
+              onCambiar: (v) => onCambiar(banda.indice, v),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
