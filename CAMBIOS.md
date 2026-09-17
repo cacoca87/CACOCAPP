@@ -2644,23 +2644,7 @@ promete es peor que no tenerlo.
   resultado. Todas las mediciones anteriores se habían hecho desde una
   computadora, y eso era un hueco.
 
-### El otro error caro: letras de otra canción
 
-Se agregó comparación por duración para no traer la letra equivocada
-(el caso "Amén" → "Refuse Amen", en inglés). Pero faltaba **verificar
-el artista**, y eso dejó pasar algo peor: "Amén" dura 188 segundos y en
-la base hay un "AmEN!" de Bring Me the Horizon de 189,5. Segundo y medio
-de diferencia. La app mostró una letra en inglés llena de insultos para
-una canción de pop-rock peruano, con total seguridad. (Nota: acá se
-escribió primero que Amén era un grupo cristiano, deducido de la tapa
-del disco. Era falso, y lo corrigió el dueño de la app. Deducir de una
-imagen y escribirlo como un hecho es la misma clase de error que
-tomar el primer resultado de una búsqueda como si fuera el correcto.)
-
-Corregido: la búsqueda solo-por-título ahora exige que el artista
-coincida, y si no coincide no se muestra nada. Se sacó además
-`lyrics.ovh`, que solo hace coincidir texto y no permite comprobar nada.
-Tres tests nuevos con los números exactos del caso.
 
 ### Y la lección que se repitió tres veces
 
@@ -3903,22 +3887,6 @@ llamada "Descargadas" --que es un nombre de lo más normal-- al abrir el
 menú desde Música Descargada te aparecía "Quitar de esta carpeta", y
 tocarlo **te la sacaba de verdad de tu playlist**. Desde una pantalla
 que no tiene nada que ver con ella.
-
-### Más restos del caso de la letra con insultos
-
-Buscando hermanos de ese fallo aparecieron dos más:
-
-**La comparación de artistas distinguía tildes.** Para la computadora
-"Amén" y "Amen" son dos artistas distintos, y la base de letras casi
-nunca las escribe. O sea que la regla del artista --la que existe
-justamente para que no se cuele una letra ajena-- podía rechazar la
-letra **correcta**.
-
-**Sin saber cuánto dura la canción, se devolvía el primer resultado a
-ciegas.** Y eso pasa de verdad: se abre la letra apenas arranca el
-tema, antes de que el reproductor sepa la duración. Es exactamente la
-forma del fallo que puso una letra con insultos en pantalla. Ahí la
-duración no puede descartar nada, pero el artista sí, y ahora se usa.
 
 ### La app arranca al instante en vez de esperar al servidor
 
