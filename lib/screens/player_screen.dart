@@ -15,7 +15,7 @@ import '../services/share_service.dart';
 import '../styles/app_theme.dart';
 import '../widgets/audio_effects_sheet.dart';
 import '../widgets/estado_vacio.dart';
-import '../utils/formato_tiempo.dart';
+import '../utils/barra_de_progreso.dart';
 import '../widgets/song_cover.dart';
 import 'queue_screen.dart';
 import 'lyrics_screen.dart';
@@ -417,21 +417,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               stream: audioHandler.player.positionStream,
                               initialData: audioHandler.player.position,
                               builder: (context, positionSnapshot) {
-                                final totalDuration = mediaItem.duration ??
-                                    const Duration(minutes: 3);
-                                double maxVal =
-                                    totalDuration.inMilliseconds.toDouble();
-                                if (maxVal <= 0) maxVal = 1.0;
-
-                                final position =
-                                    positionSnapshot.data ?? Duration.zero;
-                                final valorReal = position.inMilliseconds
-                                    .toDouble()
-                                    .clamp(0.0, maxVal);
-                                // Mientras se arrastra el slider, se ignora el valor
-                                // del stream para que no "pelee" contra el dedo.
-                                final currentVal =
-                                    _valorMientrasArrastra ?? valorReal;
+                                // Las cuentas viven en
+                                // `utils/barra_de_progreso.dart`, con sus
+                                // tests. Antes, mientras no se sabía
+                                // cuánto duraba la canción, acá se hacía
+                                // de cuenta que duraba TRES MINUTOS: la
+                                // barra se clavaba al final de una
+                                // canción más larga, abajo decía "3:00"
+                                // --un dato inventado-- y arrastrando no
+                                // se podía pasar de ahí.
+                                final barra = calcularBarraDeProgreso(
+                                  posicion:
+                                      positionSnapshot.data ?? Duration.zero,
+                                  duracion: mediaItem.duration,
+                                  valorMientrasArrastra: _valorMientrasArrastra,
+                                );
 
                                 return Column(
                                   children: [
@@ -451,19 +451,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                             .withValues(alpha: 0.2),
                                       ),
                                       child: Slider(
-                                        value: currentVal,
+                                        value: barra.valor,
                                         min: 0.0,
-                                        max: maxVal,
-                                        onChangeStart: (value) => setState(() =>
-                                            _valorMientrasArrastra = value),
-                                        onChanged: (value) => setState(() =>
-                                            _valorMientrasArrastra = value),
-                                        onChangeEnd: (value) {
-                                          audioHandler.seek(Duration(
-                                              milliseconds: value.toInt()));
-                                          setState(() =>
-                                              _valorMientrasArrastra = null);
-                                        },
+                                        max: barra.maximo,
+                                        // Apagado mientras no se sepa
+                                        // cuánto dura: arrastrar no
+                                        // tendría contra qué.
+                                        onChangeStart: !barra.sePuedeArrastrar
+                                            ? null
+                                            : (value) => setState(() =>
+                                                _valorMientrasArrastra = value),
+                                        onChanged: !barra.sePuedeArrastrar
+                                            ? null
+                                            : (value) => setState(() =>
+                                                _valorMientrasArrastra = value),
+                                        onChangeEnd: !barra.sePuedeArrastrar
+                                            ? null
+                                            : (value) {
+                                                audioHandler.seek(Duration(
+                                                    milliseconds:
+                                                        value.toInt()));
+                                                setState(() =>
+                                                    _valorMientrasArrastra =
+                                                        null);
+                                              },
                                       ),
                                     ),
                                     Padding(
@@ -473,13 +484,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            duracionCorta(Duration(
-                                                milliseconds:
-                                                    currentVal.toInt())),
-                                            style: AppTheme.small,
-                                          ),
-                                          Text(duracionCorta(totalDuration),
+                                          Text(barra.textoIzquierda,
+                                              style: AppTheme.small),
+                                          Text(barra.textoDerecha,
                                               style: AppTheme.small),
                                         ],
                                       ),
